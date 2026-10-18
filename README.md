@@ -44,17 +44,17 @@ Geef de t620 in je router een **vast IP-adres** (zoek naar "DHCP-reservering" of
 
 ### 3. Kassa installeren
 
-Log in op de t620 (met een toetsenbord en scherm, of via SSH), word root en voer het installatiescript uit:
+Alles zit in één installatiebestand: **`kassa-installatie.run`** (ongeveer 25 MB), te vinden bij de [nieuwste release](https://github.com/Jlmree/kassa-test/releases/latest). Log in op de t620 (met toetsenbord en scherm, of via SSH), word root en voer uit:
 
 ```sh
 su -
-apt-get install -y curl
-curl -fsSL https://raw.githubusercontent.com/Jlmree/kassa-test/main/server/installeer.sh | bash
+wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
+bash kassa-installatie.run
 ```
 
-(Op Ubuntu: `sudo -i` in plaats van `su -`.) De commando's hieronder voer je ook als root uit; met `sudo` ervoor kan ook.
+(Op Ubuntu: `sudo -i` in plaats van `su -`.) Het bestand kan ook via een USB-stick op de t620 komen; zie de handleiding. De commando's hieronder voer je ook als root uit.
 
-Dit duurt een paar minuten. Aan het eind staat welk adres je op de telefoons moet openen.
+Dit duurt een paar minuten (er is internet nodig voor PostgreSQL en de webserver). Aan het eind staat welk adres je op de telefoons moet openen. Hetzelfde bestand later nog eens starten is veilig: het werkt de kassa bij en je gegevens blijven staan.
 
 ### 4. Telefoons en tablets
 
@@ -67,7 +67,7 @@ Om de camera te mogen gebruiken (QR-kaarten scannen) moet de verbinding beveilig
 **Liever geen certificaat op elke telefoon?** Maak een gratis naam aan op [duckdns.org](https://www.duckdns.org) (bijvoorbeeld `mijnbar.duckdns.org`) en installeer met:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Jlmree/kassa-test/main/server/installeer.sh | KASSA_DOMEIN=mijnbar.duckdns.org KASSA_DUCKDNS_TOKEN=<jouw token> bash
+bash kassa-installatie.run --duckdns mijnbar.duckdns.org <jouw token>
 ```
 
 De kassa krijgt dan een echt certificaat en is bereikbaar op `https://mijnbar.duckdns.org`. Alleen vanaf je eigen wifi: de naam wijst naar het interne adres van de t620. (Sommige routers blokkeren dat; zoek dan in de router naar "DNS-rebind-bescherming" en voeg een uitzondering toe voor de naam.)
@@ -89,8 +89,8 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 | Wat | Hoe |
 | --- | --- |
 | Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
-| Back-up terugzetten | `sudo /opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
-| Nieuwe versie installeren | `sudo /opt/kassa/bin/bijwerken.sh` (maakt eerst een back-up; je gegevens blijven staan) |
+| Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
+| Nieuwe versie installeren | `/opt/kassa/bin/bijwerken.sh` (haalt het nieuwste installatiebestand op en maakt eerst een back-up; je gegevens blijven staan) |
 | Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` |
 | Logboek van de server | `journalctl -u kassa-auth -u kassa-rest -u caddy --since today` |
 
@@ -112,7 +112,7 @@ Alles draait op de t620 zelf, zonder Docker. De app werkt ook met een Supabase-p
 ## Voor ontwikkelaars
 
 - React + TypeScript + Vite, `@supabase/supabase-js`. `npm install`, `npm run dev`, `npm run build`.
-- `server/`: installatie- en onderhoudsscripts; `server/pakket.sh` maakt `kassa.tar.gz`. Bij elke push naar `main` publiceert GitHub Actions een release met dat pakket.
+- `server/`: installatie- en onderhoudsscripts; `server/pakket.sh` maakt het installatiebestand `kassa-installatie.run` (uitpakker + app + databasebestanden + PostgREST + Supabase Auth). Bij elke push naar `main` publiceert GitHub Actions het als release.
 - `supabase/migrations/`: het databaseschema met alle functies en rechten. Nieuwe wijzigingen komen in een nieuw bestand; `bijwerken.sh` voert ze één keer uit.
 - Databasetests (verwachten een lege database):
   `SUPABASE_URL=https://<server> SUPABASE_ANON_KEY=<sleutel uit /opt/kassa/app/config.js> NODE_EXTRA_CA_CERTS=<certificaat> npm run test:db`

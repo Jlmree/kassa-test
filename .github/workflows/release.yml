@@ -1,7 +1,8 @@
 name: Nieuwe versie
 
-# Bij elke wijziging op main: bouwen en een pakket (kassa.tar.gz) als release publiceren.
-# De kassa-server haalt dat op met: sudo /opt/kassa/bin/bijwerken.sh
+# Bij elke wijziging op main: het installatiebestand (kassa-installatie.run) bouwen en als release publiceren.
+# Downloaden: https://github.com/<repo>/releases/latest/download/kassa-installatie.run
+# De kassa-server werkt zichzelf bij met: /opt/kassa/bin/bijwerken.sh
 on:
   push:
     branches: [main]
@@ -20,12 +21,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
       - run: server/pakket.sh "v${{ github.run_number }}"
       - name: Release publiceren
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ github.run_number }}" kassa.tar.gz server/installeer.sh \
+          gh release create "v${{ github.run_number }}" kassa-installatie.run \
             --title "Bar-kassa v${{ github.run_number }}" \
-            --notes "Bijwerken op de kassa-server: \`sudo /opt/kassa/bin/bijwerken.sh\`"
+            --notes "Installeren: download kassa-installatie.run en start als root: \`bash kassa-installatie.run\`. Bijwerken op de kassa-server: \`/opt/kassa/bin/bijwerken.sh\`."

@@ -3,4 +3,5 @@ dist
 supabase/.temp
 supabase/.branches
 *.local
-kassa.tar.gz
+.cache
+kassa-installatie.run

@@ -1,22 +1,17 @@
 #!/usr/bin/env bash
 # Bar-kassa installeren op een eigen (thin client) server, bijv. een HP t620
-# met Debian 12 of Ubuntu Server 24.04.
+# met Debian 12 of Ubuntu Server 24.04. Normaal start je dit via het
+# installatiebestand:  bash kassa-installatie.run   (als root)
 #
-#   curl -fsSL https://raw.githubusercontent.com/Jlmree/kassa-test/main/server/installeer.sh | bash   (als root)
+# Optioneel, voor een echt https-certificaat via DuckDNS:
+#   bash kassa-installatie.run --duckdns mijnbar.duckdns.org <token>
 #
-# Optioneel (vóór het commando zetten, bijv. "sudo KASSA_DOMEIN=... bash installeer.sh"):
-#   KASSA_DOMEIN=mijnbar.duckdns.org  + KASSA_DUCKDNS_TOKEN=...   echt https-certificaat via DuckDNS
-#   KASSA_PAKKET=/pad/naar/kassa.tar.gz                           lokaal pakket i.p.v. de nieuwste release
-#
-# Het script kan veilig opnieuw worden gedraaid; bestaande gegevens blijven staan.
+# Wordt dit script los gestart (zonder installatiebestand), dan haalt het
+# eerst het nieuwste installatiebestand op en voert dat uit.
+# Het kan veilig opnieuw worden gedraaid; bestaande gegevens blijven staan.
 set -euo pipefail
 
-# Eerder gekozen instellingen (domein) onthouden bij opnieuw draaien / bijwerken.
-# shellcheck disable=SC1091
-[ -f /etc/kassa/instellingen.env ] && . /etc/kassa/instellingen.env
 REPO="${KASSA_REPO:-Jlmree/kassa-test}"
-POSTGREST_VERSIE=v12.2.3
-AUTH_VERSIE=v2.177.0
 OPT=/opt/kassa
 ETC=/etc/kassa
 DB=kassa
@@ -24,30 +19,55 @@ DB=kassa
 stap() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
 fout() { printf '\n\033[1;31mFOUT: %s\033[0m\n' "$*" >&2; exit 1; }
 
-[ "$(id -u)" = 0 ] || fout "Draai dit script als root (met sudo)."
+[ "$(id -u)" = 0 ] || fout "Start dit als root (met sudo of na su -)."
 [ "$(uname -m)" = x86_64 ] || fout "Alleen x86_64 (64-bit pc) wordt ondersteund."
 command -v apt-get >/dev/null || fout "Alleen Debian of Ubuntu wordt ondersteund."
 
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --duckdns) KASSA_DOMEIN=${2:?naam ontbreekt}; KASSA_DUCKDNS_TOKEN=${3:?token ontbreekt}; shift 3 ;;
+    --zonder-duckdns) KASSA_DOMEIN=; KASSA_DUCKDNS_TOKEN=; shift ;;
+    *) fout "Onbekende optie: $1" ;;
+  esac
+done
+
+# Los gestart: het installatiebestand ophalen en dat laten installeren.
+if [ -z "${KASSA_BRON:-}" ]; then
+  command -v curl >/dev/null || { apt-get update -q && apt-get install -y -q curl ca-certificates >/dev/null; }
+  stap "Nieuwste installatiebestand ophalen"
+  T=$(mktemp -d)
+  curl -fL --progress-bar -o "$T/kassa-installatie.run" "https://github.com/$REPO/releases/latest/download/kassa-installatie.run" \
+    || fout "Downloaden mislukt. Is er internet?"
+  KASSA_DOMEIN=${KASSA_DOMEIN-} KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN-} bash "$T/kassa-installatie.run"
+  rm -rf "$T"
+  exit 0
+fi
+[ -d "$KASSA_BRON/dist" ] || fout "Installatiebestand is onvolledig."
+
+# Eerder gekozen domein onthouden, tenzij nu iets anders is opgegeven.
+if [ -f "$ETC/instellingen.env" ]; then
+  OUD_DOMEIN=$(sed -n 's/^KASSA_DOMEIN=//p' "$ETC/instellingen.env")
+  OUD_TOKEN=$(sed -n 's/^KASSA_DUCKDNS_TOKEN=//p' "$ETC/instellingen.env")
+  KASSA_DOMEIN=${KASSA_DOMEIN-$OUD_DOMEIN}
+  KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN-$OUD_TOKEN}
+fi
+
 # ───────────────────────── Pakketten ─────────────────────────
-stap "Pakketten installeren (PostgreSQL, Caddy)"
+stap "Pakketten installeren (PostgreSQL, Caddy) — dit kan een paar minuten duren"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q postgresql caddy curl ca-certificates openssl xz-utils tar >/dev/null
+apt-get install -y -q postgresql caddy curl ca-certificates openssl >/dev/null
 timedatectl set-timezone Europe/Amsterdam 2>/dev/null || true
 
-mkdir -p "$OPT/bin" "$OPT/auth" "$OPT/app" "$ETC" /var/backups/kassa
+mkdir -p "$OPT/bin" "$ETC" /var/backups/kassa
 chmod 700 "$ETC" /var/backups/kassa
 
 # ───────────────────────── Programma's ─────────────────────────
-stap "PostgREST en Supabase Auth downloaden"
-if [ "$("$OPT/bin/postgrest" --version 2>/dev/null)" != "PostgREST ${POSTGREST_VERSIE#v}" ]; then
-  curl -fsSL "https://github.com/PostgREST/postgrest/releases/download/$POSTGREST_VERSIE/postgrest-$POSTGREST_VERSIE-linux-static-x64.tar.xz" | tar xJ -C "$OPT/bin"
-fi
-if [ "$(cat "$OPT/auth/.versie" 2>/dev/null)" != "$AUTH_VERSIE" ]; then
-  rm -rf "$OPT/auth" && mkdir -p "$OPT/auth"
-  curl -fsSL "https://github.com/supabase/auth/releases/download/$AUTH_VERSIE/auth-$AUTH_VERSIE-x86.tar.gz" | tar xz -C "$OPT/auth"
-  echo "$AUTH_VERSIE" > "$OPT/auth/.versie"
-fi
+stap "Programma's plaatsen"
+install -m 755 "$KASSA_BRON/bin/postgrest" "$OPT/bin/postgrest"
+rm -rf "$OPT/auth" && cp -r "$KASSA_BRON/auth" "$OPT/auth"
+install -m 755 "$KASSA_BRON"/server/*.sh "$OPT/bin/"
+rm -rf "$OPT/welkom" && mkdir -p "$OPT/welkom" && cp "$KASSA_BRON/server/welkom.html" "$OPT/welkom/index.html"
 
 umask 077
 cat > "$ETC/instellingen.env" <<EOF
@@ -92,7 +112,7 @@ psql_su() { su postgres -c "psql -v ON_ERROR_STOP=1 -q $*"; }
 if ! su postgres -c "psql -tAc \"select 1 from pg_database where datname='$DB'\"" | grep -q 1; then
   su postgres -c "createdb $DB"
 fi
-su postgres -c "psql -v ON_ERROR_STOP=1 -q -d $DB" <<EOF
+su postgres -c "PGOPTIONS=--client-min-messages=warning psql -v ON_ERROR_STOP=1 -q -d $DB" <<EOF
 do \$\$ begin
   if not exists (select from pg_roles where rolname = 'anon') then create role anon nologin noinherit; end if;
   if not exists (select from pg_roles where rolname = 'authenticated') then create role authenticated nologin noinherit; end if;
@@ -151,26 +171,16 @@ stap "Inlogsysteem bijwerken"
 
 # ───────────────────────── App en databasefuncties ─────────────────────────
 stap "Kassa installeren"
-WERK=$(mktemp -d)
-trap 'rm -rf "$WERK"' EXIT
-if [ -n "${KASSA_PAKKET:-}" ]; then
-  cp "$KASSA_PAKKET" "$WERK/kassa.tar.gz"
-else
-  URL=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | grep -o '"browser_download_url": *"[^"]*kassa\.tar\.gz"' | head -1 | cut -d'"' -f4)
-  [ -n "$URL" ] || fout "Geen release gevonden op github.com/$REPO"
-  curl -fsSL -o "$WERK/kassa.tar.gz" "$URL"
-fi
-tar xzf "$WERK/kassa.tar.gz" -C "$WERK"
-install -m 755 "$WERK"/server/*.sh "$OPT/bin/"
-rm -rf "$OPT/welkom" && mkdir -p "$OPT/welkom" && cp "$WERK/server/welkom.html" "$OPT/welkom/index.html"
-"$OPT/bin/migraties.sh" "$WERK/supabase/migrations"
-rm -rf "$OPT/app.nieuw" && cp -r "$WERK/dist" "$OPT/app.nieuw"
+"$OPT/bin/migraties.sh" "$KASSA_BRON/supabase/migrations"
+rm -rf "$OPT/app.nieuw" && cp -r "$KASSA_BRON/dist" "$OPT/app.nieuw"
 cat > "$OPT/app.nieuw/config.js" <<EOF
-// Gemaakt door installeer.sh. De database draait op deze server zelf.
+// Gemaakt door de installatie. De database draait op deze server zelf.
 window.KASSA_CONFIG = { supabaseUrl: location.origin, supabaseAnonKey: '$ANON_KEY' };
 EOF
-rm -rf "$OPT/app.oud" && { [ -d "$OPT/app" ] && mv "$OPT/app" "$OPT/app.oud" || true; } && mv "$OPT/app.nieuw" "$OPT/app"
-cat "$WERK/versie" > "$OPT/versie" 2>/dev/null || true
+rm -rf "$OPT/app.oud"
+[ -d "$OPT/app" ] && mv "$OPT/app" "$OPT/app.oud"
+mv "$OPT/app.nieuw" "$OPT/app"
+cp "$KASSA_BRON/versie" "$OPT/versie"
 
 # ───────────────────────── Webserver en https ─────────────────────────
 stap "Webserver instellen"
@@ -325,4 +335,4 @@ fi
 echo
 echo "Het eerste account dat je aanmaakt wordt beheerder."
 echo "Back-ups: elk uur in /var/backups/kassa (en op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
-echo "Bijwerken naar een nieuwe versie:    sudo $OPT/bin/bijwerken.sh"
+echo "Bijwerken naar een nieuwe versie:    $OPT/bin/bijwerken.sh   (als root)"
