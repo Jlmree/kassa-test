@@ -3,6 +3,7 @@ import { useData } from '../data';
 import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
 import { melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstCijfers } from './Dienst';
+import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
 const delen = ['Rapport', 'Producten', 'Kaarten', 'Medewerkers', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
@@ -436,13 +437,15 @@ function Instellingen() {
         <button disabled={bezig} onClick={() => run(async () => { await rpc('instellingen_opslaan', { p_naam: naam }); await herlaad(); melding('Opgeslagen'); })}>Opslaan</button>
       </div>
       <Bijwerken />
+      <h3 className="s">Wat is er nieuw</h3>
+      <WijzigingLijst lijst={wijzigingen} />
     </>
   );
 }
 
 interface Systeem {
   versie: string | null; nieuwste: string | null; gecontroleerd: string | null; verzoek: string | null;
-  status: 'klaar' | 'bezig' | 'mislukt'; melding: string | null; bijgewerkt_ts: string | null;
+  status: 'klaar' | 'bezig' | 'mislukt'; melding: string | null; bijgewerkt_ts: string | null; wijzigingen: Wijziging[] | null;
 }
 const versieNr = (v: string | null) => parseInt((v ?? '').replace(/\D/g, ''), 10) || 0;
 
@@ -481,7 +484,7 @@ function Bijwerken() {
       {s.gecontroleerd && <p className="mu">Gecontroleerd: {datumTijd(s.gecontroleerd)}</p>}
       {weg && wacht && <p><b>De kassa-server herstart… even geduld.</b></p>}
       {s.melding && <p className={s.status === 'mislukt' ? 'neg' : ''}>{s.melding}</p>}
-      {s.status === 'klaar' && s.bijgewerkt_ts && Date.now() - Date.parse(s.bijgewerkt_ts) < 3600e3 && (
+      {s.status === 'klaar' && !nieuwer && s.bijgewerkt_ts && Date.now() - Date.parse(s.bijgewerkt_ts) < 3600e3 && (
         <button className="big" onClick={() => location.reload()}>Nieuwe versie laden</button>
       )}
       {!wacht && (nieuwer ? (
@@ -493,7 +496,14 @@ function Bijwerken() {
               <button className="big" disabled={bezig} onClick={() => verzoek('bijwerken')}>Ja, bijwerken</button>
             </div>
           </div>
-        ) : <button className="big" onClick={() => setZeker(true)}>Bijwerken naar {s.nieuwste}</button>
+        ) : (
+          <>
+            {Array.isArray(s.wijzigingen) && nogNietBekend(s.wijzigingen, wijzigingen).length > 0 && (
+              <div className="card"><p><b>Nieuw in {s.nieuwste}</b></p><WijzigingLijst lijst={nogNietBekend(s.wijzigingen, wijzigingen)} /></div>
+            )}
+            <button className="big" onClick={() => setZeker(true)}>Bijwerken naar {s.nieuwste}</button>
+          </>
+        )
       ) : (
         <>
           {s.nieuwste && <p className="mu">De kassa is up-to-date.</p>}

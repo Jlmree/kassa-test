@@ -150,3 +150,8 @@ textarea.f { height: 120px; font: 12px monospace; }
   .sh > :not(.print) { display: none !important; }
   .bon { border: 0; }
 }
+
+/* Wat is er nieuw */
+.wijziging { margin: 10px 0 14px; }
+.wijziging ul { margin: 6px 0 0; padding-left: 20px; }
+.wijziging li { margin: 3px 0; }

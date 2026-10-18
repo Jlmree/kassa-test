@@ -54,6 +54,11 @@ if [ "$VERZOEK" = controleren ] || [ "$LEEFTIJD" -gt 21600 ]; then
   N=$(curl -fsS --max-time 20 "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
       | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)
   if [ -n "$N" ]; then
+    # Wat er nieuw is in die versie (alleen bewaren als het geldige JSON is).
+    W=$(curl -fsSL --max-time 20 "https://github.com/$REPO/releases/latest/download/wijzigingen.json" 2>/dev/null | head -c 200000)
+    [ -n "$W" ] && sql -v w="$W" >/dev/null 2>&1 <<'EOF'
+update public.systeem set wijzigingen = :'w'::jsonb where id = 1;
+EOF
     sql -v n="$N" <<'EOF'
 update public.systeem set nieuwste = :'n', gecontroleerd = now(),
   melding = case when verzoek = 'controleren' then null else melding end,
