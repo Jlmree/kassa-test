@@ -1,0 +1,7 @@
+node_modules
+dist
+supabase/.temp
+supabase/.branches
+*.local
+.cache
+kassa-installatie.run

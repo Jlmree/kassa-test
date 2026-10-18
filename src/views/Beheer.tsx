@@ -1,0 +1,440 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useData } from '../data';
+import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
+import { melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { DienstCijfers } from './Dienst';
+
+const delen = ['Rapport', 'Producten', 'Kaarten', 'Medewerkers', 'Logboek', 'Instellingen'] as const;
+type Deel = (typeof delen)[number];
+
+export function Beheer() {
+  const [deel, setDeel] = useState<Deel>('Rapport');
+  const { producten } = useData();
+  const laag = producten.filter((p) => p.actief && p.voorraad_bijhouden && p.voorraad <= p.voorraad_min);
+  return (
+    <>
+      <div className="chips">
+        {delen.map((d) => <button key={d} className={d === deel ? 'on' : ''} onClick={() => setDeel(d)}>{d}{d === 'Producten' && laag.length ? ` (${laag.length}!)` : ''}</button>)}
+      </div>
+      {deel === 'Rapport' && <Rapport />}
+      {deel === 'Producten' && <Producten />}
+      {deel === 'Kaarten' && <KaartenMaken />}
+      {deel === 'Medewerkers' && <Medewerkers />}
+      {deel === 'Logboek' && <Logboek />}
+      {deel === 'Instellingen' && <Instellingen />}
+    </>
+  );
+}
+
+// ───────────── Rapport ─────────────
+
+interface RapportData {
+  omzet_cent: number; bonnen: number; geannuleerd: number; geannuleerd_cent: number;
+  per_methode: { methode: string; bedrag_cent: number }[];
+  per_product: { naam: string; aantal: number; bedrag_cent: number }[];
+  per_medewerker: { naam: string; bonnen: number; bedrag_cent: number }[];
+  per_dag: { dag: string; bonnen: number; bedrag_cent: number }[];
+  per_uur: { uur: number; bonnen: number; bedrag_cent: number }[];
+  opwaarderingen: { methode: string; aantal: number; bedrag_cent: number }[];
+  kaarttegoed_cent: number; kaarten_actief: number; open_rekeningen_cent: number; diensten: Dienst[];
+}
+
+const dagStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const plusDagen = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const isoDag = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+function periode(k: string): [Date, Date] {
+  const nu = new Date(), v = dagStart(nu);
+  switch (k) {
+    case 'Gisteren': return [plusDagen(v, -1), v];
+    case 'Deze week': { const s = plusDagen(v, -((v.getDay() + 6) % 7)); return [s, plusDagen(s, 7)]; }
+    case 'Deze maand': return [new Date(v.getFullYear(), v.getMonth(), 1), new Date(v.getFullYear(), v.getMonth() + 1, 1)];
+    case 'Vorige maand': return [new Date(v.getFullYear(), v.getMonth() - 1, 1), new Date(v.getFullYear(), v.getMonth(), 1)];
+    case 'Dit jaar': return [new Date(v.getFullYear(), 0, 1), new Date(v.getFullYear() + 1, 0, 1)];
+    default: return [v, plusDagen(v, 1)];
+  }
+}
+
+function Staaf({ l, w, max, r }: { l: string; w: number; max: number; r: string }) {
+  return (
+    <div className="bar"><span>{l}</span><i style={{ width: `${max ? Math.max(2, (w / max) * 100) : 0}%` }} /><span className="rt">{r}</span></div>
+  );
+}
+
+function Rapport() {
+  const [keuze, setKeuze] = useState('Vandaag');
+  const [eigen, setEigen] = useState<[string, string]>([isoDag(new Date()), isoDag(new Date())]);
+  const [r, setR] = useState<RapportData | null>(null);
+  const [bezig, run] = useBezig();
+  const [van, tot] = keuze === 'Zelf kiezen'
+    ? [new Date(eigen[0] + 'T00:00'), plusDagen(new Date(eigen[1] + 'T00:00'), 1)]
+    : periode(keuze);
+  const sleutel = `${+van}-${+tot}`;
+  useEffect(() => {
+    if (isNaN(+van) || isNaN(+tot)) return;
+    void run(async () => setR(await rpc<RapportData>('rapport', { p_van: van.toISOString(), p_tot: tot.toISOString() })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sleutel, run]);
+
+  const exporteer = () => run(async () => {
+    const rows = await lees(sb.from('verkopen').select('bonnummer,ts,door_naam,rekening_naam,totaal_cent,geannuleerd,verkoop_regels(naam,aantal,prijs_cent),betalingen(methode,bedrag_cent)')
+      .gte('ts', van.toISOString()).lt('ts', tot.toISOString()).order('ts')) as {
+        bonnummer: number; ts: string; door_naam: string | null; rekening_naam: string | null; totaal_cent: number; geannuleerd: boolean;
+        verkoop_regels: { naam: string; aantal: number; prijs_cent: number }[]; betalingen: { methode: string; bedrag_cent: number }[];
+      }[];
+    const m = (b: typeof rows[number], x: string) => centTekst(b.betalingen.filter((p) => p.methode === x).reduce((a, p) => a + p.bedrag_cent, 0));
+    const csv = [csvRij(['bon', 'datum', 'tijd', 'bediend door', 'rekening', 'totaal', 'contant', 'pin', 'kaart', 'geannuleerd', 'regels'])]
+      .concat(rows.map((b) => csvRij([b.bonnummer, isoDag(new Date(b.ts)), tijd(b.ts), b.door_naam, b.rekening_naam, centTekst(b.totaal_cent),
+        m(b, 'contant'), m(b, 'pin'), m(b, 'kaart'), b.geannuleerd ? 'ja' : '', b.verkoop_regels.map((l) => `${l.aantal}x ${l.naam}`).join(', ')])));
+    downloaden(`verkopen-${isoDag(van)}-tot-${isoDag(plusDagen(tot, -1))}.csv`, csv.join('\n'));
+  });
+  const exporteerProducten = () => {
+    if (!r) return;
+    downloaden(`producten-${isoDag(van)}-tot-${isoDag(plusDagen(tot, -1))}.csv`,
+      [csvRij(['product', 'aantal', 'omzet'])].concat(r.per_product.map((p) => csvRij([p.naam, p.aantal, centTekst(p.bedrag_cent)]))).join('\n'));
+  };
+
+  const maxDag = Math.max(0, ...(r?.per_dag ?? []).map((x) => x.bedrag_cent));
+  const maxUur = Math.max(0, ...(r?.per_uur ?? []).map((x) => x.bedrag_cent));
+  return (
+    <>
+      <div className="chips small">
+        {['Vandaag', 'Gisteren', 'Deze week', 'Deze maand', 'Vorige maand', 'Dit jaar', 'Zelf kiezen'].map((k) => (
+          <button key={k} className={k === keuze ? 'on' : ''} onClick={() => setKeuze(k)}>{k}</button>
+        ))}
+      </div>
+      {keuze === 'Zelf kiezen' && (
+        <div className="inl">
+          <input type="date" className="f" aria-label="Van" value={eigen[0]} onChange={(e) => setEigen([e.target.value, eigen[1]])} />
+          <input type="date" className="f" aria-label="Tot en met" value={eigen[1]} onChange={(e) => setEigen([eigen[0], e.target.value])} />
+        </div>
+      )}
+      <p className="mu">{datum(van)}{+plusDagen(van, 1) !== +tot ? ` t/m ${datum(plusDagen(tot, -1))}` : ''}{bezig ? ' · laden…' : ''}</p>
+      {r && (
+        <>
+          <div className="kpi">
+            <div><span className="mu">Omzet</span><b>{eur(r.omzet_cent)}</b></div>
+            <div><span className="mu">Bonnen</span><b>{r.bonnen}</b></div>
+            <div><span className="mu">Gemiddeld per bon</span><b>{eur(r.bonnen ? Math.round(r.omzet_cent / r.bonnen) : 0)}</b></div>
+            <div><span className="mu">Geannuleerd</span><b>{r.geannuleerd}</b><span className="mu">{eur(r.geannuleerd_cent)}</span></div>
+          </div>
+          <h3 className="s">Per betaalmethode</h3>
+          {r.per_methode.map((x) => <Rij key={x.methode} l={methodeNaam[x.methode]} r={eur(x.bedrag_cent)} />)}
+          {!r.per_methode.length && <p className="mu">Niets</p>}
+          <h3 className="s">Kaarten</h3>
+          {r.opwaarderingen.map((x) => <Rij key={x.methode} l={`Opgewaardeerd, ${x.methode === 'pin' ? 'pin' : 'contant'} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
+          <Rij l={`Tegoed nu op ${r.kaarten_actief} kaarten`} r={eur(r.kaarttegoed_cent)} />
+          <Rij l="Nu open op rekeningen" r={eur(r.open_rekeningen_cent)} />
+          {r.per_dag.length > 1 && (<><h3 className="s">Per dag</h3>{r.per_dag.map((x) => <Staaf key={x.dag} l={datum(x.dag)} w={x.bedrag_cent} max={maxDag} r={eur(x.bedrag_cent)} />)}</>)}
+          {r.per_uur.length > 0 && (<><h3 className="s">Per uur</h3>{r.per_uur.map((x) => <Staaf key={x.uur} l={`${x.uur}:00`} w={x.bedrag_cent} max={maxUur} r={eur(x.bedrag_cent)} />)}</>)}
+          <h3 className="s">Per product</h3>
+          {r.per_product.map((x) => <Rij key={x.naam} l={`${x.naam} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
+          {!r.per_product.length && <p className="mu">Niets verkocht.</p>}
+          <h3 className="s">Per medewerker</h3>
+          {r.per_medewerker.map((x) => <Rij key={x.naam} l={`${x.naam} (${x.bonnen} bonnen)`} r={eur(x.bedrag_cent)} />)}
+          <h3 className="s">Diensten en kasverschillen</h3>
+          {r.diensten.map((d) => <DienstRij key={d.id} d={d} />)}
+          {!r.diensten.length && <p className="mu">Geen diensten in deze periode.</p>}
+          <div className="btns" style={{ marginTop: 16 }}>
+            <button disabled={bezig} onClick={exporteer}>Bonnen als CSV</button>
+            <button onClick={exporteerProducten}>Producten als CSV</button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function DienstRij({ d }: { d: Dienst }) {
+  const { open } = useSheet();
+  const verschil = d.geteld_cent != null ? d.geteld_cent - d.verwacht_cent : null;
+  return (
+    <Rij onClick={() => open(<><h2>Dienst {datumTijd(d.geopend_ts)}</h2>
+      <p className="mu">Geopend door {d.geopend_door ?? '?'}{d.gesloten_ts ? `, gesloten ${datumTijd(d.gesloten_ts)} door ${d.gesloten_door ?? '?'}` : ', nog open'}</p>
+      <Rij l="Omzet" r={eur(d.omzet_cent)} /><DienstCijfers d={d} />{d.opmerking && <p>Opmerking: {d.opmerking}</p>}</>)}
+      l={<>{datumTijd(d.geopend_ts)}{d.gesloten_ts ? '' : ' (open)'}<br /><span className="mu">omzet {eur(d.omzet_cent)}</span></>}
+      r={verschil == null ? '' : <span className={verschil < 0 ? 'neg' : ''}>{verschil === 0 ? 'klopt' : eur(verschil)}</span>} />
+  );
+}
+
+// ───────────── Producten & voorraad ─────────────
+
+function Producten() {
+  const { producten } = useData();
+  const { open } = useSheet();
+  const laag = producten.filter((p) => p.actief && p.voorraad_bijhouden && p.voorraad <= p.voorraad_min);
+  const cats = [...new Set(producten.map((p) => p.categorie))];
+  return (
+    <>
+      {laag.length > 0 && (
+        <div className="card warnbox">
+          <b>Bijna op</b>
+          {laag.map((p) => <Rij key={p.id} l={p.naam} r={`${p.voorraad} over`} onClick={() => open(<ProductScherm id={p.id} />)} />)}
+        </div>
+      )}
+      {cats.map((c) => (
+        <div key={c}>
+          <h3 className="s">{c}</h3>
+          {producten.filter((p) => p.categorie === c).map((p) => (
+            <Rij key={p.id} className={p.actief ? '' : 'vd'} onClick={() => open(<ProductScherm id={p.id} />)}
+              l={<>{p.naam}{p.voorraad_bijhouden && <span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span>}</>}
+              r={eur(p.prijs_cent)} />
+          ))}
+        </div>
+      ))}
+      <button className="big" onClick={() => open(<ProductScherm id={null} />)}>Nieuw product</button>
+      <OudeKassa />
+    </>
+  );
+}
+
+function ProductScherm({ id }: { id: number | null }) {
+  const { producten, herlaad } = useData();
+  const { sluit } = useSheet();
+  const p: Partial<Product> = (id != null && producten.find((x) => x.id === id)) || { categorie: producten[0]?.categorie ?? 'Drinken', actief: true };
+  const [f, setF] = useState({
+    naam: p.naam ?? '', prijs: p.prijs_cent != null ? centTekst(p.prijs_cent) : '', categorie: p.categorie ?? '',
+    volgorde: String(p.volgorde ?? 0), actief: p.actief ?? true, voorraad_bijhouden: p.voorraad_bijhouden ?? false, voorraad_min: String(p.voorraad_min ?? 0),
+  });
+  const [aantal, setAantal] = useState('');
+  const [bezig, run] = useBezig();
+  const opslaan = () => run(async () => {
+    const prijs = naarCent(f.prijs);
+    if (!f.naam.trim()) throw new Error('Vul een naam in');
+    if (isNaN(prijs) || prijs < 0) throw new Error('Vul een geldige prijs in');
+    await rpc('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, actief: f.actief, volgorde: parseInt(f.volgorde) || 0, voorraad_bijhouden: f.voorraad_bijhouden, voorraad_min: parseInt(f.voorraad_min) || 0 } });
+    await herlaad();
+    sluit();
+    melding('Opgeslagen');
+  });
+  const voorraad = (soort: 'levering' | 'telling') => run(async () => {
+    const n = parseInt(aantal);
+    if (isNaN(n)) throw new Error('Vul een aantal in');
+    const nieuw = await rpc<number>('voorraad_boeken', { p_product_id: id, p_aantal: n, p_soort: soort });
+    setAantal('');
+    await herlaad();
+    melding(`Voorraad is nu ${nieuw}`);
+  });
+  const weg = () => run(async () => { await rpc('product_verwijderen', { p_id: id }); await herlaad(); sluit(); });
+  const zet = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  return (
+    <>
+      <h2>{id == null ? 'Nieuw product' : p.naam}</h2>
+      <label htmlFor="pn">Naam</label><input className="f" id="pn" value={f.naam} onChange={zet('naam')} />
+      <label htmlFor="pp">Prijs in euro</label><input className="f" id="pp" inputMode="decimal" value={f.prijs} onChange={zet('prijs')} />
+      <label htmlFor="pc">Categorie</label>
+      <input className="f" id="pc" list="cats" value={f.categorie} onChange={zet('categorie')} />
+      <datalist id="cats">{[...new Set(producten.map((x) => x.categorie))].map((c) => <option key={c} value={c} />)}</datalist>
+      <label htmlFor="pv">Volgorde (lager = eerder)</label><input className="f" id="pv" inputMode="numeric" value={f.volgorde} onChange={zet('volgorde')} />
+      <label className="check"><input type="checkbox" checked={f.actief} onChange={zet('actief')} /> Tonen in de kassa</label>
+      <label className="check"><input type="checkbox" checked={f.voorraad_bijhouden} onChange={zet('voorraad_bijhouden')} /> Voorraad bijhouden</label>
+      {f.voorraad_bijhouden && (<><label htmlFor="pm">Waarschuwen bij voorraad van</label><input className="f" id="pm" inputMode="numeric" value={f.voorraad_min} onChange={zet('voorraad_min')} /></>)}
+      <button className="big" disabled={bezig} onClick={opslaan}>Opslaan</button>
+      {id != null && (
+        <>
+          <h3 className="s">Voorraad{p.voorraad_bijhouden ? `: ${p.voorraad}` : ''}</h3>
+          <div className="inl">
+            <input className="f" inputMode="numeric" placeholder="Aantal" value={aantal} onChange={(e) => setAantal(e.target.value)} aria-label="Aantal" />
+            <button disabled={bezig} onClick={() => voorraad('levering')}>+ Levering</button>
+            <button disabled={bezig} onClick={() => voorraad('telling')}>= Geteld</button>
+          </div>
+          <p className="mu">Levering telt het aantal erbij op. Geteld zet de voorraad op precies dit aantal.</p>
+          <button className="ghost" disabled={bezig} onClick={weg}>Product verwijderen</button>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Producten overnemen uit de oude kassa (zelfde website) of uit een geplakte back-up. */
+function OudeKassa() {
+  const { producten, herlaad } = useData();
+  const [tekst, setTekst] = useState('');
+  const [bezig, run] = useBezig();
+  let oud = '';
+  try { oud = localStorage.getItem('bar-kassa-v1') ?? ''; } catch { /* geen opslag */ }
+  const overnemen = (bron: string) => run(async () => {
+    let lijst: { name: string; price: number; cat: string; on: number }[];
+    try { lijst = JSON.parse(bron).products; if (!Array.isArray(lijst)) throw 0; } catch { throw new Error('Dit is geen geldige back-up van de oude kassa'); }
+    const bestaand = new Set(producten.map((p) => p.naam.toLowerCase()));
+    let n = 0;
+    for (const p of lijst) {
+      if (bestaand.has(String(p.name).toLowerCase())) continue;
+      await rpc('product_opslaan', { p: { naam: p.name, prijs_cent: p.price, categorie: p.cat, actief: !!p.on } });
+      n++;
+    }
+    await herlaad();
+    melding(n ? `${n} producten overgenomen` : 'Alle producten bestonden al');
+  });
+  return (
+    <details className="card" style={{ marginTop: 16 }}>
+      <summary>Producten overnemen uit de oude kassa</summary>
+      {oud && <button className="big alt" disabled={bezig} onClick={() => overnemen(oud)}>Overnemen van dit apparaat</button>}
+      <p className="mu">Of plak een back-up van de oude kassa (Kaarten → Back-up). Kaarten worden niet overgenomen: die krijgen nieuwe, veilige codes.</p>
+      <textarea className="f" value={tekst} onChange={(e) => setTekst(e.target.value)} aria-label="Back-up" />
+      <button disabled={bezig || !tekst} onClick={() => overnemen(tekst)}>Overnemen uit back-up</button>
+    </details>
+  );
+}
+
+// ───────────── Kaarten maken / printen ─────────────
+
+function KaartenMaken() {
+  const { open } = useSheet();
+  const [n, setN] = useState('12');
+  const [van, setVan] = useState('');
+  const [tot, setTot] = useState('');
+  const [bezig, run] = useBezig();
+  const toon = (lijst: { nummer: number; code: string }[]) => open(
+    <>
+      <h2>{lijst.length} kaarten</h2>
+      <div className="btns"><button className="big" onClick={() => window.print()}>Printen of PDF</button></div>
+      <div className="bon print qrs">
+        {lijst.map((k) => <div className="qc" key={k.nummer}><Qr tekst={k.code} /><b>Kaart {k.nummer}</b><small>{k.code}</small></div>)}
+      </div>
+    </>,
+  );
+  const maken = () => run(async () => toon(await rpc('kaarten_maken', { p_aantal: parseInt(n) || 0 })));
+  const herprint = () => run(async () => {
+    const a = parseInt(van), b = parseInt(tot || van);
+    if (!(a > 0) || !(b >= a) || b - a > 300) throw new Error('Kies een geldige reeks nummers');
+    const lijst = await rpc<{ nummer: number; code: string }[]>('kaart_codes', { p_nummers: Array.from({ length: b - a + 1 }, (_, i) => a + i) });
+    if (!lijst.length) throw new Error('Geen kaarten met deze nummers');
+    toon(lijst);
+  });
+  return (
+    <>
+      <p className="mu">Elke kaart krijgt een QR-code met een geheime code die niet te raden is. Alleen met die code (scannen of typen) kan er van de kaart betaald worden.</p>
+      <label htmlFor="nk">Nieuwe kaarten maken</label>
+      <div className="inl"><input className="f" id="nk" inputMode="numeric" value={n} onChange={(e) => setN(e.target.value)} /><button disabled={bezig} onClick={maken}>Maak en toon</button></div>
+      <label htmlFor="hv">Bestaande kaarten opnieuw printen (nummer van – tot)</label>
+      <div className="inl">
+        <input className="f" id="hv" inputMode="numeric" placeholder="van" value={van} onChange={(e) => setVan(e.target.value)} />
+        <input className="f" inputMode="numeric" placeholder="tot" aria-label="tot" value={tot} onChange={(e) => setTot(e.target.value)} />
+        <button disabled={bezig} onClick={herprint}>Toon</button>
+      </div>
+    </>
+  );
+}
+
+// ───────────── Medewerkers ─────────────
+
+const rolNaam: Record<Rol, string> = { wacht: 'Wacht op goedkeuring', medewerker: 'Medewerker', beheerder: 'Beheerder' };
+
+function WachtwoordInstellen({ p }: { p: Profiel }) {
+  const { sluit } = useSheet();
+  const [ww, setWw] = useState('');
+  const [bezig, run] = useBezig();
+  return (
+    <>
+      <h2>Wachtwoord voor {p.naam}</h2>
+      <p className="mu">Geef het nieuwe wachtwoord door aan {p.naam}. Die kan het daarna zelf wijzigen (tik rechtsboven op je naam).</p>
+      <label htmlFor="mw">Nieuw wachtwoord (minstens 8 tekens)</label>
+      <input className="f" id="mw" value={ww} autoComplete="off" onChange={(e) => setWw(e.target.value)} />
+      <button className="big" disabled={bezig} onClick={() => run(async () => {
+        await rpc('wachtwoord_instellen', { p_id: p.id, p_wachtwoord: ww });
+        sluit();
+        melding('Wachtwoord ingesteld');
+      })}>Instellen</button>
+    </>
+  );
+}
+
+function Medewerkers() {
+  const { profiel } = useData();
+  const { open } = useSheet();
+  const [lijst, setLijst] = useState<Profiel[]>([]);
+  const [bezig, run] = useBezig();
+  const laad = useCallback(() => run(async () => setLijst(await lees(sb.from('profielen').select('*').order('aangemaakt')) as Profiel[])), [run]);
+  useEffect(() => { void laad(); }, [laad]);
+  const zet = (p: Profiel, rol: Rol, actief: boolean) => run(async () => {
+    await rpc('gebruiker_bijwerken', { p_id: p.id, p_rol: rol, p_actief: actief });
+    setLijst(await lees(sb.from('profielen').select('*').order('aangemaakt')) as Profiel[]);
+    melding('Opgeslagen');
+  });
+  const wachtend = lijst.filter((p) => p.rol === 'wacht' && p.actief);
+  return (
+    <>
+      <p className="mu">Nieuwe medewerkers maken zelf een account aan op het inlogscherm. Daarna keur je ze hier goed.</p>
+      {wachtend.map((p) => (
+        <div className="card warnbox" key={p.id}>
+          <div className="hd"><span>{p.naam}</span><span className="mu">wacht</span></div>
+          <div className="btns">
+            <button className="big" disabled={bezig} onClick={() => zet(p, 'medewerker', true)}>Goedkeuren</button>
+            <button disabled={bezig} onClick={() => zet(p, 'wacht', false)}>Weigeren</button>
+          </div>
+        </div>
+      ))}
+      {lijst.filter((p) => !wachtend.includes(p)).map((p) => (
+        <div className={'card' + (p.actief ? '' : ' vd')} key={p.id}>
+          <div className="hd"><span>{p.naam}{p.id === profiel.id ? ' (jij)' : ''}</span><span className="mu">{p.actief ? rolNaam[p.rol] : 'Uitgeschakeld'}</span></div>
+          <div className="inl">
+            <select className="f" value={p.rol} disabled={bezig} aria-label={`Rol van ${p.naam}`} onChange={(e) => zet(p, e.target.value as Rol, p.actief)}>
+              <option value="medewerker">Medewerker</option><option value="beheerder">Beheerder</option><option value="wacht">Geen toegang</option>
+            </select>
+            <button disabled={bezig} onClick={() => zet(p, p.rol, !p.actief)}>{p.actief ? 'Uitschakelen' : 'Inschakelen'}</button>
+          </div>
+          <button className="ghost" onClick={() => open(<WachtwoordInstellen p={p} />)}>Nieuw wachtwoord instellen</button>
+        </div>
+      ))}
+      <p className="mu">Medewerkers kunnen afrekenen, rekeningen bijhouden, kaarten opwaarderen en de kassa openen en sluiten. Beheerders kunnen daarnaast prijzen en voorraad aanpassen, kaarten maken, alle bonnen annuleren en rapporten zien.</p>
+    </>
+  );
+}
+
+// ───────────── Logboek ─────────────
+
+const actieNaam: Record<string, string> = {
+  rekening_maken: 'Rekening aangemaakt', rekening_regel_verwijderen: 'Regel van rekening geschrapt', rekening_verwijderen: 'Rekening verwijderd',
+  verkoop_annuleren: 'Bon geannuleerd', kaarten_maken: 'Kaarten gemaakt', kaart_blokkeren: 'Kaart geblokkeerd', kaart_deblokkeren: 'Kaart gedeblokkeerd',
+  kaart_overzetten: 'Kaarttegoed overgezet', product_nieuw: 'Product toegevoegd', prijs_wijzigen: 'Prijs gewijzigd', product_verwijderen: 'Product verwijderd',
+  dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
+  wachtwoord_instellen: 'Wachtwoord ingesteld',
+};
+
+function details(a: string, d: Record<string, unknown> | null): string {
+  if (!d) return '';
+  const e = (k: string) => (typeof d[k] === 'number' ? eur(d[k] as number) : '');
+  switch (a) {
+    case 'verkoop_annuleren': return `Bon ${d.bon}, ${e('totaal_cent')}`;
+    case 'prijs_wijzigen': return `${d.product}: ${e('van')} → ${e('naar')}`;
+    case 'dienst_sluiten': return `verschil ${e('verschil_cent')}`;
+    case 'dienst_openen': return `wisselgeld ${e('beginsaldo_cent')}`;
+    case 'kaart_overzetten': return `kaart ${d.van} → ${d.naar}, ${e('bedrag_cent')}`;
+    case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
+    case 'gebruiker_bijwerken': return `${d.gebruiker}: ${d.actief ? rolNaam[d.rol as Rol] : 'uitgeschakeld'}`;
+    default: return ['naam', 'product', 'kaart', 'aantal', 'gebruiker'].filter((k) => d[k] != null).map((k) => String(d[k])).join(', ');
+  }
+}
+
+function Logboek() {
+  const [lijst, setLijst] = useState<{ id: number; ts: string; door_naam: string | null; actie: string; details: Record<string, unknown> | null }[]>([]);
+  const [, run] = useBezig();
+  useEffect(() => { void run(async () => setLijst(await lees(sb.from('logboek').select('*').order('ts', { ascending: false }).limit(300)) as typeof lijst)); }, [run]);
+  return (
+    <>
+      <p className="mu">Wie heeft wat gedaan. Dit logboek kan door niemand worden aangepast.</p>
+      {lijst.map((l) => (
+        <Rij key={l.id} l={<>{actieNaam[l.actie] ?? l.actie}<br /><span className="mu">{details(l.actie, l.details)}</span></>}
+          r={<span className="mu">{datumTijd(l.ts)}<br />{l.door_naam}</span>} />
+      ))}
+    </>
+  );
+}
+
+// ───────────── Instellingen ─────────────
+
+function Instellingen() {
+  const { winkel, herlaad } = useData();
+  const [naam, setNaam] = useState(winkel);
+  const [bezig, run] = useBezig();
+  return (
+    <>
+      <label htmlFor="wn">Naam op de bon</label>
+      <div className="inl">
+        <input className="f" id="wn" value={naam} onChange={(e) => setNaam(e.target.value)} />
+        <button disabled={bezig} onClick={() => run(async () => { await rpc('instellingen_opslaan', { p_naam: naam }); await herlaad(); melding('Opgeslagen'); })}>Opslaan</button>
+      </div>
+    </>
+  );
+}
