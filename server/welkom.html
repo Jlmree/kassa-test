@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bar-kassa instellen</title>
+<style>
+  :root { --bg: #f2f4ef; --card: #fff; --ink: #1b2927; --mu: #62706c; --line: #d9dfd8; --acc: #1d6b58; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #101817; --card: #1a2423; --ink: #e8efec; --mu: #93a39e; --line: #2b3836; --acc: #4fb89c; color-scheme: dark; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 40px; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 14px 0; }
+  .knop { display: block; text-align: center; padding: 15px; border-radius: 14px; background: var(--acc); color: #fff; font-weight: 700; text-decoration: none; margin: 10px 0; }
+  .mu { color: var(--mu); }
+  ol { padding-left: 20px; margin: 6px 0; }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bar-kassa</h1>
+  <p class="mu">De kassa draait op een eigen server in het gebouw. Om de camera te mogen gebruiken (QR-kaarten scannen) heeft je telefoon een beveiligde verbinding nodig. Daarvoor installeer je eenmalig het certificaat van deze server.</p>
+
+  <div class="card">
+    <b>1. Certificaat downloaden</b>
+    <a class="knop" href="/kassa-certificaat.crt">Certificaat downloaden</a>
+  </div>
+
+  <div class="card">
+    <b>2. Certificaat vertrouwen</b>
+    <p><b>iPhone / iPad</b> (open deze pagina in Safari)</p>
+    <ol>
+      <li>Tik op <i>Toestaan</i> om het profiel te downloaden.</li>
+      <li>Ga naar <i>Instellingen → Profiel gedownload → Installeer</i>.</li>
+      <li>Ga naar <i>Instellingen → Algemeen → Info → Certificaatvertrouwen</i> en zet <i>Caddy Local Authority</i> aan.</li>
+    </ol>
+    <p><b>Android</b></p>
+    <ol>
+      <li>Ga naar <i>Instellingen → Beveiliging → Meer → Certificaat installeren → CA-certificaat</i> (de naam verschilt per telefoon; zoek in Instellingen op "certificaat").</li>
+      <li>Kies het gedownloade bestand <i>kassa-certificaat.crt</i>.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <b>3. Kassa openen</b>
+    <a class="knop" id="open" href="#">Naar de kassa</a>
+    <p class="mu">Zet de kassa daarna op je beginscherm (Delen of menu → Zet op beginscherm), dan opent hij als een app.</p>
+  </div>
+</main>
+<script>document.getElementById('open').href = 'https://' + location.host + '/';</script>
+</body>
+</html>

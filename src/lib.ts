@@ -33,6 +33,17 @@ function vertaal(m: string) {
   return m;
 }
 
+// Inloggen met een naam: intern wordt dat een e-mailadres "anna@kassa.lokaal".
+// Wie een echt e-mailadres typt, logt daarmee in.
+const DOMEIN = '@kassa.lokaal';
+export function inlogEmail(naam: string) {
+  const n = naam.trim().toLowerCase();
+  if (n.includes('@')) return n;
+  const slug = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+  return (slug || 'gebruiker') + DOMEIN;
+}
+export const toonInlognaam = (email: string) => (email.endsWith(DOMEIN) ? email.slice(0, -DOMEIN.length) : email);
+
 // ─── Types ───
 
 export type Rol = 'wacht' | 'medewerker' | 'beheerder';

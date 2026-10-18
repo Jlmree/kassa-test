@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import { ingesteld, lees, rpc, sb, type Profiel } from './lib';
+import { ingesteld, inlogEmail, lees, rpc, sb, toonInlognaam, type Profiel } from './lib';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
 import { Bestelling, Kassa, MandBalk, MandContext, useMand, type Mand } from './views/Kassa';
 import { Rekeningen } from './views/Rekeningen';
@@ -35,18 +35,22 @@ function Inlog() {
   };
   useEffect(() => {
     setProfiel(null);
-    if (!uid) return;
-    void laadProfiel();
-    // Wachtende medewerker: live zien wanneer de beheerder goedkeurt.
-    const k = sb.channel('profiel').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profielen', filter: `id=eq.${uid}` }, () => void laadProfiel()).subscribe();
-    return () => void sb.removeChannel(k);
+    if (uid) void laadProfiel();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
+  // Wachtende medewerker: vanzelf verder zodra de beheerder goedkeurt.
+  const wacht = !!profiel && (profiel.rol === 'wacht' || !profiel.actief);
+  useEffect(() => {
+    if (!wacht) return;
+    const iv = setInterval(() => void laadProfiel(), 4000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wacht, uid]);
 
   if (sessie === undefined) return <div className="center mu">Laden…</div>;
   if (!sessie) return <Aanmelden />;
   if (!profiel) return <div className="center"><p className="mu">{fout || 'Laden…'}</p>{fout && <button className="big" onClick={laadProfiel}>Opnieuw</button>}</div>;
-  if (profiel.rol === 'wacht' || !profiel.actief) return <Wachten profiel={profiel} opnieuw={laadProfiel} />;
+  if (wacht) return <Wachten profiel={profiel} opnieuw={laadProfiel} />;
   return <DataProvider profiel={profiel}><Kassasysteem /></DataProvider>;
 }
 
@@ -101,15 +105,29 @@ function Scherm({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 function Account() {
   const { profiel } = useData();
   const [naam, setNaam] = useState(profiel.naam);
+  const [ww, setWw] = useState('');
+  const [login, setLogin] = useState('');
   const [bezig, run] = useBezig();
+  useEffect(() => { void sb.auth.getSession().then(({ data }) => setLogin(toonInlognaam(data.session?.user.email ?? ''))); }, []);
   return (
     <>
       <h2>{profiel.naam}</h2>
-      <p className="mu">{profiel.rol === 'beheerder' ? 'Beheerder' : 'Medewerker'}</p>
+      <p className="mu">{profiel.rol === 'beheerder' ? 'Beheerder' : 'Medewerker'}{login ? ` · je logt in met "${login}"` : ''}</p>
       <label htmlFor="mn">Je naam (staat op de bon)</label>
       <div className="inl">
         <input className="f" id="mn" value={naam} onChange={(e) => setNaam(e.target.value)} />
         <button disabled={bezig} onClick={() => run(async () => { await rpc('mijn_naam_wijzigen', { p_naam: naam }); melding('Opgeslagen, log opnieuw in om het overal te zien'); })}>Opslaan</button>
+      </div>
+      <label htmlFor="nw">Nieuw wachtwoord</label>
+      <div className="inl">
+        <input className="f" id="nw" type="password" autoComplete="new-password" value={ww} onChange={(e) => setWw(e.target.value)} />
+        <button disabled={bezig} onClick={() => run(async () => {
+          if (ww.length < 8) throw new Error('Kies een wachtwoord van minstens 8 tekens');
+          const { error } = await sb.auth.updateUser({ password: ww });
+          if (error) throw new Error(error.message);
+          setWw('');
+          melding('Wachtwoord gewijzigd');
+        })}>Wijzig</button>
       </div>
       <p className="mu" style={{ marginTop: 16 }}>Tip: zet de kassa op je beginscherm (in je browser: Delen of menu → Zet op beginscherm). Dan opent hij als een app.</p>
       <button className="big alt" onClick={() => void sb.auth.signOut()}>Uitloggen</button>
@@ -120,19 +138,19 @@ function Account() {
 function Aanmelden() {
   const [nieuw, setNieuw] = useState(false);
   const [naam, setNaam] = useState('');
-  const [email, setEmail] = useState('');
   const [ww, setWw] = useState('');
   const [bezig, run] = useBezig();
   const verstuur = () => run(async () => {
+    if (!naam.trim()) throw new Error('Vul je naam in');
+    const email = inlogEmail(naam);
     if (nieuw) {
-      if (!naam.trim()) throw new Error('Vul je naam in');
       if (ww.length < 8) throw new Error('Kies een wachtwoord van minstens 8 tekens');
       const { data, error } = await sb.auth.signUp({ email, password: ww, options: { data: { naam: naam.trim() } } });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(/already registered/i.test(error.message) ? 'Deze naam is al in gebruik, kies een andere' : error.message);
       if (!data.session) melding('Bevestig je e-mailadres via de link in je mail en log daarna in');
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password: ww });
-      if (error) throw new Error(error.message === 'Invalid login credentials' ? 'E-mailadres of wachtwoord klopt niet' : error.message);
+      if (error) throw new Error(/Invalid login/i.test(error.message) ? 'Naam of wachtwoord klopt niet' : error.message);
     }
   });
   return (
@@ -143,14 +161,14 @@ function Aanmelden() {
         <button className={nieuw ? 'on' : ''} onClick={() => setNieuw(true)}>Account aanmaken</button>
       </div>
       <form onSubmit={(e) => { e.preventDefault(); void verstuur(); }}>
-        {nieuw && (<><label htmlFor="ln">Naam</label><input className="f" id="ln" autoComplete="name" value={naam} onChange={(e) => setNaam(e.target.value)} /></>)}
-        <label htmlFor="le">E-mailadres</label>
-        <input className="f" id="le" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label htmlFor="ln">Naam</label>
+        <input className="f" id="ln" autoComplete="username" autoCapitalize="words" value={naam} onChange={(e) => setNaam(e.target.value)} />
         <label htmlFor="lw">Wachtwoord</label>
         <input className="f" id="lw" type="password" autoComplete={nieuw ? 'new-password' : 'current-password'} value={ww} onChange={(e) => setWw(e.target.value)} />
         <button className="big" disabled={bezig}>{nieuw ? 'Account aanmaken' : 'Inloggen'}</button>
       </form>
       {nieuw && <p className="mu">Het allereerste account wordt beheerder. Alle volgende accounts moeten door een beheerder worden goedgekeurd.</p>}
+      {!nieuw && <p className="mu">Wachtwoord vergeten? Vraag een beheerder om een nieuw wachtwoord in te stellen.</p>}
     </div>
   );
 }

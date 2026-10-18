@@ -321,8 +321,28 @@ function KaartenMaken() {
 
 const rolNaam: Record<Rol, string> = { wacht: 'Wacht op goedkeuring', medewerker: 'Medewerker', beheerder: 'Beheerder' };
 
+function WachtwoordInstellen({ p }: { p: Profiel }) {
+  const { sluit } = useSheet();
+  const [ww, setWw] = useState('');
+  const [bezig, run] = useBezig();
+  return (
+    <>
+      <h2>Wachtwoord voor {p.naam}</h2>
+      <p className="mu">Geef het nieuwe wachtwoord door aan {p.naam}. Die kan het daarna zelf wijzigen (tik rechtsboven op je naam).</p>
+      <label htmlFor="mw">Nieuw wachtwoord (minstens 8 tekens)</label>
+      <input className="f" id="mw" value={ww} autoComplete="off" onChange={(e) => setWw(e.target.value)} />
+      <button className="big" disabled={bezig} onClick={() => run(async () => {
+        await rpc('wachtwoord_instellen', { p_id: p.id, p_wachtwoord: ww });
+        sluit();
+        melding('Wachtwoord ingesteld');
+      })}>Instellen</button>
+    </>
+  );
+}
+
 function Medewerkers() {
   const { profiel } = useData();
+  const { open } = useSheet();
   const [lijst, setLijst] = useState<Profiel[]>([]);
   const [bezig, run] = useBezig();
   const laad = useCallback(() => run(async () => setLijst(await lees(sb.from('profielen').select('*').order('aangemaakt')) as Profiel[])), [run]);
@@ -354,6 +374,7 @@ function Medewerkers() {
             </select>
             <button disabled={bezig} onClick={() => zet(p, p.rol, !p.actief)}>{p.actief ? 'Uitschakelen' : 'Inschakelen'}</button>
           </div>
+          <button className="ghost" onClick={() => open(<WachtwoordInstellen p={p} />)}>Nieuw wachtwoord instellen</button>
         </div>
       ))}
       <p className="mu">Medewerkers kunnen afrekenen, rekeningen bijhouden, kaarten opwaarderen en de kassa openen en sluiten. Beheerders kunnen daarnaast prijzen en voorraad aanpassen, kaarten maken, alle bonnen annuleren en rapporten zien.</p>
@@ -368,6 +389,7 @@ const actieNaam: Record<string, string> = {
   verkoop_annuleren: 'Bon geannuleerd', kaarten_maken: 'Kaarten gemaakt', kaart_blokkeren: 'Kaart geblokkeerd', kaart_deblokkeren: 'Kaart gedeblokkeerd',
   kaart_overzetten: 'Kaarttegoed overgezet', product_nieuw: 'Product toegevoegd', prijs_wijzigen: 'Prijs gewijzigd', product_verwijderen: 'Product verwijderd',
   dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
+  wachtwoord_instellen: 'Wachtwoord ingesteld',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -381,7 +403,7 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'kaart_overzetten': return `kaart ${d.van} → ${d.naar}, ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
     case 'gebruiker_bijwerken': return `${d.gebruiker}: ${d.actief ? rolNaam[d.rol as Rol] : 'uitgeschakeld'}`;
-    default: return ['naam', 'product', 'kaart', 'aantal'].filter((k) => d[k] != null).map((k) => String(d[k])).join(', ');
+    default: return ['naam', 'product', 'kaart', 'aantal', 'gebruiker'].filter((k) => d[k] != null).map((k) => String(d[k])).join(', ');
   }
 }
 

@@ -22,12 +22,16 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
   });
   const bezig = useRef<Promise<void> | null>(null);
   const opnieuw = useRef(false);
+  // Stand van de wijzigingsteller bij de laatste lading.
+  const versie = useRef<number | null>(null);
 
   const herlaad = useCallback(async () => {
     // Lopende lading? Dan daarna nog één keer, zodat niets gemist wordt.
     if (bezig.current) { opnieuw.current = true; return bezig.current; }
     bezig.current = (async () => {
       try {
+        // Eerst de teller, dan de gegevens: zo wordt een wijziging tijdens het laden nooit gemist.
+        const v = await rpc<number>('versie');
         const [producten, rekeningen, regels, dienst, inst] = await Promise.all([
           lees(sb.from('producten').select('*').eq('verwijderd', false).order('categorie').order('volgorde').order('naam')),
           lees(sb.from('rekeningen').select('*').eq('open', true).order('naam')),
@@ -39,6 +43,7 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           producten: producten as Product[], rekeningen: rekeningen as Rekening[], regels: regels as RekeningRegel[],
           dienst, winkel: (inst as { naam: string } | null)?.naam ?? 'Bar', geladen: true, verbonden: true,
         });
+        versie.current = v;
       } catch {
         setS((x) => ({ ...x, geladen: true, verbonden: false }));
       } finally {
@@ -51,23 +56,24 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
 
   useEffect(() => {
     void herlaad();
-    // Live bijwerken als een ander apparaat iets verandert.
-    let t = 0;
-    const later = () => { clearTimeout(t); t = window.setTimeout(() => void herlaad(), 250); };
-    const kanaal = sb.channel('kassa')
-      .on('postgres_changes', { event: '*', schema: 'public' }, later)
-      .subscribe();
-    const zicht = () => document.visibilityState === 'visible' && later();
-    document.addEventListener('visibilitychange', zicht);
-    addEventListener('online', later);
-    const iv = setInterval(later, 60_000);
-    return () => {
-      void sb.removeChannel(kanaal);
-      document.removeEventListener('visibilitychange', zicht);
-      removeEventListener('online', later);
-      clearInterval(iv);
-      clearTimeout(t);
+    // Elke paar seconden de wijzigingsteller opvragen; alleen bij een
+    // verandering (ook door een ander apparaat) alles opnieuw laden.
+    let t = 0, stop = false;
+    const kijk = async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          if ((await rpc<number>('versie')) !== versie.current) await herlaad();
+          else setS((x) => (x.verbonden ? x : { ...x, verbonden: true }));
+        } catch {
+          setS((x) => ({ ...x, verbonden: false }));
+        }
+      }
+      if (!stop) t = window.setTimeout(kijk, 3000);
     };
+    t = window.setTimeout(kijk, 3000);
+    const zicht = () => { if (document.visibilityState === 'visible') void herlaad(); };
+    document.addEventListener('visibilitychange', zicht);
+    return () => { stop = true; clearTimeout(t); document.removeEventListener('visibilitychange', zicht); };
   }, [herlaad]);
 
   return <Ctx.Provider value={{ ...s, profiel, herlaad }}>{children}</Ctx.Provider>;

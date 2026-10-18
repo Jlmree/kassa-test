@@ -777,6 +777,48 @@ begin
   return res;
 end $$;
 
+-- ──────────────────────────── Wachtwoorden ────────────────────────────
+
+-- Een beheerder kan het wachtwoord van een medewerker opnieuw instellen
+-- (er is geen e-mail nodig, dus dit werkt ook op een lokale server).
+create function public.wachtwoord_instellen(p_id uuid, p_wachtwoord text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform public._eis('beheerder');
+  if length(coalesce(p_wachtwoord, '')) < 8 then raise exception 'Kies een wachtwoord van minstens 8 tekens'; end if;
+  update auth.users set encrypted_password = extensions.crypt(p_wachtwoord, extensions.gen_salt('bf')), updated_at = now()
+  where id = p_id;
+  if not found then raise exception 'Gebruiker niet gevonden'; end if;
+  perform public._log('wachtwoord_instellen', jsonb_build_object('gebruiker', (select naam from public.profielen where id = p_id)));
+end $$;
+
+-- ──────────────────────────── Wijzigingsteller ────────────────────────────
+
+-- Elke wijziging hoogt een teller op. Apparaten vragen die teller elke paar
+-- seconden op en laden alleen opnieuw als hij veranderd is.
+create sequence public.wijziging;
+
+create function public._wijziging() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform nextval('public.wijziging');
+  return null;
+end $$;
+
+create trigger wijziging after insert or update or delete on public.producten for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.rekeningen for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.rekening_regels for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.verkopen for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.diensten for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.kaarten for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.instellingen for each statement execute function public._wijziging();
+create trigger wijziging after insert or update or delete on public.profielen for each statement execute function public._wijziging();
+
+create function public.versie() returns bigint
+language sql stable security definer set search_path = '' as $$
+  select case when auth.uid() is not null then (select last_value from public.wijziging) end
+$$;
+
 -- ──────────────────────────── Leesrechten ────────────────────────────
 
 alter table public.profielen         enable row level security;
@@ -833,16 +875,12 @@ grant execute on function
   public.product_opslaan(jsonb), public.product_verwijderen(bigint), public.voorraad_boeken(bigint, int, text),
   public.dienst_openen(int), public.dienst_overzicht(), public.dienst_sluiten(int, text),
   public.gebruiker_bijwerken(uuid, text, boolean), public.mijn_naam_wijzigen(text),
-  public.instellingen_opslaan(text), public.rapport(timestamptz, timestamptz)
+  public.instellingen_opslaan(text), public.rapport(timestamptz, timestamptz),
+  public.wachtwoord_instellen(uuid, text), public.versie()
 to authenticated;
 
 -- Ook voor functies die later worden toegevoegd: standaard niet uitvoerbaar.
 alter default privileges in schema public revoke execute on functions from public, anon, authenticated;
-
--- Live bijwerken op alle apparaten.
-alter publication supabase_realtime add table
-  public.producten, public.rekeningen, public.rekening_regels, public.verkopen, public.diensten,
-  public.instellingen, public.profielen;
 
 -- ──────────────────────────── Startmenu ────────────────────────────
 

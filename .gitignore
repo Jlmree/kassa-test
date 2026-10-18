@@ -3,3 +3,4 @@ dist
 supabase/.temp
 supabase/.branches
 *.local
+kassa.tar.gz

@@ -185,3 +185,33 @@ test('laatste beheerder kan zichzelf niet degraderen', async () => {
   const { data: { user } } = await baas.auth.getUser();
   await faalt(rpc(baas, 'gebruiker_bijwerken', { p_id: user.id, p_rol: 'medewerker', p_actief: true }), 'minstens één');
 });
+
+test('inloggen met een naam (intern naam@kassa.lokaal)', async () => {
+  const c = client();
+  const email = `piet.${run}@kassa.lokaal`;
+  const { error } = await c.auth.signUp({ email, password: 'geheim-wachtwoord', options: { data: { naam: 'Piet' } } });
+  assert.ifError(error);
+  const d = client();
+  assert.ifError((await d.auth.signInWithPassword({ email, password: 'geheim-wachtwoord' })).error);
+  assert.equal(await rpc(d, 'mijn_rol'), 'wacht');
+});
+
+test('beheerder stelt een nieuw wachtwoord in', async () => {
+  const { data: p } = await baas.from('profielen').select('id,naam');
+  const id = p.find((x) => x.naam === 'Bar').id;
+  await faalt(rpc(bar, 'wachtwoord_instellen', { p_id: id, p_wachtwoord: 'nieuw-wachtwoord' }), 'beheerder');
+  await faalt(rpc(baas, 'wachtwoord_instellen', { p_id: id, p_wachtwoord: 'kort' }), '8 tekens');
+  await rpc(baas, 'wachtwoord_instellen', { p_id: id, p_wachtwoord: 'nieuw-wachtwoord' });
+  const c = client();
+  assert.ifError((await c.auth.signInWithPassword({ email: `bar-${run}@test.nl`, password: 'nieuw-wachtwoord' })).error);
+  assert.ok((await c.auth.signInWithPassword({ email: `bar-${run}@test.nl`, password: 'geheim-wachtwoord' })).error);
+});
+
+test('wijzigingsteller loopt op bij elke wijziging', async () => {
+  const anon = client();
+  assert.equal(await rpc(anon, 'versie').catch(() => null), null);
+  const v1 = await rpc(bar, 'versie');
+  await rpc(bar, 'rekening_maken', { p_naam: 'Teller' });
+  const v2 = await rpc(bar, 'versie');
+  assert.ok(v2 > v1);
+});
