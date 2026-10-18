@@ -138,6 +138,24 @@ test('voorraad: levering, verkoop, rekening, annuleren', async () => {
   assert.equal(await rpc(baas, 'voorraad_boeken', { p_product_id: bier, p_aantal: 20, p_soort: 'telling' }), 20);
 });
 
+test('voorraad: niet meer verkopen dan er is', async () => {
+  const chips = product('Chips').id;
+  await rpc(baas, 'voorraad_boeken', { p_product_id: chips, p_aantal: 2, p_soort: 'telling' });
+  const stand = async () => (await bar.from('producten').select('voorraad').eq('id', chips).single()).data.voorraad;
+  await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: chips, aantal: 3 }], p_betalingen: [{ methode: 'pin' }] }), 'Niet genoeg Chips op voorraad (nog 2)');
+  const id = await rpc(bar, 'rekening_maken', { p_naam: 'Voorraadtest' });
+  await faalt(rpc(bar, 'rekening_toevoegen', { p_rekening_id: id, p_regels: [{ product_id: chips, aantal: 3 }] }), 'Niet genoeg Chips');
+  assert.equal(await stand(), 2);
+  // Twee apparaten tegelijk: precies één van de twee lukt.
+  const r = await Promise.allSettled([1, 2].map(() =>
+    rpc(bar, 'afrekenen', { p_regels: [{ product_id: chips, aantal: 2 }], p_betalingen: [{ methode: 'pin' }] })));
+  assert.deepEqual(r.map((x) => x.status).sort(), ['fulfilled', 'rejected']);
+  assert.match(r.find((x) => x.status === 'rejected').reason.message, /Chips is op/);
+  assert.equal(await stand(), 0);
+  await rpc(baas, 'rekening_verwijderen', { p_rekening_id: id });
+  await rpc(baas, 'voorraad_boeken', { p_product_id: chips, p_aantal: 50, p_soort: 'levering' });
+});
+
 test('rekening: opschrijven, regel schrappen, afrekenen', async () => {
   const id = await rpc(bar, 'rekening_maken', { p_naam: 'Piet' });
   await rpc(bar, 'rekening_toevoegen', { p_rekening_id: id, p_regels: [{ product_id: product('Bier').id, aantal: 3 }] });

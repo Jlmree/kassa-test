@@ -33,7 +33,8 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
       </div>
       <div className="grid">
         {zichtbaar.filter((p) => p.categorie === huidig).map((p) => (
-          <button key={p.id} className="tile" onClick={() => setMand({ ...mand, [p.id]: (mand[p.id] ?? 0) + 1 })}>
+          <button key={p.id} className={'tile' + (p.voorraad_bijhouden && p.voorraad <= 0 ? ' op' : '')}
+            onClick={() => { if (kanErbij(p, mand[p.id] ?? 0)) setMand({ ...mand, [p.id]: (mand[p.id] ?? 0) + 1 }); }}>
             <span className="nm">{p.naam}</span>
             <span className="pr">{eur(p.prijs_cent)}{p.voorraad_bijhouden && <Voorraad p={p} />}</span>
             {mand[p.id] ? <i className="bd">{mand[p.id]}</i> : null}
@@ -43,6 +44,13 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
       {!zichtbaar.length && <p className="mu">Nog geen producten. Een beheerder kan ze toevoegen bij Beheer → Producten.</p>}
     </>
   );
+}
+
+// Niet meer aantikken dan er op voorraad is (de database controleert het ook).
+function kanErbij(p: Product, inMand: number) {
+  if (!p.voorraad_bijhouden || inMand < p.voorraad) return true;
+  melding(p.voorraad <= 0 ? `${p.naam} is op` : `Er ${p.voorraad === 1 ? 'is' : 'zijn'} nog maar ${p.voorraad} ${p.naam} op voorraad`);
+  return false;
 }
 
 function Voorraad({ p }: { p: Product }) {
@@ -83,6 +91,8 @@ export function Bestelling() {
   if (!regels.length) return <><h2>Bestelling</h2><p className="mu">De bestelling is leeg.</p></>;
   const som = totaal(regels);
   const zet = (id: number, d: number) => {
+    const p = producten.find((x) => x.id === id);
+    if (d > 0 && p && !kanErbij(p, mand[id] ?? 0)) return;
     const m = { ...mand, [id]: (mand[id] ?? 0) + d };
     if (m[id] <= 0) delete m[id];
     setMand(m);
