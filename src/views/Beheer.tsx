@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData } from '../data';
-import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
+import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
 import { melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstCijfers } from './Dienst';
 
@@ -435,6 +435,72 @@ function Instellingen() {
         <input className="f" id="wn" value={naam} onChange={(e) => setNaam(e.target.value)} />
         <button disabled={bezig} onClick={() => run(async () => { await rpc('instellingen_opslaan', { p_naam: naam }); await herlaad(); melding('Opgeslagen'); })}>Opslaan</button>
       </div>
+      <Bijwerken />
+    </>
+  );
+}
+
+interface Systeem {
+  versie: string | null; nieuwste: string | null; gecontroleerd: string | null; verzoek: string | null;
+  status: 'klaar' | 'bezig' | 'mislukt'; melding: string | null; bijgewerkt_ts: string | null;
+}
+const versieNr = (v: string | null) => parseInt((v ?? '').replace(/\D/g, ''), 10) || 0;
+
+// Nieuwe versie installeren. De app zet alleen een verzoek klaar; de kassa-server
+// voert het binnen een minuut uit (server/bijwerker.sh) en meldt hier de voortgang.
+function Bijwerken() {
+  const [s, setS] = useState<Systeem | null>(null);
+  const [weg, setWeg] = useState(false);
+  const [zeker, setZeker] = useState(false);
+  const [bezig, run] = useBezig();
+  const laad = useCallback(async () => {
+    try {
+      setS(await lees(sb.from('systeem').select('*').maybeSingle()) as Systeem | null);
+      setWeg(false);
+    } catch { setWeg(true); }
+  }, []);
+  const wacht = !!s && (s.status === 'bezig' || !!s.verzoek);
+  useEffect(() => { void laad(); }, [laad]);
+  // Tijdens een update vaker kijken; de server is dan ook even niet bereikbaar.
+  useEffect(() => {
+    if (!wacht && !weg) return;
+    const t = setInterval(() => void laad(), 3000);
+    return () => clearInterval(t);
+  }, [wacht, weg, laad]);
+
+  if (PROEF) return <><h3 className="s">Bijwerken</h3><p className="mu">De proefversie is altijd de nieuwste versie. Op de kassa-server werk je hier de kassa bij.</p></>;
+  if (!s) return null;
+  if (!s.versie) return <><h3 className="s">Bijwerken</h3><p className="mu">Bijwerken vanuit de app kan alleen op de eigen kassa-server.</p></>;
+  const nieuwer = versieNr(s.nieuwste) > versieNr(s.versie);
+  const verzoek = (soort: string) => run(async () => { await rpc('systeem_verzoek', { p_soort: soort }); setZeker(false); await laad(); });
+  return (
+    <>
+      <h3 className="s">Bijwerken</h3>
+      <Rij l="Deze kassa" r={s.versie} />
+      <Rij l="Nieuwste versie" r={s.nieuwste ?? 'nog niet bekend'} />
+      {s.gecontroleerd && <p className="mu">Gecontroleerd: {datumTijd(s.gecontroleerd)}</p>}
+      {weg && wacht && <p><b>De kassa-server herstart… even geduld.</b></p>}
+      {s.melding && <p className={s.status === 'mislukt' ? 'neg' : ''}>{s.melding}</p>}
+      {s.status === 'klaar' && s.bijgewerkt_ts && Date.now() - Date.parse(s.bijgewerkt_ts) < 3600e3 && (
+        <button className="big" onClick={() => location.reload()}>Nieuwe versie laden</button>
+      )}
+      {!wacht && (nieuwer ? (
+        zeker ? (
+          <div className="card warnbox">
+            <p>De kassa is een paar minuten niet bereikbaar. Er wordt eerst een back-up gemaakt. Niet doen terwijl er afgerekend wordt.</p>
+            <div className="btns">
+              <button onClick={() => setZeker(false)}>Nee</button>
+              <button className="big" disabled={bezig} onClick={() => verzoek('bijwerken')}>Ja, bijwerken</button>
+            </div>
+          </div>
+        ) : <button className="big" onClick={() => setZeker(true)}>Bijwerken naar {s.nieuwste}</button>
+      ) : (
+        <>
+          {s.nieuwste && <p className="mu">De kassa is up-to-date.</p>}
+          <button className="big alt" disabled={bezig} onClick={() => verzoek('controleren')}>Zoeken naar een nieuwe versie</button>
+        </>
+      ))}
+      {wacht && <p className="mu">Even geduld…</p>}
     </>
   );
 }

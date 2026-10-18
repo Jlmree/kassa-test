@@ -92,7 +92,7 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 | --- | --- |
 | Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
 | Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
-| Nieuwe versie installeren | `/opt/kassa/bin/bijwerken.sh` (haalt het nieuwste installatiebestand op en maakt eerst een back-up; je gegevens blijven staan) |
+| Nieuwe versie installeren | In de app: *Beheer → Instellingen → Bijwerken* (de t620 heeft daarvoor internet nodig). Of op de t620: `/opt/kassa/bin/bijwerken.sh`, of zonder internet `/opt/kassa/bin/bijwerken.sh <pad naar kassa-installatie.run>` vanaf een USB-stick. Er wordt altijd eerst een back-up gemaakt; je gegevens blijven staan. |
 | Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` |
 | Logboek van de server | `journalctl -u kassa-auth -u kassa-rest -u caddy --since today` |
 
