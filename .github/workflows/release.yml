@@ -26,6 +26,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ github.run_number }}" kassa-installatie.run \
-            --title "Bar-kassa v${{ github.run_number }}" \
-            --notes "Installeren: download kassa-installatie.run en start als root: \`bash kassa-installatie.run\`. Bijwerken op de kassa-server: \`/opt/kassa/bin/bijwerken.sh\`."
+          # Releasetekst: het nieuwste punt uit src/wijzigingen.json, plus hoe je installeert.
+          node -e '
+            const [w] = require("./src/wijzigingen.json");
+            console.log(`## ${w.titel}\n\n${w.punten.map((p) => "- " + p).join("\n")}\n`);
+            console.log("Installeren: download kassa-installatie.run en start als root: `bash kassa-installatie.run`.");
+            console.log("Bijwerken: in de app bij Beheer → Instellingen, of op de kassa-server: `/opt/kassa/bin/bijwerken.sh`.");
+          ' > notities.md
+          cp src/wijzigingen.json wijzigingen.json
+          gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
+            --title "Bar-kassa v${{ github.run_number }}" --notes-file notities.md

@@ -9,6 +9,7 @@ import { Rekeningen } from './views/Rekeningen';
 import { Kaarten } from './views/Kaarten';
 import { Dienst } from './views/Dienst';
 import { Beheer } from './views/Beheer';
+import { NieuwNaUpdate } from './wijzigingen';
 
 export function App() {
   if (!ingesteld) return <NietIngesteld />;
@@ -74,6 +75,7 @@ function Kassasysteem() {
     <MandContext.Provider value={{ mand, setMand, doel, setDoel }}>
       <SheetProvider>
         <Scherm tab={tab} setTab={setTab} />
+        <NieuwNaUpdate />
       </SheetProvider>
     </MandContext.Provider>
   );

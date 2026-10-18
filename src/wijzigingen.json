@@ -1,0 +1,37 @@
+[
+  {
+    "datum": "2026-10-20",
+    "titel": "Zien wat er nieuw is",
+    "punten": [
+      "Na een update zie je één keer wat er nieuw is.",
+      "Bij Beheer → Instellingen → Bijwerken zie je vóór het bijwerken wat de nieuwe versie brengt.",
+      "De volledige lijst met wijzigingen staat onder Beheer → Instellingen."
+    ]
+  },
+  {
+    "datum": "2026-10-19",
+    "titel": "Bijwerken vanuit de app",
+    "punten": [
+      "Een beheerder ziet bij Beheer → Instellingen welke versie de kassa heeft en of er een nieuwere is.",
+      "Met één knop bijwerken; de kassa maakt eerst een back-up. De kassa-server heeft daarvoor internet nodig."
+    ]
+  },
+  {
+    "datum": "2026-10-19",
+    "titel": "Niet meer verkopen dan er op voorraad is",
+    "punten": [
+      "Je kunt niet meer aantikken dan er op voorraad is; een product dat op is wordt grijs.",
+      "Ook als twee telefoons tegelijk de laatste verkopen, lukt dat maar bij één.",
+      "Klopt de voorraad niet? Een beheerder past hem aan met een telling bij Beheer → Producten."
+    ]
+  },
+  {
+    "datum": "2026-10-18",
+    "titel": "Kassa op een eigen server",
+    "punten": [
+      "De kassa draait op een eigen server in het gebouw (zoals een HP t620), met één installatiebestand.",
+      "Inloggen met naam en wachtwoord, rechten voor medewerkers en beheerders.",
+      "Voorraad, rapporten, tegoedkaarten met QR-code, kasopmaak, logboek en automatische back-ups."
+    ]
+  }
+]
