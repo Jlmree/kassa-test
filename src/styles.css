@@ -26,6 +26,15 @@ button:disabled { opacity: .5; cursor: default; }
 code { background: var(--card); padding: 1px 5px; border-radius: 4px; }
 
 .app { display: flex; flex-direction: column; height: 100%; padding-top: env(safe-area-inset-top, 0px); }
+#root { display: flex; flex-direction: column; }
+#root > .app, #root > .center { flex: 1; min-height: 0; }
+/* Proefversie: balk bovenaan. */
+.proef { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 14px; padding-top: max(6px, env(safe-area-inset-top, 0px));
+  background: var(--sun); color: #2a1f00; font-size: 14px; }
+.proef span { flex: 1; min-width: 0; }
+.proef button { padding: 3px 10px; border-radius: 99px; border: 1px solid #2a1f0055; font-weight: 600; font-size: 13px; }
+.proef + .app { padding-top: 0; }
+.kaartje { margin-top: 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 header { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 header b { font-size: 20px; font-weight: 800; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who { padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); font-weight: 600; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

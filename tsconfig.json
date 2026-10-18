@@ -11,7 +11,8 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": { "@proef": ["./src/demo/client.ts"] }
   },
   "include": ["src"]
 }

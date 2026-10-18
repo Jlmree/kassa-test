@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { proefClient } from '@proef';
 
 // ─── Verbinding ───
 
@@ -6,8 +7,10 @@ declare global {
   interface Window { KASSA_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string } }
 }
 const cfg = window.KASSA_CONFIG ?? {};
-export const ingesteld = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
-export const sb = createClient(cfg.supabaseUrl || 'http://localhost', cfg.supabaseAnonKey || 'x', {
+// Proefversie (npm run build:proef): database in de browser in plaats van een server.
+export const PROEF = import.meta.env.VITE_PROEF === '1';
+export const ingesteld = PROEF || Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
+export const sb = PROEF ? proefClient : createClient(cfg.supabaseUrl || 'http://localhost', cfg.supabaseAnonKey || 'x', {
   auth: { persistSession: true, autoRefreshToken: true },
 });
 
