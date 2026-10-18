@@ -299,10 +299,29 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 EOF
+# Voert verzoeken uit de app uit (Beheer → Instellingen → Bijwerken).
+cat > /etc/systemd/system/kassa-bijwerker.service <<EOF
+[Unit]
+Description=Bar-kassa bijwerken vanuit de app
+After=postgresql.service
+[Service]
+Type=oneshot
+ExecStart=$OPT/bin/bijwerker.sh
+EOF
+cat > /etc/systemd/system/kassa-bijwerker.timer <<EOF
+[Unit]
+Description=Bar-kassa: elke minuut kijken of er bijgewerkt moet worden
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+[Install]
+WantedBy=timers.target
+EOF
 
 if [ -d /run/systemd/system ]; then
   systemctl daemon-reload
-  systemctl enable --now kassa-auth kassa-rest kassa-backup.timer >/dev/null 2>&1
+  systemctl enable --now kassa-auth kassa-rest kassa-backup.timer kassa-bijwerker.timer >/dev/null 2>&1
   systemctl restart kassa-auth kassa-rest
   systemctl enable caddy >/dev/null 2>&1 && systemctl restart caddy
 else
@@ -322,6 +341,7 @@ done
 curl --noproxy "*" -fsS -o /dev/null http://127.0.0.1:9999/health || fout "Inlogsysteem start niet (zie: journalctl -u kassa-auth)"
 curl --noproxy "*" -fsS -o /dev/null http://127.0.0.1:3000/ || fout "Database-API start niet (zie: journalctl -u kassa-rest)"
 "$OPT/bin/backup.sh" >/dev/null
+"$OPT/bin/bijwerker.sh" || true   # versie meteen doorgeven aan de app
 
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 printf '\n\033[1;32mKlaar!\033[0m\n\n'
@@ -335,4 +355,4 @@ fi
 echo
 echo "Het eerste account dat je aanmaakt wordt beheerder."
 echo "Back-ups: elk uur in /var/backups/kassa (en op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
-echo "Bijwerken naar een nieuwe versie:    $OPT/bin/bijwerken.sh   (als root)"
+echo "Bijwerken naar een nieuwe versie:    in de app bij Beheer → Instellingen, of $OPT/bin/bijwerken.sh (als root)"
