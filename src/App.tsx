@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import { ingesteld, inlogEmail, lees, rpc, sb, toonInlognaam, type Profiel } from './lib';
+import { ingesteld, inlogEmail, lees, PROEF, rpc, sb, toonInlognaam, type Profiel } from './lib';
+import { proefLaden, proefOpnieuw } from '@proef';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
 import { Bestelling, Kassa, MandBalk, MandContext, useMand, type Mand } from './views/Kassa';
 import { Rekeningen } from './views/Rekeningen';
@@ -11,7 +12,16 @@ import { Beheer } from './views/Beheer';
 
 export function App() {
   if (!ingesteld) return <NietIngesteld />;
-  return <><Inlog /><Melding /></>;
+  return <>{PROEF && <ProefBalk />}<Inlog /><Melding /></>;
+}
+
+function ProefBalk() {
+  return (
+    <div className="proef">
+      <span><b>Proefversie</b> · gegevens blijven op dit apparaat</span>
+      <button onClick={() => { if (confirm('Alle proefgegevens wissen en opnieuw beginnen?')) void proefOpnieuw(); }}>Wissen</button>
+    </div>
+  );
 }
 
 function Inlog() {
@@ -130,16 +140,18 @@ function Account() {
         })}>Wijzig</button>
       </div>
       <p className="mu" style={{ marginTop: 16 }}>Tip: zet de kassa op je beginscherm (in je browser: Delen of menu → Zet op beginscherm). Dan opent hij als een app.</p>
-      <button className="big alt" onClick={() => void sb.auth.signOut()}>Uitloggen</button>
+      <button className="big alt" onClick={() => void sb.auth.signOut()}>{PROEF ? 'Uitloggen (wisselen van account)' : 'Uitloggen'}</button>
     </>
   );
 }
 
 function Aanmelden() {
   const [nieuw, setNieuw] = useState(false);
-  const [naam, setNaam] = useState('');
-  const [ww, setWw] = useState('');
+  const [naam, setNaam] = useState(PROEF ? 'Demo' : '');
+  const [ww, setWw] = useState(PROEF ? 'proef1234' : '');
   const [bezig, run] = useBezig();
+  const [klaar, setKlaar] = useState(!PROEF);
+  useEffect(() => { if (PROEF) void proefLaden().then(() => setKlaar(true), (e: Error) => melding('De proefkassa kon niet starten: ' + e.message)); }, []);
   const verstuur = () => run(async () => {
     if (!naam.trim()) throw new Error('Vul je naam in');
     const email = inlogEmail(naam);
@@ -165,9 +177,15 @@ function Aanmelden() {
         <input className="f" id="ln" autoComplete="username" autoCapitalize="words" value={naam} onChange={(e) => setNaam(e.target.value)} />
         <label htmlFor="lw">Wachtwoord</label>
         <input className="f" id="lw" type="password" autoComplete={nieuw ? 'new-password' : 'current-password'} value={ww} onChange={(e) => setWw(e.target.value)} />
-        <button className="big" disabled={bezig}>{nieuw ? 'Account aanmaken' : 'Inloggen'}</button>
+        <button className="big" disabled={bezig || !klaar}>{!klaar ? 'Proefkassa klaarzetten…' : nieuw ? 'Account aanmaken' : 'Inloggen'}</button>
       </form>
-      {nieuw && <p className="mu">Het allereerste account wordt beheerder. Alle volgende accounts moeten door een beheerder worden goedgekeurd.</p>}
+      {PROEF && !nieuw && (
+        <div className="kaartje">
+          <p><b>Proefaccounts</b> (wachtwoord <code>proef1234</code>):</p>
+          <p><b>Demo</b>: beheerder, ziet alles. <b>Anna</b>: medewerker. <b>Kees</b>: wacht nog op goedkeuring.</p>
+        </div>
+      )}
+      {nieuw && !PROEF && <p className="mu">Het allereerste account wordt beheerder. Alle volgende accounts moeten door een beheerder worden goedgekeurd.</p>}
       {!nieuw && <p className="mu">Wachtwoord vergeten? Vraag een beheerder om een nieuw wachtwoord in te stellen.</p>}
     </div>
   );

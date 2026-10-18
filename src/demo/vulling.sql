@@ -1,0 +1,100 @@
+-- Voorbeeldgegevens voor de proefversie: drie accounts, twee weken verkopen,
+-- tegoedkaarten, een open kassa en twee open rekeningen.
+-- Alles gaat via dezelfde functies als in de echte kassa; daarna worden de
+-- tijdstippen naar de afgelopen dagen verschoven.
+
+insert into auth.users (email, encrypted_password, raw_user_meta_data) values
+  ('demo@kassa.lokaal', extensions.crypt('proef1234', extensions.gen_salt('bf', 4)), '{"naam": "Demo"}'),
+  ('anna@kassa.lokaal', extensions.crypt('proef1234', extensions.gen_salt('bf', 4)), '{"naam": "Anna"}'),
+  ('kees@kassa.lokaal', extensions.crypt('proef1234', extensions.gen_salt('bf', 4)), '{"naam": "Kees"}');
+update public.profielen set rol = 'medewerker' where naam = 'Anna';
+update public.instellingen set naam = 'Café De Proef';
+update public.producten set voorraad_bijhouden = true, voorraad = 1000, voorraad_min = 24 where naam = 'Bier';
+update public.producten set voorraad_bijhouden = true, voorraad = 1000, voorraad_min = 12 where naam = 'Frisdrank';
+update public.producten set voorraad_bijhouden = true, voorraad = 1000, voorraad_min = 10 where naam = 'Chips';
+
+do $$
+declare
+  demo uuid := (select id from auth.users where email = 'demo@kassa.lokaal');
+  anna uuid := (select id from auth.users where email = 'anna@kassa.lokaal');
+  -- Kansverdeling over de producten: vooral bier.
+  keuze text[] := array['Bier','Bier','Bier','Bier','Bier','Frisdrank','Frisdrank','Wijn','Wijn','Koffie','Chips','Chips','Tosti kaas','Tosti ham-kaas','Bapao'];
+  dag date;
+  open_ts timestamptz;
+  d bigint;
+  v jsonb;
+  regels jsonb;
+  totaal int;
+  wie uuid;
+  log_id bigint;
+  kaart text;
+  n int;
+begin
+  perform set_config('request.jwt.claim.sub', demo::text, true);
+  for i in reverse 14..0 loop
+    dag := (now() at time zone 'Europe/Amsterdam')::date - i;
+    -- Maandag en dinsdag dicht.
+    continue when i > 0 and extract(isodow from dag) in (1, 2);
+    log_id := coalesce((select max(id) from public.logboek), 0);
+    wie := case when random() < 0.5 then demo else anna end;
+    perform set_config('request.jwt.claim.sub', wie::text, true);
+    d := public.dienst_openen(10000);
+    if i = 14 then
+      perform set_config('request.jwt.claim.sub', demo::text, true);
+      perform public.kaarten_maken(20);
+      perform set_config('request.jwt.claim.sub', wie::text, true);
+    end if;
+    -- Kaarten opwaarderen.
+    for k in 1..(1 + floor(random() * 3))::int loop
+      perform public.kaart_opwaarderen((select id from public.kaarten order by random() limit 1),
+        (array[1000, 2000, 2500])[1 + floor(random() * 3)::int], case when random() < 0.6 then 'contant' else 'pin' end);
+    end loop;
+    n := case when extract(isodow from dag) in (5, 6) then 30 else 14 end + floor(random() * 10)::int;
+    if i = 0 then n := 9; end if;
+    for j in 1..n loop
+      select jsonb_agg(jsonb_build_object('product_id', p.id, 'aantal', 1 + floor(random() * 2.4)::int)), sum(p.prijs_cent)
+        into regels from (select distinct keuze[1 + floor(random() * array_length(keuze, 1))::int] as naam
+                          from generate_series(1, 1 + floor(random() * 3)::int)) x
+        join public.producten p on p.naam = x.naam;
+      kaart := case when random() < 0.2 then
+        (select code from public.kaarten where saldo_cent > 0 and not geblokkeerd order by random() limit 1) end;
+      v := public.afrekenen(regels,
+        case
+          when kaart is not null then jsonb_build_array(jsonb_build_object('methode', 'kaart', 'kaart', kaart), jsonb_build_object('methode', 'contant'))
+          when random() < 0.55 then jsonb_build_array(jsonb_build_object('methode', 'contant', 'gegeven_cent', 2000))
+          else jsonb_build_array(jsonb_build_object('methode', 'pin'))
+        end, null);
+    end loop;
+    if i = 0 then
+      -- Vandaag: kassa blijft open; verkopen in het afgelopen uur.
+      update public.verkopen set ts = now() - random() * interval '60 minutes' where dienst_id = d;
+      update public.diensten set geopend_ts = now() - interval '75 minutes' where id = d;
+    else
+      perform public.dienst_sluiten((public.dienst_overzicht() ->> 'verwacht_cent')::int
+        + (array[0, 0, 0, -50, 100, -200])[1 + floor(random() * 6)::int]);
+      open_ts := (dag + time '19:00') at time zone 'Europe/Amsterdam';
+      update public.diensten set geopend_ts = open_ts, gesloten_ts = open_ts + interval '5 hours 10 minutes' where id = d;
+      update public.verkopen set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
+      update public.kaart_mutaties set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
+      update public.logboek set ts = open_ts + interval '5 hours 10 minutes' where id > log_id;
+    end if;
+    update public.voorraad_mutaties m set ts = v.ts from public.verkopen v where v.id = m.verkoop_id and v.dienst_id = d;
+  end loop;
+
+  -- Twee open rekeningen.
+  perform public.rekening_toevoegen(public.rekening_maken('Piet'),
+    (select jsonb_agg(jsonb_build_object('product_id', id, 'aantal', 2)) from public.producten where naam in ('Bier', 'Chips')));
+  perform public.rekening_toevoegen(public.rekening_maken('Tafel 4'),
+    (select jsonb_agg(jsonb_build_object('product_id', id, 'aantal', a)) from
+      (select id, case naam when 'Wijn' then 3 else 1 end as a from public.producten where naam in ('Wijn', 'Tosti ham-kaas', 'Koffie')) x));
+  update public.rekening_regels set ts = now() - random() * interval '45 minutes';
+  update public.rekeningen set aangemaakt = now() - interval '50 minutes';
+
+  -- Een kaart die kwijt is.
+  update public.kaarten set geblokkeerd = true where nummer = 13;
+end $$;
+
+-- Voorraad op een geloofwaardige stand; frisdrank bijna op.
+update public.producten set voorraad = 41 where naam = 'Bier';
+update public.producten set voorraad = 8 where naam = 'Frisdrank';
+update public.producten set voorraad = 23 where naam = 'Chips';

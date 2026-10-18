@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:proef": "tsc --noEmit && VITE_PROEF=1 vite build --outDir dist-proef",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:db": "node --test --test-concurrency=1 tests/database.test.mjs"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@supabase/supabase-js": "^2.118.0",
     "jsqr": "^1.4.0",
     "qrcode-generator": "^1.5.2",
