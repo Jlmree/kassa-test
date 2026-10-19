@@ -72,7 +72,7 @@ export interface Dienst {
   opwaardering_contant_cent: number; opwaardering_pin_cent: number; verwacht_cent: number;
   geteld_cent: number | null; opmerking: string | null;
 }
-export interface KaartInfo { id: number; nummer: number; saldo_cent: number; geblokkeerd: boolean; betaalcode: boolean }
+export interface KaartInfo { id: number; nummer: number; naam: string | null; saldo_cent: number; geblokkeerd: boolean; betaalcode: boolean }
 export interface Regel { product_id: number; aantal: number }
 
 // ─── Opmaak ───

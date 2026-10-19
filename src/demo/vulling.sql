@@ -89,6 +89,10 @@ begin
 
   -- Een kaart die kwijt is.
   update public.kaarten set geblokkeerd = true where nummer = 13;
+  -- Een paar kaarten op naam.
+  update public.kaarten k set naam = v.naam
+  from (values (1, 'Piet de Vries'), (3, 'Fam. Jansen'), (5, 'Voetbal JO11'), (11, 'Sandra'), (12, 'Kees Bakker'), (13, 'Ruud')) as v(nummer, naam)
+  where k.nummer = v.nummer;
 end $$;
 
 -- Voorraad op een geloofwaardige stand; frisdrank bijna op, bapao op.

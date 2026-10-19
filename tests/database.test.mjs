@@ -128,6 +128,23 @@ test('twee apparaten tegelijk kunnen een kaart niet dubbel afschrijven', async (
   assert.equal((await rpc(bar, 'kaart_info', { p_zoek: kaart.code })).saldo_cent, 0);
 });
 
+test('kaart op naam; de naam gaat mee bij overzetten', async () => {
+  const info = await rpc(bar, 'kaart_info', { p_zoek: kaart.code });
+  await rpc(bar, 'kaart_naam', { p_kaart_id: info.id, p_naam: '  Piet de Vries ' });
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: String(kaart.nummer) })).naam, 'Piet de Vries');
+  const { data } = await bar.from('kaarten').select('nummer,naam').eq('id', info.id).single();
+  assert.deepEqual(data, { nummer: kaart.nummer, naam: 'Piet de Vries' });
+  await faalt(rpc(gast, 'kaart_naam', { p_kaart_id: info.id, p_naam: 'x' }), 'geen toegang');
+  // Overzetten naar een nieuwe kaart: tegoed én naam gaan mee.
+  const [nieuw] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
+  await rpc(baas, 'kaart_overzetten', { p_van: info.id, p_naar: nieuw.code });
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: nieuw.code })).naam, 'Piet de Vries');
+  // Terug naar de oude kaart voor de tests hieronder.
+  await rpc(baas, 'kaart_blokkeren', { p_kaart_id: info.id, p_blok: false });
+  await rpc(bar, 'kaart_naam', { p_kaart_id: info.id, p_naam: '' });
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: kaart.code })).naam, null);
+});
+
 test('geblokkeerde kaart', async () => {
   const info = await rpc(bar, 'kaart_info', { p_zoek: kaart.code });
   await rpc(bar, 'kaart_blokkeren', { p_kaart_id: info.id, p_blok: true });

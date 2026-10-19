@@ -1,17 +1,18 @@
 :root {
   --bg: #f2f4ef; --card: #fff; --ink: #1b2927; --mu: #62706c; --line: #d9dfd8;
-  --acc: #1d6b58; --ai: #fff; --sun: #f0b429; --warn: #b23a26;
+  --acc: #1d6b58; --ai: #fff; --sun: #f0b429; --warn: #b23a26; --ok: #2e7d32;
+  --m-cash: #2e7d32; --m-pin: #1565c0;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #101817; --card: #1a2423; --ink: #e8efec; --mu: #93a39e; --line: #2b3836;
-    --acc: #4fb89c; --ai: #08201a; --warn: #ef8a74; color-scheme: dark;
+    --acc: #4fb89c; --ai: #08201a; --warn: #ef8a74; --ok: #6cc070; --m-cash: #4caf50; --m-pin: #5c9ce6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #101817; --card: #1a2423; --ink: #e8efec; --mu: #93a39e; --line: #2b3836;
-  --acc: #4fb89c; --ai: #08201a; --warn: #ef8a74; color-scheme: dark;
+  --acc: #4fb89c; --ai: #08201a; --warn: #ef8a74; --ok: #6cc070; --m-cash: #4caf50; --m-pin: #5c9ce6; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -125,7 +126,7 @@ textarea.f { height: 120px; font: 12px monospace; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .quick button { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-weight: 600; }
 .chg { min-height: 28px; font-size: 20px; font-weight: 800; text-align: center; color: var(--acc); margin: 8px 0; }
-.tel { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 10px; }
+.tel { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; }
 .tel label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; }
 .tel label span { min-width: 64px; }
 .bar { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; font-size: 14px; }
@@ -165,3 +166,36 @@ textarea.f { height: 120px; font: 12px monospace; }
 .wijziging { margin: 10px 0 14px; }
 .wijziging ul { margin: 6px 0 0; padding-left: 20px; }
 .wijziging li { margin: 3px 0; }
+
+/* Dienst: groot blok bovenaan, kaartjes, verdeling en uitkomst. */
+.hero { background: var(--acc); color: var(--ai); border-radius: 18px; padding: 14px 16px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 2px; }
+.hero span { opacity: .9; font-size: 14px; }
+.hero small { margin-top: 6px; font-size: 14px; opacity: .85; }
+.hero b { font-size: 34px; font-weight: 800; line-height: 1.1; }
+.hero.dicht { background: var(--ink); color: var(--bg); }
+.hero.klein { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+.hero.klein b { font-size: 28px; }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; margin: 4px 0 6px; }
+.stack i { display: block; min-width: 4px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.pct { font-size: 13px; display: inline-block; min-width: 36px; text-align: right; }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-weight: 700; font-size: 15px; white-space: nowrap; }
+.pill.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.pill.min { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.pill.plus { background: color-mix(in srgb, var(--sun) 25%, transparent); color: var(--ink); }
+.card .row:last-child { border-bottom: 0; }
+.card .ghost { margin-top: 0; }
+.uitkomst { margin-top: 12px; }
+.tel label .f { flex: 1; text-align: center; font-size: 18px; padding: 10px; }
+.tel label small { min-width: 72px; text-align: right; font-weight: 400; }
+.tijd { font-variant-numeric: tabular-nums; font-weight: 700; }
+/* Beheer: overzicht met tegels, en een terugknop in elk onderdeel. */
+.menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.menu .card { margin: 0; }
+.menu .hd { margin-bottom: 4px; align-items: center; }
+.kop { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.kop h2 { margin: 0; }
+.terug { padding: 8px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); font-weight: 600; white-space: nowrap; }
+/* Kaarten: zoeken en namen. */
+.zoek { margin: 12px 0 10px; }
+.naam { font-weight: 600; }

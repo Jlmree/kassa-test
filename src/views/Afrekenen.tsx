@@ -39,7 +39,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
     <>
       {kaart && (
         <>
-          <h2>Kaart {kaart.info.nummer}</h2>
+          <h2>Kaart {kaart.info.nummer}{kaart.info.naam ? ` · ${kaart.info.naam}` : ''}</h2>
           <Rij l="Saldo" r={eur(kaart.info.saldo_cent)} />
           <Rij l="Te betalen" r={eur(totaal)} />
           <Rij l="Van de kaart" r={eur(vanKaart)} sterk />
