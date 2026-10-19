@@ -1,21 +1,52 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData } from '../data';
-import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
+import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
 import { melding, Qr, Rij, useBezig, useSheet } from '../ui';
-import { DienstCijfers } from './Dienst';
+import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
 const delen = ['Rapport', 'Producten', 'Kaarten', 'Medewerkers', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
+const uitleg: Record<Deel, string> = {
+  Rapport: 'Omzet, betaalmethoden, producten en kasverschillen per periode',
+  Producten: 'Prijzen, categorieën en voorraad',
+  Kaarten: 'Nieuwe tegoedkaarten maken en QR-codes printen',
+  Medewerkers: 'Toegang geven, rollen en wachtwoorden',
+  Logboek: 'Wie heeft wat gedaan',
+  Instellingen: 'Naam op de bon, bijwerken en wat er nieuw is',
+};
 
 export function Beheer() {
-  const [deel, setDeel] = useState<Deel>('Rapport');
+  const [deel, setDeel] = useState<Deel | null>(null);
   const { producten } = useData();
-  const laag = producten.filter((p) => p.actief && p.voorraad_bijhouden && p.voorraad <= p.voorraad_min);
+  const [wacht, setWacht] = useState(0);
+  const laag = producten.filter((p) => p.actief && p.voorraad <= p.voorraad_min);
+  const op = laag.filter((p) => p.voorraad <= 0).length;
+  useEffect(() => {
+    if (deel) return;
+    void lees(sb.from('profielen').select('rol,actief')).then((r) => setWacht((r as Profiel[]).filter((x) => x.rol === 'wacht' && x.actief).length), () => {});
+  }, [deel]);
+  const melding_: Partial<Record<Deel, string>> = {
+    Producten: laag.length ? (op ? `${op} op${laag.length > op ? `, ${laag.length - op} bijna op` : ''}` : `${laag.length} bijna op`) : undefined,
+    Medewerkers: wacht ? `${wacht} ${wacht === 1 ? 'wacht' : 'wachten'} op toegang` : undefined,
+  };
+  if (!deel) {
+    return (
+      <div className="menu">
+        {delen.map((d) => (
+          <button key={d} className="card wide" onClick={() => setDeel(d)}>
+            <div className="hd"><span>{d}</span>{melding_[d] && <span className="pill min">{melding_[d]}</span>}</div>
+            <span className="mu">{uitleg[d]}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
   return (
     <>
-      <div className="chips">
-        {delen.map((d) => <button key={d} className={d === deel ? 'on' : ''} onClick={() => setDeel(d)}>{d}{d === 'Producten' && laag.length ? ` (${laag.length}!)` : ''}</button>)}
+      <div className="kop">
+        <button className="terug" onClick={() => setDeel(null)}>‹ Beheer</button>
+        <h2>{deel}</h2>
       </div>
       {deel === 'Rapport' && <Rapport />}
       {deel === 'Producten' && <Producten />}
@@ -119,23 +150,28 @@ function Rapport() {
             <div><span className="mu">Gemiddeld per bon</span><b>{eur(r.bonnen ? Math.round(r.omzet_cent / r.bonnen) : 0)}</b></div>
             <div><span className="mu">Geannuleerd</span><b>{r.geannuleerd}</b><span className="mu">{eur(r.geannuleerd_cent)}</span></div>
           </div>
-          <h3 className="s">Per betaalmethode</h3>
-          {r.per_methode.map((x) => <Rij key={x.methode} l={methodeNaam[x.methode]} r={eur(x.bedrag_cent)} />)}
-          {!r.per_methode.length && <p className="mu">Niets</p>}
-          <h3 className="s">Kaarten</h3>
-          {r.opwaarderingen.map((x) => <Rij key={x.methode} l={`Opgewaardeerd, ${x.methode === 'pin' ? 'pin' : 'contant'} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
-          <Rij l={`Tegoed nu op ${r.kaarten_actief} kaarten`} r={eur(r.kaarttegoed_cent)} />
-          <Rij l="Nu open op rekeningen" r={eur(r.open_rekeningen_cent)} />
-          {r.per_dag.length > 1 && (<><h3 className="s">Per dag</h3>{r.per_dag.map((x) => <Staaf key={x.dag} l={datum(x.dag)} w={x.bedrag_cent} max={maxDag} r={eur(x.bedrag_cent)} />)}</>)}
-          {r.per_uur.length > 0 && (<><h3 className="s">Per uur</h3>{r.per_uur.map((x) => <Staaf key={x.uur} l={`${x.uur}:00`} w={x.bedrag_cent} max={maxUur} r={eur(x.bedrag_cent)} />)}</>)}
-          <h3 className="s">Per product</h3>
-          {r.per_product.map((x) => <Rij key={x.naam} l={`${x.naam} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
-          {!r.per_product.length && <p className="mu">Niets verkocht.</p>}
-          <h3 className="s">Per medewerker</h3>
-          {r.per_medewerker.map((x) => <Rij key={x.naam} l={`${x.naam} (${x.bonnen} bonnen)`} r={eur(x.bedrag_cent)} />)}
-          <h3 className="s">Diensten en kasverschillen</h3>
-          {r.diensten.map((d) => <DienstRij key={d.id} d={d} />)}
-          {!r.diensten.length && <p className="mu">Geen diensten in deze periode.</p>}
+          <Blok titel="Betaalmethoden">
+            <Verdeling delen={['contant', 'pin', 'kaart'].map((m) => ({ methode: m, bedrag_cent: r.per_methode.find((x) => x.methode === m)?.bedrag_cent ?? 0 }))} />
+          </Blok>
+          {r.per_dag.length > 1 && <Blok titel="Per dag">{r.per_dag.map((x) => <Staaf key={x.dag} l={datum(x.dag)} w={x.bedrag_cent} max={maxDag} r={eur(x.bedrag_cent)} />)}</Blok>}
+          {r.per_uur.length > 0 && <Blok titel="Per uur">{r.per_uur.map((x) => <Staaf key={x.uur} l={`${x.uur}:00`} w={x.bedrag_cent} max={maxUur} r={eur(x.bedrag_cent)} />)}</Blok>}
+          <Blok titel="Producten" rechts={<span className="mu">{r.per_product.reduce((a, x) => a + x.aantal, 0)} stuks</span>}>
+            <Ingeklapt lijst={r.per_product} rij={(x) => <Rij key={x.naam} l={`${x.naam} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />} />
+            {!r.per_product.length && <p className="mu">Niets verkocht.</p>}
+          </Blok>
+          <Blok titel="Medewerkers">
+            {r.per_medewerker.map((x) => <Rij key={x.naam} l={`${x.naam} (${x.bonnen} bonnen)`} r={eur(x.bedrag_cent)} />)}
+            {!r.per_medewerker.length && <p className="mu">Niets verkocht.</p>}
+          </Blok>
+          <Blok titel="Tegoedkaarten en rekeningen">
+            {r.opwaarderingen.map((x) => <Rij key={x.methode} l={`Opgewaardeerd, ${x.methode === 'pin' ? 'pin' : 'contant'} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
+            <Rij l={`Tegoed nu op ${r.kaarten_actief} kaarten`} r={eur(r.kaarttegoed_cent)} />
+            <Rij l="Nu open op rekeningen" r={eur(r.open_rekeningen_cent)} />
+          </Blok>
+          <Blok titel="Diensten en kasverschillen">
+            <Ingeklapt lijst={r.diensten} n={5} rij={(d) => <DienstRij key={d.id} d={d} />} />
+            {!r.diensten.length && <p className="mu">Geen diensten in deze periode.</p>}
+          </Blok>
           <div className="btns" style={{ marginTop: 16 }}>
             <button disabled={bezig} onClick={exporteer}>Bonnen als CSV</button>
             <button onClick={exporteerProducten}>Producten als CSV</button>
@@ -152,9 +188,24 @@ function DienstRij({ d }: { d: Dienst }) {
   return (
     <Rij onClick={() => open(<><h2>Dienst {datumTijd(d.geopend_ts)}</h2>
       <p className="mu">Geopend door {d.geopend_door ?? '?'}{d.gesloten_ts ? `, gesloten ${datumTijd(d.gesloten_ts)} door ${d.gesloten_door ?? '?'}` : ', nog open'}</p>
-      <Rij l="Omzet" r={eur(d.omzet_cent)} /><DienstCijfers d={d} />{d.opmerking && <p>Opmerking: {d.opmerking}</p>}</>)}
-      l={<>{datumTijd(d.geopend_ts)}{d.gesloten_ts ? '' : ' (open)'}<br /><span className="mu">omzet {eur(d.omzet_cent)}</span></>}
-      r={verschil == null ? '' : <span className={verschil < 0 ? 'neg' : ''}>{verschil === 0 ? 'klopt' : eur(verschil)}</span>} />
+      <DienstKaarten d={d} /></>)}
+      l={<>{datumTijd(d.geopend_ts)}{d.gesloten_ts ? '' : ' (open)'}<br /><span className="mu">omzet {eur(d.omzet_cent)}{d.geopend_door ? ` · ${d.geopend_door}` : ''}</span></>}
+      r={verschil == null ? '' : <Verschil c={verschil} />} />
+  );
+}
+
+function Blok({ titel, rechts, children }: { titel: string; rechts?: React.ReactNode; children: React.ReactNode }) {
+  return <div className="card"><div className="hd"><span>{titel}</span>{rechts}</div>{children}</div>;
+}
+
+// Lange lijst: eerst de bovenste paar, de rest op verzoek.
+function Ingeklapt<T>({ lijst, n = 6, rij }: { lijst: T[]; n?: number; rij: (x: T) => React.ReactNode }) {
+  const [alles, setAlles] = useState(false);
+  return (
+    <>
+      {(alles ? lijst : lijst.slice(0, n)).map(rij)}
+      {lijst.length > n && <button className="ghost" onClick={() => setAlles(!alles)}>{alles ? 'Minder tonen' : `Alle ${lijst.length} tonen`}</button>}
+    </>
   );
 }
 

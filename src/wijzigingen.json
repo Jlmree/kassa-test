@@ -1,6 +1,18 @@
 [
   {
     "datum": "2026-10-19",
+    "titel": "Overzichtelijker Dienst, Beheer en Kaarten; kaarten op naam",
+    "punten": [
+      "Dienst: bovenaan in één oogopslag wat er nu in de la hoort. Daaronder verkopen (met verdeling contant/pin/kaart), geld in de la als optelsom en tegoedkaarten. Van de bonnen eerst de laatste vijf.",
+      "Kassa sluiten: per munt of biljet het subtotaal, en de uitkomst als Klopt, Tekort of Over.",
+      "Kassa openen: met één tik hetzelfde wisselgeld als de vorige telling, en de uitkomst van de vorige dienst.",
+      "Beheer: een overzicht met tegels; meldingen zoals producten die op zijn of medewerkers die op toegang wachten staan er direct bij. Het rapport is ingedeeld in blokken.",
+      "Kaarten: alle kaarten zijn te zien, met zoeken op nummer of naam en filters (alle, met tegoed, met naam, geblokkeerd).",
+      "Een kaart kan aan een naam gekoppeld worden. Bij overzetten naar een nieuwe kaart gaat de naam mee. Betalen kan nog steeds alleen met de kaart zelf."
+    ]
+  },
+  {
+    "datum": "2026-10-19",
     "titel": "Elk product heeft een voorraad",
     "punten": [
       "Let op: producten waarvan de voorraad nog niet werd bijgehouden, staan na deze update op voorraad 0 en zijn dus 'op'. Tel ze meteen na het bijwerken: Beheer → Producten → tik op het product → = Geteld.",
