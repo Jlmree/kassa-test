@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-19",
+    "titel": "Alle producten op één scherm",
+    "punten": [
+      "Bij Kassa staat nu eerst het tabblad Alles: alle producten op één scherm, per categorie onder een kopje.",
+      "Drinken, Eten en Snacks (en je eigen categorieën) staan er nog naast om te filteren."
+    ]
+  },
+  {
+    "datum": "2026-10-19",
     "titel": "Controles na een grote nalooprond",
     "punten": [
       "Is het bedrag intussen veranderd (iemand boekte bij op dezelfde rekening, of een prijs werd aangepast), dan rekent de kassa niet af maar meldt het nieuwe bedrag.",

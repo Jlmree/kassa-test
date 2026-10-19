@@ -16,9 +16,22 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
   const { producten, rekeningen, dienst } = useData();
   const zichtbaar = producten.filter((p) => p.actief);
   const cats = [...new Set(zichtbaar.map((p) => p.categorie))];
+  // '' = Alles: alle producten, gegroepeerd per categorie.
   const [cat, setCat] = useState('');
-  const huidig = cats.includes(cat) ? cat : cats[0] ?? '';
+  const huidig = cats.includes(cat) ? cat : '';
   const rek = doel != null ? rekeningen.find((r) => r.id === doel) : undefined;
+  const tegels = (lijst: Product[]) => (
+    <div className="grid">
+      {lijst.map((p) => (
+        <button key={p.id} className={'tile' + (p.voorraad_bijhouden && p.voorraad <= 0 ? ' op' : '')}
+          onClick={() => { if (kanErbij(p, mand[p.id] ?? 0)) setMand({ ...mand, [p.id]: (mand[p.id] ?? 0) + 1 }); }}>
+          <span className="nm">{p.naam}</span>
+          <span className="pr">{eur(p.prijs_cent)}{p.voorraad_bijhouden && <Voorraad p={p} />}</span>
+          {mand[p.id] ? <i className="bd">{mand[p.id]}</i> : null}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -28,19 +41,20 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
       {rek && (
         <div className="banner"><span>Bestelling voor {rek.naam}</span><button onClick={() => { setDoel(null); setMand({}); }}>Stoppen</button></div>
       )}
-      <div className="chips">
-        {cats.map((c) => <button key={c} className={c === huidig ? 'on' : ''} onClick={() => setCat(c)}>{c}</button>)}
-      </div>
-      <div className="grid">
-        {zichtbaar.filter((p) => p.categorie === huidig).map((p) => (
-          <button key={p.id} className={'tile' + (p.voorraad_bijhouden && p.voorraad <= 0 ? ' op' : '')}
-            onClick={() => { if (kanErbij(p, mand[p.id] ?? 0)) setMand({ ...mand, [p.id]: (mand[p.id] ?? 0) + 1 }); }}>
-            <span className="nm">{p.naam}</span>
-            <span className="pr">{eur(p.prijs_cent)}{p.voorraad_bijhouden && <Voorraad p={p} />}</span>
-            {mand[p.id] ? <i className="bd">{mand[p.id]}</i> : null}
-          </button>
-        ))}
-      </div>
+      {cats.length > 1 && (
+        <div className="chips">
+          <button className={huidig === '' ? 'on' : ''} onClick={() => setCat('')}>Alles</button>
+          {cats.map((c) => <button key={c} className={c === huidig ? 'on' : ''} onClick={() => setCat(c)}>{c}</button>)}
+        </div>
+      )}
+      {huidig !== '' ? tegels(zichtbaar.filter((p) => p.categorie === huidig))
+        : cats.length > 1 ? cats.map((c) => (
+          <section key={c}>
+            <h3 className="cat">{c}</h3>
+            {tegels(zichtbaar.filter((p) => p.categorie === c))}
+          </section>
+        ))
+        : tegels(zichtbaar)}
       {!zichtbaar.length && <p className="mu">Nog geen producten. Een beheerder kan ze toevoegen bij Beheer → Producten.</p>}
     </>
   );
