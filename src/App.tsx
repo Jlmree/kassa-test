@@ -153,7 +153,7 @@ function Aanmelden() {
   const [ww, setWw] = useState(PROEF ? 'proef1234' : '');
   const [bezig, run] = useBezig();
   const [klaar, setKlaar] = useState(!PROEF);
-  useEffect(() => { if (PROEF) void proefLaden().then(() => setKlaar(true), (e: Error) => melding('De proefkassa kon niet starten: ' + e.message)); }, []);
+  useEffect(() => { if (PROEF) void proefLaden().then(() => setKlaar(true), (e: Error) => { setKlaar(true); melding('De proefkassa kon niet starten: ' + e.message + '. Probeer opnieuw of tik bovenaan op Wissen.'); }); }, []);
   const verstuur = () => run(async () => {
     if (!naam.trim()) throw new Error('Vul je naam in');
     const email = inlogEmail(naam);
@@ -164,7 +164,9 @@ function Aanmelden() {
       if (!data.session) melding('Bevestig je e-mailadres via de link in je mail en log daarna in');
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password: ww });
-      if (error) throw new Error(/Invalid login/i.test(error.message) ? 'Naam of wachtwoord klopt niet' : error.message);
+      if (error) throw new Error(/Invalid login/i.test(error.message)
+        ? (PROEF ? 'Naam of wachtwoord klopt niet. Probeer Demo met proef1234, of tik bovenaan op Wissen.' : 'Naam of wachtwoord klopt niet')
+        : error.message);
     }
   });
   return (
@@ -181,6 +183,7 @@ function Aanmelden() {
         <input className="f" id="lw" type="password" autoComplete={nieuw ? 'new-password' : 'current-password'} value={ww} onChange={(e) => setWw(e.target.value)} />
         <button className="big" disabled={bezig || !klaar}>{!klaar ? 'Proefkassa klaarzetten…' : nieuw ? 'Account aanmaken' : 'Inloggen'}</button>
       </form>
+      {!klaar && <p className="mu">De eerste keer duurt dit even: de proefkassa (ongeveer 15 MB) wordt op dit apparaat klaargezet. Laat deze pagina open.</p>}
       {PROEF && !nieuw && (
         <div className="kaartje">
           <p><b>Proefaccounts</b> (wachtwoord <code>proef1234</code>):</p>

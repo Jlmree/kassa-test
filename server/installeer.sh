@@ -5,6 +5,8 @@
 #
 # Optioneel, voor een echt https-certificaat via DuckDNS:
 #   bash kassa-installatie.run --duckdns mijnbar.duckdns.org <token>
+# De kassa ook op het eigen scherm van de server (aanraakscherm aan de bar, alleen Debian):
+#   bash kassa-installatie.run --scherm        (uitzetten: --zonder-scherm)
 #
 # Wordt dit script los gestart (zonder installatiebestand), dan haalt het
 # eerst het nieuwste installatiebestand op en voert dat uit.
@@ -27,6 +29,8 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --duckdns) KASSA_DOMEIN=${2:?naam ontbreekt}; KASSA_DUCKDNS_TOKEN=${3:?token ontbreekt}; shift 3 ;;
     --zonder-duckdns) KASSA_DOMEIN=; KASSA_DUCKDNS_TOKEN=; shift ;;
+    --scherm) KASSA_SCHERM=1; shift ;;
+    --zonder-scherm) KASSA_SCHERM=0; shift ;;
     *) fout "Onbekende optie: $1" ;;
   esac
 done
@@ -38,7 +42,7 @@ if [ -z "${KASSA_BRON:-}" ]; then
   T=$(mktemp -d)
   curl -fL --progress-bar -o "$T/kassa-installatie.run" "https://github.com/$REPO/releases/latest/download/kassa-installatie.run" \
     || fout "Downloaden mislukt. Is er internet?"
-  KASSA_DOMEIN=${KASSA_DOMEIN-} KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN-} bash "$T/kassa-installatie.run"
+  KASSA_DOMEIN=${KASSA_DOMEIN-} KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN-} KASSA_SCHERM=${KASSA_SCHERM-} bash "$T/kassa-installatie.run"
   rm -rf "$T"
   exit 0
 fi
@@ -50,6 +54,8 @@ if [ -f "$ETC/instellingen.env" ]; then
   OUD_TOKEN=$(sed -n 's/^KASSA_DUCKDNS_TOKEN=//p' "$ETC/instellingen.env")
   KASSA_DOMEIN=${KASSA_DOMEIN-$OUD_DOMEIN}
   KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN-$OUD_TOKEN}
+  OUD_SCHERM=$(sed -n 's/^KASSA_SCHERM=//p' "$ETC/instellingen.env")
+  KASSA_SCHERM=${KASSA_SCHERM:-$OUD_SCHERM}
 fi
 
 # ───────────────────────── Pakketten ─────────────────────────
@@ -74,6 +80,7 @@ cat > "$ETC/instellingen.env" <<EOF
 KASSA_REPO=$REPO
 KASSA_DOMEIN=${KASSA_DOMEIN:-}
 KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN:-}
+KASSA_SCHERM=${KASSA_SCHERM:-0}
 EOF
 umask 022
 
@@ -199,6 +206,12 @@ SITE_BLOK='
 		try_files {path} /index.html
 		file_server
 	}'
+# Voor het eigen scherm van de server (scherm.sh): alleen vanaf de server zelf bereikbaar.
+# http://localhost telt voor de browser als beveiligd, dus daar is geen certificaat nodig.
+SCHERM_BLOK="http://localhost:8080 {
+	bind 127.0.0.1
+$SITE_BLOK
+}"
 if [ -n "${KASSA_DOMEIN:-}" ]; then
   [ -n "${KASSA_DUCKDNS_TOKEN:-}" ] || fout "KASSA_DUCKDNS_TOKEN ontbreekt"
   "$OPT/bin/duckdns.sh" installeer "$KASSA_DOMEIN" "$KASSA_DUCKDNS_TOKEN"
@@ -211,6 +224,7 @@ $SITE_BLOK
 http:// {
 	redir https://$KASSA_DOMEIN{uri}
 }
+$SCHERM_BLOK
 EOF
 else
   cat > /etc/caddy/Caddyfile <<EOF
@@ -245,6 +259,7 @@ http:// {
 http://127.0.0.1:8765 {
 	respond 200
 }
+$SCHERM_BLOK
 EOF
 fi
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 || { caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; fout "Caddy-instellingen ongeldig"; }
@@ -343,6 +358,18 @@ curl --noproxy "*" -fsS -o /dev/null http://127.0.0.1:3000/ || fout "Database-AP
 "$OPT/bin/backup.sh" >/dev/null
 "$OPT/bin/bijwerker.sh" || true   # versie meteen doorgeven aan de app
 
+# Eigen scherm aan de server (--scherm): na elke installatie opnieuw starten met de nieuwe versie.
+if [ "${KASSA_SCHERM:-0}" = 1 ]; then
+  stap "Eigen scherm instellen"
+  if [ -d /run/systemd/system ]; then
+    "$OPT/bin/scherm.sh" aan || echo "Het eigen scherm kon niet worden ingesteld; de kassa werkt wel via telefoons en tablets."
+  else
+    echo "Geen systemd: eigen scherm overgeslagen."
+  fi
+elif [ -f /etc/systemd/system/kassa-scherm.service ]; then
+  "$OPT/bin/scherm.sh" uit
+fi
+
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 printf '\n\033[1;32mKlaar!\033[0m\n\n'
 if [ -n "${KASSA_DOMEIN:-}" ]; then
@@ -353,6 +380,7 @@ else
   echo "2. Daarna is de kassa:               https://$IP"
 fi
 echo
+[ -f /etc/systemd/system/kassa-scherm.service ] && echo "Eigen scherm: de kassa staat ook op het scherm van deze server (onderhoud: Ctrl+Alt+F2)."
 echo "Het eerste account dat je aanmaakt wordt beheerder."
 echo "Back-ups: elk uur in /var/backups/kassa (en op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
 echo "Bijwerken naar een nieuwe versie:    in de app bij Beheer → Instellingen, of $OPT/bin/bijwerken.sh (als root)"

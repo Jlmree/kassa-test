@@ -17,20 +17,59 @@ const SESSIE = 'bar-kassa-proef-sessie';
 // ─── Database ───
 
 let dbP: Promise<PGlite> | null = null;
-const db = () => (dbP ??= openen());
+const db = () => (dbP ??= openen().catch((e) => { dbP = null; throw e; }));
 
 async function openen() {
   const [{ PGlite }, { pgcrypto }] = await Promise.all([import('@electric-sql/pglite'), import('@electric-sql/pglite/contrib/pgcrypto')]);
-  let d: PGlite;
+  const maak = async (opslag: boolean) => {
+    try {
+      if (opslag) return await PGlite.create(OPSLAG, { extensions: { pgcrypto } });
+    } catch { /* geen opslag in de browser (bijv. privévenster) */ }
+    return PGlite.create({ extensions: { pgcrypto } });
+  };
+  let d = await maak(true);
   try {
-    d = await PGlite.create(OPSLAG, { extensions: { pgcrypto } });
+    if (await toestand(d) === 'klaar') await bijwerken(d);
+    else {
+      // Leeg, of half klaargezet doordat de pagina de vorige keer te vroeg dicht ging: opnieuw beginnen.
+      if (await toestand(d) === 'half') { await d.close(); await wisOpslag(); d = await maak(true); }
+      await klaarzetten(d);
+    }
   } catch {
-    // Geen opslag in de browser (bijv. privévenster): dan alleen in het geheugen.
-    d = await PGlite.create({ extensions: { pgcrypto } });
+    // Iets klopt niet aan de opgeslagen proefdatabase: weggooien en vers beginnen.
+    try { await d.close(); } catch { /* al dicht */ }
+    await wisOpslag();
+    d = await maak(true);
+    await klaarzetten(d);
   }
-  const nieuw = !(await d.query<{ ok: boolean }>(`select to_regclass('extensions.proef_migraties') is not null as ok`)).rows[0].ok;
-  if (nieuw) await d.exec(opzet + `\ncreate table extensions.proef_migraties (naam text primary key);`);
-  // Nieuwe schemawijzigingen ook in een bestaande proefdatabase doorvoeren.
+  return d;
+}
+
+// 'leeg' = vers, 'klaar' = met voorbeeldgegevens, 'half' = onderbroken bij het klaarzetten.
+async function toestand(d: PGlite) {
+  const { rows } = await d.query<{ auth: boolean; klaar: boolean }>(`select
+    exists (select 1 from pg_roles where rolname = 'authenticated') as auth,
+    to_regclass('extensions.proef_migraties') is not null and to_regclass('auth.users') is not null as klaar`);
+  if (!rows[0].auth) return 'leeg';
+  if (!rows[0].klaar) return 'half';
+  const n = await d.query<{ n: number }>(`select count(*)::int as n from auth.users`);
+  return n.rows[0].n > 0 ? 'klaar' : 'half';
+}
+
+// Alles in één transactie: wordt de pagina halverwege gesloten, dan blijft er niets half achter.
+async function klaarzetten(d: PGlite) {
+  await d.transaction(async (tx) => {
+    await tx.exec(opzet + `\ncreate table extensions.proef_migraties (naam text primary key);`);
+    for (const [naam, sql] of migraties) {
+      await tx.exec(sql);
+      await tx.query(`insert into extensions.proef_migraties values ($1)`, [naam]);
+    }
+    await tx.exec(vulling);
+  });
+}
+
+// Nieuwe schemawijzigingen ook in een bestaande proefdatabase doorvoeren, elk in één keer.
+async function bijwerken(d: PGlite) {
   for (const [naam, sql] of migraties) {
     const { rows } = await d.query(`select 1 from extensions.proef_migraties where naam = $1`, [naam]);
     if (rows.length) continue;
@@ -39,8 +78,16 @@ async function openen() {
       await tx.query(`insert into extensions.proef_migraties values ($1)`, [naam]);
     });
   }
-  if (nieuw) await d.exec(vulling);
-  return d;
+}
+
+async function wisOpslag() {
+  const naam = OPSLAG.slice('idb://'.length);
+  const dbs = await indexedDB.databases?.().catch(() => []) ?? [];
+  const weg = [...new Set([...dbs.map((x) => x.name ?? '').filter((n) => n.endsWith(naam)), '/pglite/' + naam])];
+  await Promise.all(weg.map((n) => new Promise<void>((klaar) => {
+    const r = indexedDB.deleteDatabase(n);
+    r.onsuccess = r.onerror = r.onblocked = () => klaar();
+  })));
 }
 
 // Een query uitvoeren zoals PostgREST dat doet: als rol "authenticated" met
@@ -193,7 +240,16 @@ async function zoek(email: string, ww: string) {
 }
 
 const auth = {
-  async getSession() { return { data: { session: huidig() }, error: null }; },
+  async getSession() {
+    const s = huidig();
+    if (!s) return { data: { session: null }, error: null };
+    // Bestaat dit account nog? Na opnieuw klaarzetten hoort een oude inlog er niet meer bij.
+    try {
+      const { rows } = await (await db()).query(`select 1 from auth.users where id = $1`, [s.user.id]);
+      if (!rows.length) { zetSessie(null); return { data: { session: null }, error: null }; }
+    } catch { /* database start niet: het inlogscherm meldt dat */ }
+    return { data: { session: s }, error: null };
+  },
   onAuthStateChange(f: Luisteraar) {
     luisteraars.add(f);
     return { data: { subscription: { unsubscribe: () => luisteraars.delete(f) } } };
@@ -235,15 +291,9 @@ export const proefClient = { from: (t: string) => new Lezen(t), rpc, auth } as u
 // Alles wissen en opnieuw beginnen met de voorbeeldgegevens.
 export async function proefOpnieuw() {
   zetSessie(null);
-  try { (await db()).close(); } catch { /* al dicht */ }
+  try { (await dbP)?.close(); } catch { /* al dicht */ }
   dbP = null;
-  const naam = OPSLAG.slice('idb://'.length);
-  const dbs = await indexedDB.databases?.().catch(() => []) ?? [];
-  const weg = [...new Set([...dbs.map((d) => d.name ?? '').filter((n) => n.endsWith(naam)), '/pglite/' + naam])];
-  await Promise.all(weg.map((n) => new Promise<void>((klaar) => {
-    const r = indexedDB.deleteDatabase(n);
-    r.onsuccess = r.onerror = r.onblocked = () => klaar();
-  })));
+  await wisOpslag();
   location.reload();
 }
 

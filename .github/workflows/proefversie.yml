@@ -27,6 +27,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run test:proef
       - run: npm run build:proef
       - uses: actions/upload-pages-artifact@v3
         with:

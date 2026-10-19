@@ -1,5 +1,15 @@
 [
   {
+    "datum": "2026-10-19",
+    "titel": "Proefversie werkt weer; kassa op het eigen scherm van de server",
+    "punten": [
+      "Inloggen in de proefversie lukte op maandag en dinsdag niet: het klaarzetten van de voorbeeldgegevens liep vast. Dat is opgelost.",
+      "Wordt de proefversie de eerste keer te vroeg gesloten, dan wordt hij de volgende keer vanzelf opnieuw klaargezet.",
+      "De kassa kan nu ook op een eigen (aanraak)scherm aan de server, zoals de HP t620: installeren met --scherm.",
+      "Op een groot scherm zijn de knoppen groter."
+    ]
+  },
+  {
     "datum": "2026-10-20",
     "titel": "Zien wat er nieuw is",
     "punten": [

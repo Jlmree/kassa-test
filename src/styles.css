@@ -57,6 +57,14 @@ nav button.on { color: var(--acc); box-shadow: inset 0 3px 0 var(--acc); }
 .tile.op { opacity: .45; }
 .tile .nm { font-weight: 600; font-size: 17px; padding-right: 26px; }
 .tile .pr { color: var(--mu); }
+/* Groot (aanraak)scherm, zoals aan de bar op de server: grotere knoppen. */
+@media (min-width: 900px) and (pointer: coarse), (min-width: 900px) and (min-height: 700px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .tile { min-height: 110px; padding: 16px 14px; }
+  .tile .nm { font-size: 20px; }
+  .chips button { padding: 11px 20px; font-size: 17px; }
+  nav button { padding: 16px 2px; font-size: 16px; }
+}
 .stock.laag { color: var(--warn); font-weight: 600; }
 .bd { position: absolute; top: 8px; right: 8px; background: var(--sun); color: #1b2927; font-style: normal; font-weight: 800; min-width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; padding: 0 6px; }
 
