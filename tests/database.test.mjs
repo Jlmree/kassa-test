@@ -53,6 +53,16 @@ test('beheerder keurt medewerker goed', async () => {
   assert.equal(producten.length, 8);
 });
 
+test('elk product heeft een voorraad', async () => {
+  assert.ok(producten.every((p) => p.voorraad_bijhouden));
+  // Beginstand voor de tests hieronder: van alles 100.
+  for (const p of producten) await rpc(baas, 'voorraad_boeken', { p_product_id: p.id, p_aantal: 100, p_soort: 'telling' });
+  const id = await rpc(baas, 'product_opslaan', { p: { naam: 'Spa rood', prijs_cent: 150, categorie: 'Drinken', voorraad: 12, voorraad_bijhouden: false } });
+  const { data: nieuw } = await bar.from('producten').select('voorraad,voorraad_bijhouden').eq('id', id).single();
+  assert.deepEqual(nieuw, { voorraad: 12, voorraad_bijhouden: true });
+  await rpc(baas, 'product_verwijderen', { p_id: id });
+});
+
 test('rechtstreeks schrijven in tabellen kan niet', async () => {
   const { error: e1 } = await bar.from('producten').update({ prijs_cent: 1 }).eq('id', product('Bier').id);
   assert.ok(e1);
@@ -128,12 +138,13 @@ test('geblokkeerde kaart', async () => {
 
 test('voorraad: levering, verkoop, rekening, annuleren', async () => {
   const bier = product('Bier').id;
-  assert.equal(await rpc(baas, 'voorraad_boeken', { p_product_id: bier, p_aantal: 24, p_soort: 'levering' }), 24);
-  const bon = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: bier, aantal: 2 }], p_betalingen: [{ methode: 'pin' }] });
   const stand = async () => (await bar.from('producten').select('voorraad').eq('id', bier).single()).data.voorraad;
-  assert.equal(await stand(), 22);
+  const begin = await stand();
+  assert.equal(await rpc(baas, 'voorraad_boeken', { p_product_id: bier, p_aantal: 24, p_soort: 'levering' }), begin + 24);
+  const bon = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: bier, aantal: 2 }], p_betalingen: [{ methode: 'pin' }] });
+  assert.equal(await stand(), begin + 22);
   await rpc(bar, 'verkoop_annuleren', { p_verkoop_id: bon.id });
-  assert.equal(await stand(), 24);
+  assert.equal(await stand(), begin + 24);
   await faalt(rpc(bar, 'verkoop_annuleren', { p_verkoop_id: bon.id }), 'al geannuleerd');
   assert.equal(await rpc(baas, 'voorraad_boeken', { p_product_id: bier, p_aantal: 20, p_soort: 'telling' }), 20);
 });
