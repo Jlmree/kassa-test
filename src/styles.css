@@ -57,6 +57,8 @@ nav button.on { color: var(--acc); box-shadow: inset 0 3px 0 var(--acc); }
 .tile.op { opacity: .45; }
 .tile .nm { font-weight: 600; font-size: 17px; padding-right: 26px; }
 .tile .pr { color: var(--mu); }
+.cat { margin: 14px 0 8px; font-size: 15px; font-weight: 700; color: var(--mu); text-transform: uppercase; letter-spacing: .04em; }
+section:first-of-type > .cat { margin-top: 2px; }
 /* Groot (aanraak)scherm, zoals aan de bar op de server: grotere knoppen. */
 @media (min-width: 900px) and (pointer: coarse), (min-width: 900px) and (min-height: 700px) {
   .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
