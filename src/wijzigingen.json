@@ -1,6 +1,16 @@
 [
   {
     "datum": "2026-10-19",
+    "titel": "Elk product heeft een voorraad",
+    "punten": [
+      "Let op: producten waarvan de voorraad nog niet werd bijgehouden, staan na deze update op voorraad 0 en zijn dus 'op'. Tel ze meteen na het bijwerken: Beheer → Producten → tik op het product → = Geteld.",
+      "Voorraad bijhouden staat nu altijd aan; het vinkje is weg.",
+      "Bij een nieuw product vul je meteen in hoeveel er is.",
+      "Bij Beheer → Producten staat bovenaan welke producten op of bijna op zijn."
+    ]
+  },
+  {
+    "datum": "2026-10-19",
     "titel": "Alle producten op één scherm",
     "punten": [
       "Bij Kassa staat nu eerst het tabblad Alles: alle producten op één scherm, per categorie onder een kopje.",

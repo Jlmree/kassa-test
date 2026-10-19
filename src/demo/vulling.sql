@@ -9,9 +9,8 @@ insert into auth.users (email, encrypted_password, raw_user_meta_data) values
   ('kees@kassa.lokaal', extensions.crypt('proef1234', extensions.gen_salt('bf', 4)), '{"naam": "Kees"}');
 update public.profielen set rol = 'medewerker' where naam = 'Anna';
 update public.instellingen set naam = 'Café De Proef';
-update public.producten set voorraad_bijhouden = true, voorraad = 1000, voorraad_min = 24 where naam = 'Bier';
-update public.producten set voorraad_bijhouden = true, voorraad = 1000, voorraad_min = 12 where naam = 'Frisdrank';
-update public.producten set voorraad_bijhouden = true, voorraad = 1000, voorraad_min = 10 where naam = 'Chips';
+-- Ruim voorraad voor twee weken verkopen; onderaan komt de echte stand.
+update public.producten set voorraad = 1000;
 
 do $$
 declare
@@ -92,7 +91,8 @@ begin
   update public.kaarten set geblokkeerd = true where nummer = 13;
 end $$;
 
--- Voorraad op een geloofwaardige stand; frisdrank bijna op.
-update public.producten set voorraad = 41 where naam = 'Bier';
-update public.producten set voorraad = 8 where naam = 'Frisdrank';
-update public.producten set voorraad = 23 where naam = 'Chips';
+-- Voorraad op een geloofwaardige stand; frisdrank bijna op, bapao op.
+update public.producten p set voorraad = v.voorraad, voorraad_min = v.min
+from (values ('Bier', 41, 24), ('Frisdrank', 8, 12), ('Wijn', 17, 6), ('Koffie', 140, 30),
+             ('Chips', 23, 10), ('Tosti kaas', 12, 5), ('Tosti ham-kaas', 9, 5), ('Bapao', 0, 4)) as v(naam, voorraad, min)
+where p.naam = v.naam;

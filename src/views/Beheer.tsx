@@ -163,14 +163,15 @@ function DienstRij({ d }: { d: Dienst }) {
 function Producten() {
   const { producten } = useData();
   const { open } = useSheet();
-  const laag = producten.filter((p) => p.actief && p.voorraad_bijhouden && p.voorraad <= p.voorraad_min);
+  const laag = producten.filter((p) => p.actief && p.voorraad <= p.voorraad_min);
   const cats = [...new Set(producten.map((p) => p.categorie))];
   return (
     <>
       {laag.length > 0 && (
         <div className="card warnbox">
-          <b>Bijna op</b>
-          {laag.map((p) => <Rij key={p.id} l={p.naam} r={`${p.voorraad} over`} onClick={() => open(<ProductScherm id={p.id} />)} />)}
+          <b>Op of bijna op</b>
+          {laag.map((p) => <Rij key={p.id} l={p.naam} r={p.voorraad <= 0 ? 'op' : `${p.voorraad} over`} onClick={() => open(<ProductScherm id={p.id} />)} />)}
+          <p className="mu">Tik op een product en boek een levering of telling.</p>
         </div>
       )}
       {cats.map((c) => (
@@ -178,7 +179,7 @@ function Producten() {
           <h3 className="s">{c}</h3>
           {producten.filter((p) => p.categorie === c).map((p) => (
             <Rij key={p.id} className={p.actief ? '' : 'vd'} onClick={() => open(<ProductScherm id={p.id} />)}
-              l={<>{p.naam}{p.voorraad_bijhouden && <span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span>}</>}
+              l={<>{p.naam}<span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span></>}
               r={eur(p.prijs_cent)} />
           ))}
         </div>
@@ -195,7 +196,7 @@ function ProductScherm({ id }: { id: number | null }) {
   const p: Partial<Product> = (id != null && producten.find((x) => x.id === id)) || { categorie: producten[0]?.categorie ?? 'Drinken', actief: true };
   const [f, setF] = useState({
     naam: p.naam ?? '', prijs: p.prijs_cent != null ? centTekst(p.prijs_cent) : '', categorie: p.categorie ?? '',
-    volgorde: String(p.volgorde ?? 0), actief: p.actief ?? true, voorraad_bijhouden: p.voorraad_bijhouden ?? false, voorraad_min: String(p.voorraad_min ?? 0),
+    volgorde: String(p.volgorde ?? 0), actief: p.actief ?? true, voorraad: '', voorraad_min: String(p.voorraad_min ?? 0),
   });
   const [aantal, setAantal] = useState('');
   const [bezig, run] = useBezig();
@@ -203,7 +204,10 @@ function ProductScherm({ id }: { id: number | null }) {
     const prijs = naarCent(f.prijs);
     if (!f.naam.trim()) throw new Error('Vul een naam in');
     if (isNaN(prijs) || prijs < 0) throw new Error('Vul een geldige prijs in');
-    await rpc('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, actief: f.actief, volgorde: parseInt(f.volgorde) || 0, voorraad_bijhouden: f.voorraad_bijhouden, voorraad_min: parseInt(f.voorraad_min) || 0 } });
+    // Elk product heeft een voorraad; bij een nieuw product meteen de beginvoorraad.
+    const voorraad = /^\d+$/.test(f.voorraad.trim()) ? parseInt(f.voorraad) : NaN;
+    if (id == null && isNaN(voorraad)) throw new Error('Vul de voorraad in (hoeveel er nu is, ook als dat 0 is)');
+    await rpc('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, actief: f.actief, volgorde: parseInt(f.volgorde) || 0, voorraad: id == null ? voorraad : undefined, voorraad_min: parseInt(f.voorraad_min) || 0 } });
     await herlaad();
     sluit();
     melding('Opgeslagen');
@@ -213,8 +217,6 @@ function ProductScherm({ id }: { id: number | null }) {
     if (isNaN(n)) throw new Error('Vul een aantal in');
     const nieuw = await rpc<number>('voorraad_boeken', { p_product_id: id, p_aantal: n, p_soort: soort });
     setAantal('');
-    // Boeken zet het bijhouden aan; Opslaan mag dat daarna niet weer uitzetten.
-    setF((x) => ({ ...x, voorraad_bijhouden: true }));
     await herlaad();
     melding(`Voorraad is nu ${nieuw}`);
   });
@@ -230,12 +232,12 @@ function ProductScherm({ id }: { id: number | null }) {
       <datalist id="cats">{[...new Set(producten.map((x) => x.categorie))].map((c) => <option key={c} value={c} />)}</datalist>
       <label htmlFor="pv">Volgorde (lager = eerder)</label><input className="f" id="pv" inputMode="numeric" value={f.volgorde} onChange={zet('volgorde')} />
       <label className="check"><input type="checkbox" checked={f.actief} onChange={zet('actief')} /> Tonen in de kassa</label>
-      <label className="check"><input type="checkbox" checked={f.voorraad_bijhouden} onChange={zet('voorraad_bijhouden')} /> Voorraad bijhouden</label>
-      {f.voorraad_bijhouden && (<><label htmlFor="pm">Waarschuwen bij voorraad van</label><input className="f" id="pm" inputMode="numeric" value={f.voorraad_min} onChange={zet('voorraad_min')} /></>)}
+      {id == null && (<><label htmlFor="pvr">Voorraad nu</label><input className="f" id="pvr" inputMode="numeric" placeholder="Hoeveel is er nu?" value={f.voorraad} onChange={zet('voorraad')} /></>)}
+      <label htmlFor="pm">Waarschuwen bij voorraad van</label><input className="f" id="pm" inputMode="numeric" value={f.voorraad_min} onChange={zet('voorraad_min')} />
       <button className="big" disabled={bezig} onClick={opslaan}>Opslaan</button>
       {id != null && (
         <>
-          <h3 className="s">Voorraad{p.voorraad_bijhouden ? `: ${p.voorraad}` : ''}</h3>
+          <h3 className="s">Voorraad: {p.voorraad}</h3>
           <div className="inl">
             <input className="f" inputMode="numeric" placeholder="Aantal" value={aantal} onChange={(e) => setAantal(e.target.value)} aria-label="Aantal" />
             <button disabled={bezig} onClick={() => voorraad('levering')}>+ Levering</button>
@@ -273,7 +275,7 @@ function OudeKassa() {
     <details className="card" style={{ marginTop: 16 }}>
       <summary>Producten overnemen uit de oude kassa</summary>
       {oud && <button className="big alt" disabled={bezig} onClick={() => overnemen(oud)}>Overnemen van dit apparaat</button>}
-      <p className="mu">Of plak een back-up van de oude kassa (Kaarten → Back-up). Kaarten worden niet overgenomen: die krijgen nieuwe, veilige codes.</p>
+      <p className="mu">Of plak een back-up van de oude kassa (Kaarten → Back-up). Kaarten worden niet overgenomen: die krijgen nieuwe, veilige codes. Overgenomen producten beginnen met voorraad 0: tel ze daarna (tik op het product, = Geteld).</p>
       <textarea className="f" value={tekst} onChange={(e) => setTekst(e.target.value)} aria-label="Back-up" />
       <button disabled={bezig || !tekst} onClick={() => overnemen(tekst)}>Overnemen uit back-up</button>
     </details>
