@@ -31,19 +31,17 @@ declare
   n int;
 begin
   perform set_config('request.jwt.claim.sub', demo::text, true);
+  -- Eerst de kaarten, los van welke dagen de bar open was.
+  perform public.kaarten_maken(20);
   for i in reverse 14..0 loop
-    dag := (now() at time zone 'Europe/Amsterdam')::date - i;
+    -- proef.vandaag: alleen voor de test, die alle weekdagen nabootst.
+    dag := coalesce(nullif(current_setting('proef.vandaag', true), '')::date, (now() at time zone 'Europe/Amsterdam')::date) - i;
     -- Maandag en dinsdag dicht.
     continue when i > 0 and extract(isodow from dag) in (1, 2);
     log_id := coalesce((select max(id) from public.logboek), 0);
     wie := case when random() < 0.5 then demo else anna end;
     perform set_config('request.jwt.claim.sub', wie::text, true);
     d := public.dienst_openen(10000);
-    if i = 14 then
-      perform set_config('request.jwt.claim.sub', demo::text, true);
-      perform public.kaarten_maken(20);
-      perform set_config('request.jwt.claim.sub', wie::text, true);
-    end if;
     -- Kaarten opwaarderen.
     for k in 1..(1 + floor(random() * 3))::int loop
       perform public.kaart_opwaarderen((select id from public.kaarten order by random() limit 1),

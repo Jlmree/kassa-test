@@ -74,6 +74,16 @@ bash kassa-installatie.run --duckdns mijnbar.duckdns.org <jouw token>
 
 De kassa krijgt dan een echt certificaat en is bereikbaar op `https://mijnbar.duckdns.org`. Alleen vanaf je eigen wifi: de naam wijst naar het interne adres van de t620. (Sommige routers blokkeren dat; zoek dan in de router naar "DNS-rebind-bescherming" en voeg een uitzondering toe voor de naam.)
 
+### Kassa ook op het scherm van de t620
+
+Wil je aan de bar ook direct op de t620 afrekenen, met een (aanraak)scherm erop aangesloten? Installeer dan met:
+
+```sh
+bash kassa-installatie.run --scherm
+```
+
+De t620 start daarna vanzelf op in de kassa, schermvullend en zonder bureaublad; telefoons en tablets blijven gewoon werken. Log één keer in met een USB-toetsenbord, daarna blijft het scherm ingelogd. Onderhoud aan de t620 zelf: **Ctrl+Alt+F2** geeft een gewone inlog. Uitzetten: `bash kassa-installatie.run --zonder-scherm`. Dit werkt op Debian (op Ubuntu is Chromium alleen als snap te krijgen).
+
 ### 5. Eerste keer
 
 Open de kassa en maak een account aan. Dat eerste account wordt beheerder. Laat daarna je medewerkers zelf een account aanmaken en keur ze goed bij *Beheer → Medewerkers*.
@@ -117,6 +127,7 @@ Alles draait op de t620 zelf, zonder Docker. De app werkt ook met een Supabase-p
 - `server/`: installatie- en onderhoudsscripts; `server/pakket.sh` maakt het installatiebestand `kassa-installatie.run` (uitpakker + app + databasebestanden + PostgREST + Supabase Auth). Bij elke push naar `main` publiceert GitHub Actions het als release.
 - `src/wijzigingen.json`: wat er per versie anders is, in gewone taal (nieuwste bovenaan). Zet bij elke wijziging een punt bovenaan; de app toont het na een update en bij *Bijwerken*, en het gaat mee in de GitHub-release.
 - `supabase/migrations/`: het databaseschema met alle functies en rechten. Nieuwe wijzigingen komen in een nieuw bestand; `bijwerken.sh` voert ze één keer uit.
+- `npm run test:proef` controleert dat de proefversie op elke weekdag goed wordt klaargezet (draait ook vóór elke publicatie).
 - `npm run build:proef` maakt de proefversie (`dist-proef/`): dezelfde app, maar met PostgreSQL in de browser ([PGlite](https://pglite.dev)) in plaats van een server. Het schema, de rechten en alle functies uit `supabase/migrations/` draaien daar ongewijzigd; `src/demo/` bootst het inloggen en de database-API na en vult de voorbeeldgegevens. GitHub Actions publiceert hem bij elke push naar `main` op GitHub Pages (Settings → Pages → Source: *GitHub Actions*).
 - Databasetests (verwachten een lege database):
   `SUPABASE_URL=https://<server> SUPABASE_ANON_KEY=<sleutel uit /opt/kassa/app/config.js> NODE_EXTRA_CA_CERTS=<certificaat> npm run test:db`
