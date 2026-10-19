@@ -204,7 +204,7 @@ async function rpc(fn: string, args: Record<string, unknown> = {}) {
       const w = args[k];
       if (w === null || w === undefined) return null;
       // Lijst met getallen → Postgres-array (int[]); al het andere → JSON.
-      if (Array.isArray(w) && w.every((x) => typeof x === 'number')) return '{' + w.join(',') + '}';
+      if (Array.isArray(w) && w.length > 0 && w.every((x) => typeof x === 'number')) return '{' + w.join(',') + '}';
       return typeof w === 'object' ? JSON.stringify(w) : String(w);
     });
     const sql = `select to_json(public.${naam(fn)}(${namen.map((k, i) => `${naam(k)} => $${i + 1}`).join(', ')})) as v`;

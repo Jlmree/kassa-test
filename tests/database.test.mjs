@@ -179,20 +179,36 @@ test('medewerker annuleert alleen eigen recente bon', async () => {
   await rpc(baas, 'verkoop_annuleren', { p_verkoop_id: bon.id });
 });
 
+test('afrekenen weigert als het bedrag intussen is veranderd', async () => {
+  const id = await rpc(bar, 'rekening_maken', { p_naam: 'Tafel 2' });
+  await rpc(bar, 'rekening_toevoegen', { p_rekening_id: id, p_regels: [{ product_id: product('Koffie').id, aantal: 1 }] });
+  // Het apparaat toont € 1,00; intussen boekt een ander apparaat bij.
+  await rpc(baas, 'rekening_toevoegen', { p_rekening_id: id, p_regels: [{ product_id: product('Koffie').id, aantal: 1 }] });
+  await faalt(rpc(bar, 'afrekenen', { p_rekening_id: id, p_betalingen: [{ methode: 'pin' }], p_verwacht_cent: 100 }), 'intussen veranderd');
+  const bon = await rpc(bar, 'afrekenen', { p_rekening_id: id, p_betalingen: [{ methode: 'pin' }], p_verwacht_cent: 200 });
+  assert.equal(bon.totaal_cent, 200);
+});
+
 test('kassa sluiten: verwacht = begin + contant verkocht + contant opgewaardeerd', async () => {
-  // Contant: 500 (bier+chips) + 800 (rekening Piet); opwaardering contant 1000.
+  // Contant: 500 (bier+chips) + 800 (rekening Piet) + 100 (koffie hieronder); opwaardering contant 1000.
+  const laat = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'contant' }] });
   const d = await rpc(bar, 'dienst_overzicht');
-  assert.equal(d.verwacht_cent, 5000 + 500 + 800 + 1000);
-  const dicht = await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 7250, p_opmerking: 'briefje van 50 cent kwijt' });
+  assert.equal(d.verwacht_cent, 5000 + 500 + 800 + 100 + 1000);
+  const dicht = await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 7350, p_opmerking: 'briefje van 50 cent kwijt' });
   assert.equal(dicht.geteld_cent - dicht.verwacht_cent, -50);
   await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Bier').id, aantal: 1 }], p_betalingen: [{ methode: 'pin' }] }), 'Open eerst');
+  // Na het tellen: een medewerker annuleert geen bon meer; als de beheerder het doet, blijft de telling staan.
+  await faalt(rpc(bar, 'verkoop_annuleren', { p_verkoop_id: laat.id }), 'al gesloten');
+  await rpc(baas, 'verkoop_annuleren', { p_verkoop_id: laat.id });
+  const r = await rpc(baas, 'rapport', { p_van: new Date(Date.now() - 3600e3).toISOString(), p_tot: new Date(Date.now() + 3600e3).toISOString() });
+  assert.equal(r.diensten.find((x) => x.id === dicht.id).verwacht_cent, dicht.verwacht_cent);
 });
 
 test('rapport en logboek alleen voor beheerder', async () => {
   const van = new Date(Date.now() - 3600e3).toISOString(), tot = new Date(Date.now() + 3600e3).toISOString();
   await faalt(rpc(bar, 'rapport', { p_van: van, p_tot: tot }), 'beheerder');
   const r = await rpc(baas, 'rapport', { p_van: van, p_tot: tot });
-  assert.equal(r.geannuleerd, 2);
+  assert.equal(r.geannuleerd, 3);
   assert.ok(r.omzet_cent > 0);
   assert.equal(r.diensten.length, 1);
   assert.deepEqual((await bar.from('logboek').select('*')).data, []);

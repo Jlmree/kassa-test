@@ -25,6 +25,8 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       p_regels: bron.soort === 'bestelling' ? bron.regels : [],
       p_betalingen: betalingen,
       p_rekening_id: bron.soort === 'rekening' ? bron.id : null,
+      // Het bedrag dat hier stond: is het intussen veranderd, dan weigert de kassa.
+      p_verwacht_cent: totaal,
     });
     onKlaar();
     void herlaad();

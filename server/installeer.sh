@@ -25,6 +25,7 @@ fout() { printf '\n\033[1;31mFOUT: %s\033[0m\n' "$*" >&2; exit 1; }
 [ "$(uname -m)" = x86_64 ] || fout "Alleen x86_64 (64-bit pc) wordt ondersteund."
 command -v apt-get >/dev/null || fout "Alleen Debian of Ubuntu wordt ondersteund."
 
+ARGS=("$@")
 while [ $# -gt 0 ]; do
   case "$1" in
     --duckdns) KASSA_DOMEIN=${2:?naam ontbreekt}; KASSA_DUCKDNS_TOKEN=${3:?token ontbreekt}; shift 3 ;;
@@ -42,7 +43,8 @@ if [ -z "${KASSA_BRON:-}" ]; then
   T=$(mktemp -d)
   curl -fL --progress-bar -o "$T/kassa-installatie.run" "https://github.com/$REPO/releases/latest/download/kassa-installatie.run" \
     || fout "Downloaden mislukt. Is er internet?"
-  KASSA_DOMEIN=${KASSA_DOMEIN-} KASSA_DUCKDNS_TOKEN=${KASSA_DUCKDNS_TOKEN-} KASSA_SCHERM=${KASSA_SCHERM-} bash "$T/kassa-installatie.run"
+  # Opties gewoon doorgeven: zonder opties blijven eerdere keuzes (DuckDNS, scherm) staan.
+  bash "$T/kassa-installatie.run" "${ARGS[@]}"
   rm -rf "$T"
   exit 0
 fi
