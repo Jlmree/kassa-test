@@ -1,6 +1,18 @@
 [
   {
     "datum": "2026-10-19",
+    "titel": "Controles na een grote nalooprond",
+    "punten": [
+      "Is het bedrag intussen veranderd (iemand boekte bij op dezelfde rekening, of een prijs werd aangepast), dan rekent de kassa niet af maar meldt het nieuwe bedrag.",
+      "Na het tellen en sluiten van de kassa kan alleen een beheerder nog een bon annuleren; de telling van die dienst blijft dan staan.",
+      "Bedragen met een punt als duizendtal, zoals 1.250, worden goed gelezen (was € 12,50).",
+      "Na een levering of telling bij een product blijft voorraad bijhouden aan, ook als je daarna op Opslaan tikt.",
+      "Proefversie: een open rekening afrekenen lukte niet; nu wel.",
+      "Apparaten laden elke halve minuut ook gewoon opnieuw, zodat een wijziging nooit lang onzichtbaar blijft."
+    ]
+  },
+  {
+    "datum": "2026-10-19",
     "titel": "Proefversie werkt weer; kassa op het eigen scherm van de server",
     "punten": [
       "Inloggen in de proefversie lukte op maandag en dinsdag niet: het klaarzetten van de voorbeeldgegevens liep vast. Dat is opgelost.",

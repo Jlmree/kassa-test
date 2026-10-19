@@ -24,6 +24,7 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
   const opnieuw = useRef(false);
   // Stand van de wijzigingsteller bij de laatste lading.
   const versie = useRef<number | null>(null);
+  const geladenOp = useRef(0);
 
   const herlaad = useCallback(async () => {
     // Lopende lading? Dan daarna nog één keer, zodat niets gemist wordt.
@@ -44,6 +45,7 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           dienst, winkel: (inst as { naam: string } | null)?.naam ?? 'Bar', geladen: true, verbonden: true,
         });
         versie.current = v;
+        geladenOp.current = Date.now();
       } catch {
         setS((x) => ({ ...x, geladen: true, verbonden: false }));
       } finally {
@@ -62,7 +64,9 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
     const kijk = async () => {
       if (document.visibilityState === 'visible') {
         try {
-          if ((await rpc<number>('versie')) !== versie.current) await herlaad();
+          // Ook elke halve minuut gewoon opnieuw: een wijziging die net tijdens het laden
+          // werd opgeslagen, blijft zo nooit lang onzichtbaar.
+          if ((await rpc<number>('versie')) !== versie.current || Date.now() - geladenOp.current > 30000) await herlaad();
           else setS((x) => (x.verbonden ? x : { ...x, verbonden: true }));
         } catch {
           setS((x) => ({ ...x, verbonden: false }));

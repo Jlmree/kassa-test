@@ -81,13 +81,13 @@ const fmt = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' 
 export const eur = (c: number) => fmt.format(c / 100);
 export const totaal = (l: { prijs_cent: number; aantal: number }[]) => l.reduce((a, r) => a + r.prijs_cent * r.aantal, 0);
 
-/** "7,50", "7.50" of "1.250,00" → centen. Ongeldig → NaN. */
+/** "7,50", "7.50", "1.000" of "1.250,00" → centen. Ongeldig → NaN. */
 export function naarCent(v: string): number {
   let s = v.trim().replace(/[€\s]/g, '');
-  if (!s) return NaN;
-  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
-  const n = Number(s);
-  return Number.isFinite(n) ? Math.round(n * 100) : NaN;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); // 1.250,00
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); // 1.000 = duizend
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return NaN;
+  return Math.round(Number(s) * 100);
 }
 export const centTekst = (c: number) => (c / 100).toFixed(2).replace('.', ',');
 

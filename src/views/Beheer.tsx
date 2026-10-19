@@ -213,6 +213,8 @@ function ProductScherm({ id }: { id: number | null }) {
     if (isNaN(n)) throw new Error('Vul een aantal in');
     const nieuw = await rpc<number>('voorraad_boeken', { p_product_id: id, p_aantal: n, p_soort: soort });
     setAantal('');
+    // Boeken zet het bijhouden aan; Opslaan mag dat daarna niet weer uitzetten.
+    setF((x) => ({ ...x, voorraad_bijhouden: true }));
     await herlaad();
     melding(`Voorraad is nu ${nieuw}`);
   });
