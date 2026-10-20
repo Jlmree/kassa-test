@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useData } from '../data';
-import { centTekst, datumTijd, eur, lees, methodeNaam, naarCent, rpc, sb, tijd, type Bon, type Dienst as D } from '../lib';
+import { centTekst, datumTijd, eur, lees, methodeNaam, naarCent, rpc, sb, tijd, type Bon, type Dienst as D, type Product } from '../lib';
 import { Bedrag, melding, Rij, useBezig, useSheet } from '../ui';
 import { BonScherm } from './Afrekenen';
 
@@ -14,6 +14,9 @@ function duur(ts: string) {
   const min = Math.max(0, Math.round((Date.now() - Date.parse(ts)) / 60000));
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)} u ${min % 60} min`;
 }
+
+// Staat de kassa al meer dan 12 uur open? Dan is hij waarschijnlijk vorige keer niet gesloten.
+export const teLangOpen = (d: D | null) => !!d && Date.now() - Date.parse(d.geopend_ts) > 12 * 3600e3;
 
 // Kasverschil in woorden: klopt, tekort of over.
 export function Verschil({ c }: { c: number }) {
@@ -63,22 +66,73 @@ function DienstOpenen() {
         </div>
       )}
       <LaatsteBonnen />
+      <LeveringKnop />
     </>
   );
 }
 
 function OpenDienst({ d }: { d: D }) {
   const { open } = useSheet();
+  const oud = teLangOpen(d);
   return (
     <>
+      {oud && (
+        <div className="card warnbox">
+          <b>De kassa staat al open sinds {datumTijd(d.geopend_ts)}</b>
+          <p className="mu">Is hij vorige keer niet gesloten? Sluit en tel hem dan eerst, en open hem daarna opnieuw. Anders komen de verkopen van vandaag bij die oude dienst.</p>
+          <button className="big alt" onClick={() => open(<DienstSluiten />)}>Eerst sluiten en tellen</button>
+        </div>
+      )}
       <div className="hero">
-        <span>Open sinds {tijd(d.geopend_ts)} ({duur(d.geopend_ts)}){d.geopend_door ? ` · ${d.geopend_door}` : ''}</span>
+        <span>Open sinds {oud ? datumTijd(d.geopend_ts) : tijd(d.geopend_ts)} ({duur(d.geopend_ts)}){d.geopend_door ? ` · ${d.geopend_door}` : ''}</span>
         <small>Hoort nu in de la</small>
         <b>{eur(d.verwacht_cent)}</b>
       </div>
       <DienstKaarten d={d} />
-      <button className="big alt" onClick={() => open(<DienstSluiten />)}>Kassa sluiten en tellen</button>
+      {!oud && <button className="big alt" onClick={() => open(<DienstSluiten />)}>Kassa sluiten en tellen</button>}
       <LaatsteBonnen />
+      <LeveringKnop />
+    </>
+  );
+}
+
+function LeveringKnop() {
+  const { open } = useSheet();
+  return <button className="ghost" onClick={() => open(<Levering />)}>Levering inboeken</button>;
+}
+
+/** Een levering inboeken: per product het aantal dat erbij komt. Mag iedere medewerker. */
+function Levering() {
+  const { producten, herlaad } = useData();
+  const { sluit } = useSheet();
+  const [aantal, setAantal] = useState<Record<number, string>>({});
+  const [bezig, run] = useBezig();
+  const lijst = producten.filter((p) => !p.verwijderd).sort((a, b) => a.categorie.localeCompare(b.categorie) || a.volgorde - b.volgorde);
+  const gekozen = lijst.filter((p) => (parseInt(aantal[p.id] || '0') || 0) > 0);
+  const inboeken = () => run(async () => {
+    if (!gekozen.length) throw new Error('Vul bij minstens één product een aantal in');
+    for (const p of gekozen) {
+      await rpc('voorraad_boeken', { p_product_id: p.id, p_aantal: parseInt(aantal[p.id]), p_soort: 'levering' });
+    }
+    await herlaad();
+    sluit();
+    melding('Ingeboekt: ' + gekozen.map((p) => `${aantal[p.id]}× ${p.naam}`).join(', '));
+  });
+  const rij = (p: Product) => (
+    <label key={p.id}>
+      <span>{p.naam} <small className="mu">nu {p.voorraad}</small></span>
+      <input className="f" inputMode="numeric" placeholder="0" value={aantal[p.id] ?? ''} aria-label={`Geleverd: ${p.naam}`}
+        onChange={(e) => setAantal({ ...aantal, [p.id]: e.target.value.replace(/\D/g, '').slice(0, 5) })} />
+    </label>
+  );
+  return (
+    <>
+      <h2>Levering inboeken</h2>
+      <p className="mu">Vul in hoeveel er van elk product is binnengekomen; dat komt bij de voorraad. Klopt de voorraad helemaal niet, dan telt een beheerder hem bij Beheer → Producten.</p>
+      <div className="tel lev">{lijst.map(rij)}</div>
+      <button className="big" disabled={bezig || !gekozen.length} onClick={inboeken}>
+        {gekozen.length ? `${gekozen.length} ${gekozen.length === 1 ? 'product' : 'producten'} inboeken` : 'Inboeken'}
+      </button>
     </>
   );
 }
@@ -140,7 +194,7 @@ export function DienstKaarten({ d }: { d: D }) {
 const munten = [5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5];
 
 function DienstSluiten() {
-  const { dienst, herlaad } = useData();
+  const { dienst, herlaad, rekeningen, regels } = useData();
   const { open } = useSheet();
   const [stuks, setStuks] = useState<Record<number, string>>({});
   const [los, setLos] = useState('');
@@ -158,6 +212,15 @@ function DienstSluiten() {
   return (
     <>
       <h2>Kassa sluiten</h2>
+      {rekeningen.length > 0 && (
+        <div className="card warnbox">
+          <b>Nog {rekeningen.length === 1 ? '1 rekening' : `${rekeningen.length} rekeningen`} open</b>
+          {rekeningen.map((r) => (
+            <Rij key={r.id} l={r.naam} r={eur(regels.filter((x) => x.rekening_id === r.id).reduce((a, x) => a + x.prijs_cent * x.aantal, 0))} />
+          ))}
+          <p className="mu">Reken ze eerst af bij Rekeningen, of laat ze bewust openstaan. Wat nog open staat, telt niet mee in deze telling.</p>
+        </div>
+      )}
       <div className="hero klein"><small>Hoort in de la</small><b>{eur(dienst.verwacht_cent)}</b></div>
       <p className="mu">Tel het geld in de la: vul per munt of biljet het aantal in.</p>
       <div className="tel">

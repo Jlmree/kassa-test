@@ -217,6 +217,48 @@ test('afrekenen weigert als het bedrag intussen is veranderd', async () => {
   assert.equal(bon.totaal_cent, 200);
 });
 
+test('dezelfde bestelling of opwaardering twee keer verstuurd: één keer geboekt', async () => {
+  const bier = product('Bier').id;
+  const stand = async () => (await bar.from('producten').select('voorraad').eq('id', bier).single()).data.voorraad;
+  const begin = await stand();
+  const p_sleutel = crypto.randomUUID();
+  const a = { p_regels: [{ product_id: bier, aantal: 2 }], p_betalingen: [{ methode: 'pin' }], p_verwacht_cent: 400, p_sleutel };
+  // Tegelijk (haperende wifi) en daarna nog eens.
+  const [x, y] = await Promise.all([rpc(bar, 'afrekenen', a), rpc(bar, 'afrekenen', a)]);
+  const z = await rpc(bar, 'afrekenen', a);
+  assert.equal(x.bonnummer, y.bonnummer);
+  assert.equal(x.bonnummer, z.bonnummer);
+  assert.equal(await stand(), begin - 2);
+  // Een ander kenmerk is een nieuwe bon.
+  const nieuw = await rpc(bar, 'afrekenen', { ...a, p_sleutel: crypto.randomUUID() });
+  assert.notEqual(nieuw.bonnummer, x.bonnummer);
+
+  const info = await rpc(bar, 'kaart_info', { p_zoek: kaart.code });
+  const o = { p_kaart_id: info.id, p_bedrag_cent: 500, p_methode: 'pin', p_sleutel: crypto.randomUUID() };
+  const [s1, s2] = await Promise.all([rpc(bar, 'kaart_opwaarderen', o), rpc(bar, 'kaart_opwaarderen', o)]);
+  assert.equal(s1, info.saldo_cent + 500);
+  assert.equal(s2, s1);
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: kaart.code })).saldo_cent, info.saldo_cent + 500);
+  // Zonder kenmerk werkt het zoals altijd (oudere app).
+  assert.equal(await rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 100, p_methode: 'pin' }), info.saldo_cent + 600);
+});
+
+test('medewerker boekt een levering in, maar telt niet', async () => {
+  const cola = product('Frisdrank').id;
+  const voor = (await bar.from('producten').select('voorraad').eq('id', cola).single()).data.voorraad;
+  assert.equal(await rpc(bar, 'voorraad_boeken', { p_product_id: cola, p_aantal: 24, p_soort: 'levering' }), voor + 24);
+  await faalt(rpc(bar, 'voorraad_boeken', { p_product_id: cola, p_aantal: 5, p_soort: 'telling' }), 'beheerder');
+  const { data: log } = await baas.from('logboek').select('actie,details,door_naam').eq('actie', 'levering');
+  assert.deepEqual(log.at(-1), { actie: 'levering', details: { product: 'Frisdrank', aantal: 24 }, door_naam: 'Bar' });
+});
+
+test('rapport: een verkoop na middernacht hoort bij de avond ervoor', async () => {
+  const r = await rpc(baas, 'rapport', { p_van: new Date(Date.now() - 86400e3 * 2).toISOString(), p_tot: new Date(Date.now() + 3600e3).toISOString() });
+  // Alle verkopen van deze test zijn "nu"; voor 06:00 vallen ze onder gisteren.
+  const verwacht = new Date(Date.now() - 6 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  assert.deepEqual(r.per_dag.map((d) => d.dag), [verwacht]);
+});
+
 test('kassa sluiten: verwacht = begin + contant verkocht + contant opgewaardeerd', async () => {
   // Contant: 500 (bier+chips) + 800 (rekening Piet) + 100 (koffie hieronder); opwaardering contant 1000.
   const laat = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'contant' }] });

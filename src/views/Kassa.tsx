@@ -1,8 +1,9 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { useData } from '../data';
-import { eur, rpc, totaal, type Product } from '../lib';
+import { datumTijd, eur, rpc, totaal, type Product } from '../lib';
 import { melding, Rij, useBezig, useSheet } from '../ui';
 import { Afrekenen } from './Afrekenen';
+import { teLangOpen } from './Dienst';
 
 export type Mand = Record<number, number>;
 
@@ -38,6 +39,9 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
       {!dienst && !rek && (
         <button className="banner" onClick={naarDienst}><span>De kassa is nog dicht</span><b>Openen</b></button>
       )}
+      {teLangOpen(dienst) && !rek && (
+        <button className="banner" onClick={naarDienst}><span>De kassa staat al open sinds {datumTijd(dienst!.geopend_ts)}</span><b>Eerst sluiten</b></button>
+      )}
       {rek && (
         <div className="banner"><span>Bestelling voor {rek.naam}</span><button onClick={() => { setDoel(null); setMand({}); }}>Stoppen</button></div>
       )}
@@ -63,7 +67,8 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
 // Niet meer aantikken dan er op voorraad is (de database controleert het ook).
 function kanErbij(p: Product, inMand: number) {
   if (!p.voorraad_bijhouden || inMand < p.voorraad) return true;
-  melding(p.voorraad <= 0 ? `${p.naam} is op` : `Er ${p.voorraad === 1 ? 'is' : 'zijn'} nog maar ${p.voorraad} ${p.naam} op voorraad`);
+  melding((p.voorraad <= 0 ? `${p.naam} is op.` : `Er ${p.voorraad === 1 ? 'is' : 'zijn'} nog maar ${p.voorraad} ${p.naam} op voorraad.`)
+    + ' Net geleverd? Boek het in bij Dienst → Levering inboeken.');
   return false;
 }
 
