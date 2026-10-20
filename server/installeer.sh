@@ -118,14 +118,6 @@ fi
 # shellcheck disable=SC1091
 . "$ETC/geheim.env"
 
-b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
-jwt() { # rol geheim
-  local h p
-  h=$(printf '{"alg":"HS256","typ":"JWT"}' | b64url)
-  p=$(printf '{"role":"%s","iss":"kassa","iat":1700000000,"exp":4102444800}' "$1" | b64url)
-  printf '%s.%s.%s' "$h" "$p" "$(printf '%s.%s' "$h" "$p" | openssl dgst -sha256 -hmac "$2" -binary | b64url)"
-}
-
 # ───────────────────────── Database ─────────────────────────
 stap "Database inrichten"
 command -v systemctl >/dev/null && [ -d /run/systemd/system ] && systemctl enable --now postgresql >/dev/null 2>&1 || true
@@ -379,6 +371,23 @@ done
 "$OPT/bin/backup.sh" >/dev/null
 "$OPT/bin/bijwerker.sh" || true   # versie meteen doorgeven aan de app
 
+# Nog geen beheerder? Dan maak je die hier aan, op de server zelf. Een account dat
+# via de app wordt aangemaakt, wordt daarna nooit meer vanzelf beheerder (anders
+# kan een onbekende je via internet voor zijn).
+ZONDER_BEHEERDER=""
+for n in $KASSAS; do
+  kassa_paden "$n"
+  if [ "$(su postgres -c "psql -d $K_DB -Atc \"select count(*) from public.profielen where rol = 'beheerder' and actief\"")" = 0 ]; then
+    su postgres -c "psql -d $K_DB -qc 'update public.instellingen set eerste_account_wordt_beheerder = false'"
+    if [ -t 0 ] && { [ "$n" = "$NAAM" ] || [ -z "$NAAM" ]; }; then
+      stap "Beheerder aanmaken voor $n"
+      "$OPT/bin/kassas.sh" beheerder "$n" || ZONDER_BEHEERDER+=" $n"
+    else
+      ZONDER_BEHEERDER+=" $n"
+    fi
+  fi
+done
+
 # Eigen scherm aan de server (--scherm, alleen de eerste kassa): na elke installatie opnieuw starten met de nieuwe versie.
 SCHERM=0
 if grep -qx kassa <<<"$KASSAS"; then kassa_paden kassa; SCHERM=$(kassa_lees KASSA_SCHERM); fi
@@ -409,7 +418,10 @@ for n in $KASSAS; do
   echo
 done
 [ -f /etc/systemd/system/kassa-scherm.service ] && echo "Eigen scherm: de kassa staat ook op het scherm van deze server (onderhoud: Ctrl+Alt+F2)."
-echo "Het eerste account dat je aanmaakt wordt beheerder. Doe dat meteen, zeker als de kassa via internet bereikbaar is."
+for n in $ZONDER_BEHEERDER; do
+  echo "Kassa $n heeft nog geen beheerder. Maak die aan met:  $OPT/bin/kassas.sh beheerder $n"
+done
+echo "Medewerkers maken in de app zelf een account aan; de beheerder keurt ze goed bij Beheer → Medewerkers."
 echo "Back-ups: elk uur in /var/backups/kassa (en op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
 echo "Bijwerken naar een nieuwe versie:    in de app bij Beheer → Instellingen, of $OPT/bin/bijwerken.sh (als root)"
 [ "$(wc -l <<<"$KASSAS")" -gt 1 ] && echo "Overzicht van de kassa's op deze server: $OPT/bin/kassas.sh"

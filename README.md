@@ -24,7 +24,7 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
 - Rollen:
   - **Medewerker**: afrekenen, rekeningen, kaarten opwaarderen en blokkeren, kassa openen/sluiten, eigen bon annuleren binnen 15 minuten, bonnen van vandaag bekijken.
   - **Beheerder**: daarnaast producten, prijzen en voorraad, kaarten maken, alle bonnen annuleren, kaarten deblokkeren, rapporten, logboek en medewerkers.
-- Het allereerste account wordt beheerder. Alle volgende accounts hebben geen toegang totdat een beheerder ze goedkeurt.
+- De beheerder wordt bij het installeren op de server zelf aangemaakt. Accounts die in de app worden aangemaakt, hebben geen toegang totdat een beheerder ze goedkeurt; zo kan niemand via internet als eerste beheerder worden.
 - De database is alleen vanaf de server zelf bereikbaar; telefoons praten uitsluitend via https met de webserver.
 
 ## Installeren op de HP t620
@@ -86,7 +86,7 @@ De t620 start daarna vanzelf op in de kassa, schermvullend en zonder bureaublad;
 
 ### 5. Eerste keer
 
-Open de kassa en maak een account aan. Dat eerste account wordt beheerder. Laat daarna je medewerkers zelf een account aanmaken en keur ze goed bij *Beheer → Medewerkers*.
+Aan het eind van de installatie vraagt het script een naam en wachtwoord voor de beheerder; daarmee log je in de app in. (Overgeslagen? Dan later met `/opt/kassa/bin/kassas.sh beheerder`.) Laat daarna je medewerkers zelf een account aanmaken in de app en keur ze goed bij *Beheer → Medewerkers*.
 
 ## Op een cloudserver, ook voor meerdere verenigingen
 
@@ -102,7 +102,7 @@ bash kassa-installatie.run --naam tennis  --domein tennis.mijndomein.nl
 
 - Elke kassa heeft een **eigen database, eigen accounts, eigen sleutel en eigen back-ups**. Een account of login van de ene kassa werkt nooit bij een andere.
 - De server haalt per adres zelf een echt certificaat (Let's Encrypt); poort 80 en 443 moeten open staan.
-- Een naam is 2 tot 20 kleine letters of cijfers. Wie als eerste een account aanmaakt, wordt beheerder van die kassa: doe dat dus meteen na het installeren.
+- Een naam is 2 tot 20 kleine letters of cijfers. Aan het eind vraagt de installatie een naam en wachtwoord voor de beheerder van die kassa (later kan het met `/opt/kassa/bin/kassas.sh beheerder <naam>`).
 - Bijwerken (in de app of met `bijwerken.sh`) werkt alle kassa's op de server tegelijk bij.
 - Overzicht: `/opt/kassa/bin/kassas.sh` toont per kassa het adres, aantal accounts, omzet van de laatste 30 dagen en de laatste back-up. Een kassa weghalen: `/opt/kassa/bin/kassas.sh verwijderen tennis` (er blijft een laatste back-up staan).
 - Back-ups staan per kassa in `/var/backups/kassa/<naam>/`. Terugzetten gaat met hetzelfde `terugzetten.sh`; aan de bestandsnaam ziet het bij welke kassa de back-up hoort.
@@ -123,6 +123,7 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 | Wat | Hoe |
 | --- | --- |
 | Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
+| Beheerder aanmaken, of weer binnenkomen als je het wachtwoord van de enige beheerder kwijt bent | `/opt/kassa/bin/kassas.sh beheerder` (een kassa op naam: `kassas.sh beheerder <naam>`) |
 | Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
 | Nieuwe versie installeren | In de app: *Beheer → Instellingen → Bijwerken* (de t620 heeft daarvoor internet nodig). Of op de t620: `/opt/kassa/bin/bijwerken.sh`, of zonder internet `/opt/kassa/bin/bijwerken.sh <pad naar kassa-installatie.run>` vanaf een USB-stick. Er wordt altijd eerst een back-up gemaakt; je gegevens blijven staan. |
 | Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` (een kassa op naam: `kassa-<naam>-auth`, `kassa-<naam>-rest`) |

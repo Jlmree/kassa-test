@@ -33,6 +33,21 @@ kassa_paden() {
 # Eén instelling van de huidige kassa (na kassa_paden): kassa_lees KASSA_DOMEIN
 kassa_lees() { [ -f "$K_ETC/instellingen.env" ] && sed -n "s/^$1=//p" "$K_ETC/instellingen.env"; return 0; }
 
+# Sleutel (JWT-geheim) van de huidige kassa: de eerste kassa in geheim.env, de andere in sleutel.env.
+kassa_jwt_geheim() {
+  if [ "$K_NAAM" = kassa ]; then sed -n 's/^JWT_SECRET=//p' "$KASSA_ETC/geheim.env"
+  else sed -n 's/^JWT_SECRET=//p' "$K_ETC/sleutel.env"; fi
+}
+
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+# Een sleutel (JWT) met deze rol, ondertekend met dit geheim: jwt anon <geheim>
+jwt() {
+  local h p
+  h=$(printf '{"alg":"HS256","typ":"JWT"}' | b64url)
+  p=$(printf '{"role":"%s","iss":"kassa","iat":1700000000,"exp":4102444800}' "$1" | b64url)
+  printf '%s.%s.%s' "$h" "$p" "$(printf '%s.%s' "$h" "$p" | openssl dgst -sha256 -hmac "$2" -binary | b64url)"
+}
+
 kassa_naam_geldig() { [[ "$1" =~ ^[a-z][a-z0-9]{1,19}$ ]] && [ "$1" != kassa ]; }
 
 # Schrijft /etc/caddy/Caddyfile voor alle kassa's op deze server.

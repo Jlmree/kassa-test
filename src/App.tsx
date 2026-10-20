@@ -190,7 +190,7 @@ function Aanmelden() {
           <p><b>Demo</b>: beheerder, ziet alles. <b>Anna</b>: medewerker. <b>Kees</b>: wacht nog op goedkeuring.</p>
         </div>
       )}
-      {nieuw && !PROEF && <p className="mu">Het allereerste account wordt beheerder. Alle volgende accounts moeten door een beheerder worden goedgekeurd.</p>}
+      {nieuw && !PROEF && <p className="mu">Een nieuw account moet eerst door een beheerder worden goedgekeurd.</p>}
       {!nieuw && <p className="mu">Wachtwoord vergeten? Vraag een beheerder om een nieuw wachtwoord in te stellen.</p>}
     </div>
   );

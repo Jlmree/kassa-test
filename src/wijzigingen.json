@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-20",
+    "titel": "Beheerder aanmaken bij de installatie",
+    "punten": [
+      "De beheerder wordt bij het installeren op de server zelf aangemaakt. Een account uit de app wordt nooit meer vanzelf beheerder, zodat een onbekende je via internet niet voor kan zijn.",
+      "Wachtwoord van de enige beheerder kwijt? Op de server maak je met kassas.sh beheerder weer een beheerder aan."
+    ]
+  },
+  {
+    "datum": "2026-10-20",
     "titel": "Verbeteringen na een proefweek",
     "punten": [
       "Valt de wifi weg tijdens het afrekenen of opwaarderen en tik je opnieuw, dan wordt er niet meer dubbel geboekt.",
