@@ -3,6 +3,8 @@
 #
 #   bash kassa-installatie.run                                    installeren of bijwerken
 #   bash kassa-installatie.run --duckdns mijnbar.duckdns.org TOKEN    met een echt certificaat via DuckDNS
+#   bash kassa-installatie.run --domein kassa.mijnclub.nl             op een server met een eigen domein (cloudserver)
+#   bash kassa-installatie.run --naam voetbal --domein voetbal.mijndomein.nl   nog een kassa op dezelfde server
 #
 # Start als root (na "su -", of met sudo). Je gegevens blijven altijd staan.
 set -euo pipefail
