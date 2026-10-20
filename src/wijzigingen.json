@@ -1,6 +1,17 @@
 [
   {
     "datum": "2026-10-20",
+    "titel": "Verbeteringen na een proefweek",
+    "punten": [
+      "Valt de wifi weg tijdens het afrekenen of opwaarderen en tik je opnieuw, dan wordt er niet meer dubbel geboekt.",
+      "Staat de kassa al sinds gisteren open, dan zie je dat bij Kassa en Dienst, met een knop om eerst te sluiten en te tellen.",
+      "Bij het sluiten van de kassa zie je welke rekeningen nog openstaan.",
+      "In het rapport loopt een dag door tot 6 uur 's ochtends: verkopen na middernacht horen bij de avond ervoor.",
+      "Medewerkers kunnen zelf een levering inboeken bij Dienst → Levering inboeken; het komt in het logboek. Tellen blijft voor beheerders."
+    ]
+  },
+  {
+    "datum": "2026-10-20",
     "titel": "Meerdere kassa's op één server",
     "punten": [
       "De kassa kan nu ook op een cloudserver draaien, zodat telefoons overal kunnen inloggen.",

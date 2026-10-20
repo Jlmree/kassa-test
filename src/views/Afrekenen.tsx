@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../data';
-import { centTekst, eur, naarCent, rpc, type Bon, type KaartInfo, type Regel } from '../lib';
+import { centTekst, eur, naarCent, nieuweSleutel, rpc, type Bon, type KaartInfo, type Regel } from '../lib';
 import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
@@ -13,6 +13,8 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   const [stap, setStap] = useState<Methode>(methode);
   const [kaart, setKaart] = useState<{ code: string; info: KaartInfo } | null>(null);
   const [bezig, run] = useBezig();
+  // Eén kenmerk per betaalscherm: een tweede poging na een verbindingsfout boekt niet dubbel.
+  const [sleutel] = useState(nieuweSleutel);
 
   const vanKaart = kaart ? Math.min(kaart.info.saldo_cent, totaal) : 0;
   const rest = totaal - vanKaart;
@@ -27,6 +29,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       p_rekening_id: bron.soort === 'rekening' ? bron.id : null,
       // Het bedrag dat hier stond: is het intussen veranderd, dan weigert de kassa.
       p_verwacht_cent: totaal,
+      p_sleutel: sleutel,
     });
     onKlaar();
     void herlaad();

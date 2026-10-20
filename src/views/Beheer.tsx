@@ -71,18 +71,21 @@ interface RapportData {
   kaarttegoed_cent: number; kaarten_actief: number; open_rekeningen_cent: number; diensten: Dienst[];
 }
 
-const dagStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const plusDagen = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+// Een baravond loopt door tot 06:00: verkopen na middernacht horen bij de avond ervoor.
+const BARDAG_UUR = 6;
+const bardag = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), BARDAG_UUR);
+const dagStart = (d: Date) => { const s = bardag(d); return d < s ? plusDagen(s, -1) : s; };
+const plusDagen = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, d.getHours());
 const isoDag = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function periode(k: string): [Date, Date] {
-  const nu = new Date(), v = dagStart(nu);
+  const v = dagStart(new Date());
   switch (k) {
     case 'Gisteren': return [plusDagen(v, -1), v];
     case 'Deze week': { const s = plusDagen(v, -((v.getDay() + 6) % 7)); return [s, plusDagen(s, 7)]; }
-    case 'Deze maand': return [new Date(v.getFullYear(), v.getMonth(), 1), new Date(v.getFullYear(), v.getMonth() + 1, 1)];
-    case 'Vorige maand': return [new Date(v.getFullYear(), v.getMonth() - 1, 1), new Date(v.getFullYear(), v.getMonth(), 1)];
-    case 'Dit jaar': return [new Date(v.getFullYear(), 0, 1), new Date(v.getFullYear() + 1, 0, 1)];
+    case 'Deze maand': return [new Date(v.getFullYear(), v.getMonth(), 1, BARDAG_UUR), new Date(v.getFullYear(), v.getMonth() + 1, 1, BARDAG_UUR)];
+    case 'Vorige maand': return [new Date(v.getFullYear(), v.getMonth() - 1, 1, BARDAG_UUR), new Date(v.getFullYear(), v.getMonth(), 1, BARDAG_UUR)];
+    case 'Dit jaar': return [new Date(v.getFullYear(), 0, 1, BARDAG_UUR), new Date(v.getFullYear() + 1, 0, 1, BARDAG_UUR)];
     default: return [v, plusDagen(v, 1)];
   }
 }
@@ -95,11 +98,11 @@ function Staaf({ l, w, max, r }: { l: string; w: number; max: number; r: string 
 
 function Rapport() {
   const [keuze, setKeuze] = useState('Vandaag');
-  const [eigen, setEigen] = useState<[string, string]>([isoDag(new Date()), isoDag(new Date())]);
+  const [eigen, setEigen] = useState<[string, string]>([isoDag(dagStart(new Date())), isoDag(dagStart(new Date()))]);
   const [r, setR] = useState<RapportData | null>(null);
   const [bezig, run] = useBezig();
   const [van, tot] = keuze === 'Zelf kiezen'
-    ? [new Date(eigen[0] + 'T00:00'), plusDagen(new Date(eigen[1] + 'T00:00'), 1)]
+    ? [new Date(eigen[0] + 'T06:00'), plusDagen(new Date(eigen[1] + 'T06:00'), 1)]
     : periode(keuze);
   const sleutel = `${+van}-${+tot}`;
   useEffect(() => {
@@ -141,7 +144,7 @@ function Rapport() {
           <input type="date" className="f" aria-label="Tot en met" value={eigen[1]} onChange={(e) => setEigen([eigen[0], e.target.value])} />
         </div>
       )}
-      <p className="mu">{datum(van)}{+plusDagen(van, 1) !== +tot ? ` t/m ${datum(plusDagen(tot, -1))}` : ''}{bezig ? ' · laden…' : ''}</p>
+      <p className="mu">{datum(van)}{+plusDagen(van, 1) !== +tot ? ` t/m ${datum(plusDagen(tot, -1))}` : ''} · een dag loopt tot 6 uur 's ochtends{bezig ? ' · laden…' : ''}</p>
       {r && (
         <>
           <div className="kpi">
@@ -445,7 +448,7 @@ const actieNaam: Record<string, string> = {
   verkoop_annuleren: 'Bon geannuleerd', kaarten_maken: 'Kaarten gemaakt', kaart_blokkeren: 'Kaart geblokkeerd', kaart_deblokkeren: 'Kaart gedeblokkeerd',
   kaart_overzetten: 'Kaarttegoed overgezet', product_nieuw: 'Product toegevoegd', prijs_wijzigen: 'Prijs gewijzigd', product_verwijderen: 'Product verwijderd',
   dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
-  wachtwoord_instellen: 'Wachtwoord ingesteld',
+  wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {

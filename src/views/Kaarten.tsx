@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useData } from '../data';
-import { centTekst, datumTijd, eur, lees, naarCent, rpc, sb, type KaartInfo } from '../lib';
+import { centTekst, datumTijd, eur, lees, naarCent, nieuweSleutel, rpc, sb, type KaartInfo } from '../lib';
 import { Bedrag, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { KaartKiezen } from './Afrekenen';
 
@@ -80,6 +80,8 @@ function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void 
   const [k, setK] = useState<Kaart | null>(null);
   const [v, setV] = useState('');
   const [bezig, run] = useBezig();
+  // Zelfde kenmerk tot het lukt: na een verbindingsfout boekt opnieuw tikken niet dubbel.
+  const sleutel = useRef(nieuweSleutel());
   const beheer = profiel.rol === 'beheerder';
   const laad = useCallback(async () => {
     setK(await lees(sb.from('kaarten').select(KOLOMMEN).eq('id', id).single()) as Kaart);
@@ -90,7 +92,8 @@ function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void 
   const bedrag = naarCent(v);
   const opwaarderen = (methode: 'contant' | 'pin') => run(async () => {
     if (!(bedrag > 0)) throw new Error('Kies of vul een bedrag in');
-    const saldo = await rpc<number>('kaart_opwaarderen', { p_kaart_id: k.id, p_bedrag_cent: bedrag, p_methode: methode });
+    const saldo = await rpc<number>('kaart_opwaarderen', { p_kaart_id: k.id, p_bedrag_cent: bedrag, p_methode: methode, p_sleutel: sleutel.current });
+    sleutel.current = nieuweSleutel();
     setV('');
     await laad();
     onWijziging();

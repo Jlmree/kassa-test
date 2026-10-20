@@ -199,3 +199,6 @@ textarea.f { height: 120px; font: 12px monospace; }
 /* Kaarten: zoeken en namen. */
 .zoek { margin: 12px 0 10px; }
 .naam { font-weight: 600; }
+.lev label span { flex: 1; }
+.lev label .f { flex: 0 0 90px; }
+.lev label span small { min-width: 0; text-align: left; margin-left: 4px; }
