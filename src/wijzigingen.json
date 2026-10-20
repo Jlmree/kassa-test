@@ -1,5 +1,14 @@
 [
   {
+    "datum": "2026-10-20",
+    "titel": "Meerdere kassa's op één server",
+    "punten": [
+      "De kassa kan nu ook op een cloudserver draaien, zodat telefoons overal kunnen inloggen.",
+      "Op één server kunnen kassa's voor verschillende verenigingen of bars staan, elk met een eigen adres, eigen accounts, eigen gegevens en eigen back-ups.",
+      "Bijwerken werkt alle kassa's op de server tegelijk bij. Voor een kassa op de t620 verandert er niets."
+    ]
+  },
+  {
     "datum": "2026-10-19",
     "titel": "Overzichtelijker Dienst, Beheer en Kaarten; kaarten op naam",
     "punten": [

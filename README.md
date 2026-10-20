@@ -88,6 +88,28 @@ De t620 start daarna vanzelf op in de kassa, schermvullend en zonder bureaublad;
 
 Open de kassa en maak een account aan. Dat eerste account wordt beheerder. Laat daarna je medewerkers zelf een account aanmaken en keur ze goed bij *Beheer → Medewerkers*.
 
+## Op een cloudserver, ook voor meerdere verenigingen
+
+De kassa draait ook op een gehuurde Linux-server (bijvoorbeeld de kleinste cloudserver van Hetzner, Debian 12 of Ubuntu 24.04). Telefoons kunnen dan overal inloggen, ook via 4G. Een webhostingpakket (alleen PHP en MySQL) is niet genoeg.
+
+Elke kassa krijgt een eigen adres. Laat dat adres eerst naar het IP-adres van de server wijzen (een A-record bij je domein, of een gratis naam op [duckdns.org](https://www.duckdns.org) waar je het IP-adres van de server invult). Daarna, als root op de server:
+
+```sh
+wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
+bash kassa-installatie.run --naam voetbal --domein voetbal.mijndomein.nl
+bash kassa-installatie.run --naam tennis  --domein tennis.mijndomein.nl
+```
+
+- Elke kassa heeft een **eigen database, eigen accounts, eigen sleutel en eigen back-ups**. Een account of login van de ene kassa werkt nooit bij een andere.
+- De server haalt per adres zelf een echt certificaat (Let's Encrypt); poort 80 en 443 moeten open staan.
+- Een naam is 2 tot 20 kleine letters of cijfers. Wie als eerste een account aanmaakt, wordt beheerder van die kassa: doe dat dus meteen na het installeren.
+- Bijwerken (in de app of met `bijwerken.sh`) werkt alle kassa's op de server tegelijk bij.
+- Overzicht: `/opt/kassa/bin/kassas.sh` toont per kassa het adres, aantal accounts, omzet van de laatste 30 dagen en de laatste back-up. Een kassa weghalen: `/opt/kassa/bin/kassas.sh verwijderen tennis` (er blijft een laatste back-up staan).
+- Back-ups staan per kassa in `/var/backups/kassa/<naam>/`. Terugzetten gaat met hetzelfde `terugzetten.sh`; aan de bestandsnaam ziet het bij welke kassa de back-up hoort.
+- Eén kassa gebruikt ongeveer 100–150 MB werkgeheugen. Op een server met 4 GB passen er ruim 20.
+
+Alleen één kassa op een cloudserver? Dat kan ook zonder naam: `bash kassa-installatie.run --domein kassa.mijndomein.nl`.
+
 ## Dagelijks gebruik
 
 1. **Dienst → Kassa openen** met het wisselgeld in de la.
@@ -103,7 +125,7 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 | Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
 | Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
 | Nieuwe versie installeren | In de app: *Beheer → Instellingen → Bijwerken* (de t620 heeft daarvoor internet nodig). Of op de t620: `/opt/kassa/bin/bijwerken.sh`, of zonder internet `/opt/kassa/bin/bijwerken.sh <pad naar kassa-installatie.run>` vanaf een USB-stick. Er wordt altijd eerst een back-up gemaakt; je gegevens blijven staan. |
-| Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` |
+| Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` (een kassa op naam: `kassa-<naam>-auth`, `kassa-<naam>-rest`) |
 | Logboek van de server | `journalctl -u kassa-auth -u kassa-rest -u caddy --since today` |
 
 Wachtwoord vergeten? Een beheerder stelt een nieuw wachtwoord in bij *Beheer → Medewerkers*.
