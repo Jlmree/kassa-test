@@ -56,6 +56,10 @@ export function saldoGevraagd(): string | null {
   return /\/saldo\/?$/.test(location.pathname) ? '' : null;
 }
 
+/** Saldo-zuil: een telefoon of tablet aan de muur waar klanten hun kaart voor houden (…/zuil of ?zuil). */
+export const zuilGevraagd = () => new URLSearchParams(location.search).has('zuil') || /\/zuil\/?$/.test(location.pathname);
+export const zuilLink = () => location.origin + location.pathname.replace(/[^/]*$/, '') + '?zuil';
+
 export function nieuweSleutel(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const b = crypto.getRandomValues(new Uint8Array(16));

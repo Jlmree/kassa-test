@@ -141,19 +141,20 @@ export function Qr({ tekst }: { tekst: string }) {
 
 interface Detector { detect(v: HTMLVideoElement): Promise<{ rawValue: string }[]> }
 
-export function Scanner({ onCode }: { onCode: (c: string) => void }) {
+/** Camera die QR-codes leest. voorkant: de camera aan de schermkant (een telefoon aan de muur). */
+export function Scanner({ onCode, voorkant = false, zonderCamera = 'Camera niet beschikbaar. Typ de code hieronder.' }: { onCode: (c: string) => void; voorkant?: boolean; zonderCamera?: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const cb = useRef(onCode);
   cb.current = onCode;
   const [fout, setFout] = useState('');
 
   useEffect(() => {
-    let stream: MediaStream | null = null, raf = 0, stop = false, laatst = '';
+    let stream: MediaStream | null = null, t = 0, stop = false, laatst = '';
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: voorkant ? 'user' : 'environment' } });
       } catch {
-        setFout('Camera niet beschikbaar. Typ de code hieronder.');
+        setFout(zonderCamera);
         return;
       }
       if (stop) { stream.getTracks().forEach((t) => t.stop()); return; }
@@ -171,20 +172,23 @@ export function Scanner({ onCode }: { onCode: (c: string) => void }) {
           try {
             if (bd) val = (await bd.detect(v))[0]?.rawValue ?? '';
             else if (jsQR) {
-              cv.width = v.videoWidth; cv.height = v.videoHeight; cx.drawImage(v, 0, 0);
+              // Verkleind tot hooguit 640 breed: scheelt veel rekenwerk (en batterij) op een oude telefoon.
+              const f = Math.min(1, 640 / v.videoWidth);
+              cv.width = Math.round(v.videoWidth * f); cv.height = Math.round(v.videoHeight * f); cx.drawImage(v, 0, 0, cv.width, cv.height);
               val = jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height)?.data ?? '';
             }
           } catch { /* volgende frame */ }
           if (val && val !== laatst) { laatst = val; setTimeout(() => (laatst = ''), 2500); cb.current(val); }
         }
-        raf = requestAnimationFrame(tik);
+        // Vijf keer per seconde kijken is genoeg en houdt de telefoon koel.
+        t = window.setTimeout(tik, 200);
       };
       tik();
     })();
-    return () => { stop = true; cancelAnimationFrame(raf); stream?.getTracks().forEach((t) => t.stop()); };
-  }, []);
+    return () => { stop = true; clearTimeout(t); stream?.getTracks().forEach((s) => s.stop()); };
+  }, [voorkant, zonderCamera]);
 
-  return fout ? <p className="mu">{fout}</p> : <video ref={video} className="scan" playsInline muted />;
+  return fout ? <p className="mu">{fout}</p> : <video ref={video} className={'scan' + (voorkant ? ' spiegel' : '')} playsInline muted />;
 }
 
 // ─── Kleine bouwstenen ───

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden } from '../data';
-import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
-import { melding, QrKaart, Rij, useBezig, useSheet } from '../ui';
+import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
+import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
@@ -488,7 +488,7 @@ function Logboek() {
 // ───────────── Instellingen ─────────────
 
 function Instellingen() {
-  const { winkel, herlaad } = useData();
+  const { winkel, methoden, herlaad } = useData();
   const [naam, setNaam] = useState(winkel);
   const [bezig, run] = useBezig();
   return (
@@ -499,6 +499,7 @@ function Instellingen() {
         <button disabled={bezig} onClick={() => run(async () => { await rpc('instellingen_opslaan', { p_naam: naam }); await herlaad(); melding('Opgeslagen'); })}>Opslaan</button>
       </div>
       <Betaalmethoden />
+      {methoden.kaart && <ZuilUitleg />}
       <Bijwerken />
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
@@ -513,6 +514,28 @@ const methodeUitleg: Record<keyof Methoden, string> = {
   kaart: 'Tegoedkaarten: opwaarderen en ermee betalen',
   rekening: 'Bestellingen op een rekening zetten en later afrekenen',
 };
+
+// Een oude telefoon of tablet aan de muur waar klanten hun kaart voor houden.
+function ZuilUitleg() {
+  const [toon, setToon] = useState(false);
+  const link = zuilLink();
+  return (
+    <>
+      <h3 className="s">Saldo-zuil</h3>
+      <p className="mu">Hang een oude telefoon of tablet aan de muur bij de bar. Klanten houden hun kaart voor de camera en zien hun saldo; na tien seconden staat hij weer klaar. Een USB-scanner werkt ook. Er hoeft niemand op in te loggen.</p>
+      {!toon ? <button className="ghost" onClick={() => setToon(true)}>Zo stel je hem in</button> : (
+        <div className="card">
+          <ol className="stappen">
+            <li>Verbind de oude telefoon met de wifi van de kassa en installeer het certificaat (zoals bij de andere telefoons).</li>
+            <li>Scan deze code met die telefoon, of open <b>{link}</b>.</li>
+            <li>Sta de camera toe. Zet de telefoon in de stand die hem op deze pagina houdt (iPhone: Begeleide toegang; Android: App vastzetten) en laat hem aan de oplader.</li>
+          </ol>
+          <div className="qrs-zuil"><Qr tekst={link} /></div>
+        </div>
+      )}
+    </>
+  );
+}
 
 // Welke betaalknoppen de kassa toont, bijvoorbeeld pin uit als er geen pinautomaat is.
 function Betaalmethoden() {
