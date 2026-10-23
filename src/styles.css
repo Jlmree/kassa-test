@@ -165,6 +165,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .kk-t { display: flex; flex-direction: column; gap: 1mm; min-width: 0; position: relative; font-size: 3.2mm; }
 .kk-t .kk-w { font-weight: 800; font-size: 3.6mm; line-height: 1.15; }
 .kk-t b { font-size: 5mm; margin-top: 2mm; }
+.kk-t .kk-s { font-size: 2.6mm; color: #555; margin-top: 1mm; }
 .kk-t small { font-family: "Courier New", monospace; font-size: 3.2mm; letter-spacing: .3mm; }
 .center { display: grid; place-items: center; height: 100%; padding: 16px; }
 
@@ -220,3 +221,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .lev label span { flex: 1; }
 .lev label .f { flex: 0 0 90px; }
 .lev label span small { min-width: 0; text-align: left; margin-left: 4px; }
+
+/* Saldo-pagina voor klanten */
+.saldo .card { margin-top: 12px; }
+.saldo a { color: var(--acc); font-weight: 600; }

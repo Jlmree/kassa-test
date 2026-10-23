@@ -291,6 +291,20 @@ test('betaalmethoden aan of uit', async () => {
   assert.deepEqual(log.at(-1).details, { contant: true, pin: true, kaart: true, rekening: true });
 });
 
+test('klant bekijkt zelf het saldo, alleen met de kaartcode', async () => {
+  const anon = client();
+  const info = await rpc(bar, 'kaart_info', { p_zoek: kaart.code });
+  const s = await rpc(anon, 'kaart_saldo', { p_code: kaart.code.toLowerCase() });
+  assert.equal(s.nummer, info.nummer);
+  assert.equal(s.saldo_cent, info.saldo_cent);
+  assert.ok(s.historie.length > 0 && s.historie.length <= 10);
+  assert.deepEqual(Object.keys(s.historie[0]).sort(), ['bedrag_cent', 'soort', 'ts']);
+  await faalt(rpc(anon, 'kaart_saldo', { p_code: String(info.nummer) }), 'code van je kaart');
+  await faalt(rpc(anon, 'kaart_saldo', { p_code: 'AAAA-AAAA' }), 'niet gevonden');
+  // Verder ziet een klant zonder account niets.
+  await faalt(rpc(anon, 'kaart_info', { p_zoek: kaart.code }));
+});
+
 test('kassa sluiten: verwacht = begin + contant verkocht + contant opgewaardeerd', async () => {
   // Contant: 500 (bier+chips) + 800 (rekening Piet) + 100 (koffie hieronder); opwaardering contant 1000.
   const laat = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'contant' }] });

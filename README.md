@@ -9,7 +9,8 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
 - **Kassa**: producten aantikken en afrekenen met contant (met wisselgeld), pin, tegoedkaart of een combinatie (kaart + rest contant/pin).
 - **Betaalmethoden kiezen**: de beheerder zet contant, pin, kaart en op rekening aan of uit (bijv. geen pin in een kantine zonder pinautomaat). Wat uit staat, verdwijnt van de kassa.
 - **Rekeningen**: open rekeningen op naam, bijbestellen vanaf elk apparaat, regels schrappen, later afrekenen.
-- **Tegoedkaarten**: kaarten met QR-code maken en printen, opwaarderen, scannen met de camera van de telefoon, blokkeren bij verlies, tegoed overzetten naar een nieuwe kaart, geschiedenis per kaart.
+- **Tegoedkaarten**: kaarten met QR-code maken en printen (creditcardformaat, tien per A4), opwaarderen, scannen met de camera van de telefoon, blokkeren bij verlies, tegoed overzetten naar een nieuwe kaart, geschiedenis per kaart.
+- **Saldo voor klanten**: een klant scant de QR-code van de eigen kaart met de camera van de eigen telefoon en ziet saldo en de laatste betalingen, zonder account. Alleen bekijken; betalen kan alleen aan de bar. Zonder QR-code: open het adres van de kassa met `/saldo` erachter (bijv. `https://10.42.0.1/saldo`) en typ de code. De telefoon van de klant moet de kassa kunnen bereiken: geef klanten het wachtwoord van de kassa-wifi (zonder account kunnen ze alleen het saldo zien), of gebruik de wifi van het gebouw. Met DuckDNS krijgen klanten geen certificaatmelding.
 - **Dienst (kasopmaak)**: kassa openen met wisselgeld, aan het eind tellen per munt/biljet; de kassa rekent uit wat er in de la hoort en laat het verschil zien.
 - **Voorraad**: per product bijhouden, levering inboeken, na tellen corrigeren, waarschuwing als iets bijna op is.
 - **Rapporten**: per dag, week, maand of zelf gekozen periode; omzet per betaalmethode, product, medewerker, dag en uur; kaarttegoed in omloop; kasverschillen; export naar CSV (Excel).

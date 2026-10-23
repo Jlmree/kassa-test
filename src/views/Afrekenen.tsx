@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../data';
-import { centTekst, eur, naarCent, nieuweSleutel, rpc, type Bon, type KaartInfo, type Regel } from '../lib';
+import { centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, type Bon, type KaartInfo, type Regel } from '../lib';
 import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
@@ -93,7 +93,8 @@ function Contant({ bedrag, bezig, onBetaal }: { bedrag: number; bezig: boolean; 
 export function KaartKiezen({ totaal, onKaart, betalen = true }: { totaal?: number; onKaart: (code: string, info: KaartInfo) => void; betalen?: boolean }) {
   const [code, setCode] = useState('');
   const [bezig, run] = useBezig();
-  const zoek = (c: string) => run(async () => {
+  const zoek = (invoer: string) => run(async () => {
+    const c = kaartCode(invoer);
     const info = await rpc<KaartInfo>('kaart_info', { p_zoek: c });
     if (betalen && !info.betaalcode) throw new Error('Scan de QR-code of typ de kaartcode (het kaartnummer is niet genoeg om te betalen)');
     if (info.geblokkeerd && betalen) throw new Error(`Kaart ${info.nummer} is geblokkeerd`);
@@ -104,7 +105,7 @@ export function KaartKiezen({ totaal, onKaart, betalen = true }: { totaal?: numb
     <>
       <h2>{betalen ? 'Betalen met kaart' : 'Kaart zoeken'}</h2>
       {totaal != null && <p className="mu">Te betalen: {eur(totaal)}</p>}
-      <Scanner onCode={(c) => { setCode(c); void zoek(c); }} />
+      <Scanner onCode={(c) => { setCode(kaartCode(c)); void zoek(c); }} />
       <label htmlFor="kc">{betalen ? 'Of typ de kaartcode' : 'Of typ de kaartcode of het kaartnummer'}</label>
       <form className="inl" onSubmit={(e) => { e.preventDefault(); if (code.trim()) void zoek(code); }}>
         <input className="f" id="kc" value={code} autoCapitalize="characters" autoComplete="off" placeholder={betalen ? 'ABCD-EFGH' : 'ABCD-EFGH of 12'} onChange={(e) => setCode(e.target.value)} />

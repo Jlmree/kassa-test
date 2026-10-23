@@ -39,6 +39,23 @@ function vertaal(m: string) {
 // Uniek kenmerk voor één afrekening of opwaardering. Valt de verbinding weg en
 // tikt de medewerker opnieuw, dan stuurt de app hetzelfde kenmerk mee en boekt
 // de server niet nog een keer.
+/** De kaartcode uit een gescande QR-code: nieuwe kaarten bevatten een link naar de saldo-pagina, oude alleen de code. */
+export function kaartCode(t: string): string {
+  const s = t.trim();
+  try { if (/^https?:\/\//i.test(s)) return new URL(s).searchParams.get('saldo') ?? s; } catch { /* geen link */ }
+  return s;
+}
+
+/** Link voor op de kaart: opent de saldo-pagina van deze kassa. */
+export const saldoLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?saldo=' + encodeURIComponent(code);
+
+/** Wordt de saldo-pagina gevraagd (…/saldo of ?saldo=CODE)? Dan de code (of '' om te typen), anders null. */
+export function saldoGevraagd(): string | null {
+  const p = new URLSearchParams(location.search).get('saldo');
+  if (p != null) return p;
+  return /\/saldo\/?$/.test(location.pathname) ? '' : null;
+}
+
 export function nieuweSleutel(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const b = crypto.getRandomValues(new Uint8Array(16));
