@@ -88,9 +88,13 @@ export function BonPapier({ bon }: { bon: Bon }) {
       {bon.betalingen.map((p, i) => (
         <div key={i}>
           <div className="bl"><span>{methodeNaam[p.methode]}{p.kaart_nummer ? ` (kaart ${p.kaart_nummer})` : ''}{p.lid_naam ? ` van ${p.lid_naam}` : ''}</span><span>{eur(p.bedrag_cent)}</span></div>
-          {p.gegeven_cent != null && p.wisselgeld_cent ? (
+          {p.gegeven_cent != null && (p.wisselgeld_cent || p.op_kaart_cent) ? (
             <><div className="bl"><span>Gegeven</span><span>{eur(p.gegeven_cent)}</span></div>
-              <div className="bl"><span>Wisselgeld</span><span>{eur(p.wisselgeld_cent)}</span></div></>
+              {p.wisselgeld_cent ? <div className="bl"><span>Wisselgeld</span><span>{eur(p.wisselgeld_cent)}</span></div> : null}</>
+          ) : null}
+          {p.op_kaart_cent ? (
+            <><div className="bl"><span>Op kaart {p.op_kaart_nummer}</span><span>{eur(p.op_kaart_cent)}</span></div>
+              {p.op_kaart_saldo_na != null && <div className="bl"><span>Saldo kaart</span><span>{eur(p.op_kaart_saldo_na)}</span></div>}</>
           ) : null}
           {p.kaart_saldo_na != null && <div className="bl"><span>Saldo kaart</span><span>{eur(p.kaart_saldo_na)}</span></div>}
         </div>

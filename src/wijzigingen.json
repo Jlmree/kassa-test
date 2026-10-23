@@ -1,6 +1,16 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Te weinig wisselgeld",
+    "punten": [
+      "Betaalt iemand contant en is het wisselgeld meer dan er volgens de kassa in de la zit, dan verschijnt een waarschuwing.",
+      "Kies dan Wisselgeld op een barkaart: scan een kaart (een nieuwe uit de stapel, of de kaart van de klant) en het wisselgeld staat erop als tegoed. Het hele bedrag gaat in de la, dus de kas klopt bij het sluiten.",
+      "Zit er toch genoeg in de la (bijvoorbeeld eigen kleingeld), dan kies je Toch teruggeven. Ook zonder waarschuwing kan het wisselgeld op een kaart.",
+      "Wordt de bon later geannuleerd, dan blijft het tegoed op de kaart staan; alleen het bedrag van de bon geef je terug."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Medewerkers uitnodigen met een QR-code",
     "punten": [
       "Beheer → Medewerkers → Iemand uitnodigen: vul de naam in en kies de rol. De nieuwe medewerker scant de QR-code, kiest een wachtwoord en is meteen binnen, zonder goedkeuren.",

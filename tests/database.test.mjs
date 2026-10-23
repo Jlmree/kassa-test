@@ -509,3 +509,38 @@ test('na te veel verkeerde codes is de saldo-pagina even dicht', async () => {
   assert.match((await rpc(anon, 'kaart_saldo', { p_code: kaart.code })).fout, /Te veel verkeerde codes/);
   assert.match((await rpc(anon, 'lid_overzicht', { p_code: kaart.code })).fout, /Te veel verkeerde codes/);
 });
+
+test('te weinig wisselgeld: de rest als tegoed op een barkaart', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 1000 });
+  const [k] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
+  const bier = [{ product_id: product('Bier').id, aantal: 3 }];   // 3 × 200 = 600
+  const bon = await rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'contant', gegeven_cent: 5000, rest_kaart: k.code }] });
+  const [b] = bon.betalingen;
+  assert.deepEqual([b.bedrag_cent, b.gegeven_cent, b.wisselgeld_cent, b.op_kaart_cent, b.op_kaart_saldo_na, b.op_kaart_nummer],
+    [600, 5000, 0, 4400, 4400, k.nummer]);
+  const info = await rpc(bar, 'kaart_info', { p_zoek: k.code });
+  assert.equal(info.saldo_cent, 4400);
+  // Het hele briefje zit in de la: 600 verkocht + 4400 contant opgewaardeerd.
+  let d = await rpc(bar, 'dienst_overzicht');
+  assert.equal(d.verwacht_cent, 1000 + 5000);
+  assert.equal(d.opwaardering_contant_cent, 4400);
+  // Bon annuleren: de 600 gaat terug, het tegoed op de kaart blijft staan.
+  await rpc(bar, 'verkoop_annuleren', { p_verkoop_id: bon.id });
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: k.code })).saldo_cent, 4400);
+  d = await rpc(bar, 'dienst_overzicht');
+  assert.equal(d.verwacht_cent, 1000 + 4400);
+  // Alleen met de echte kaartcode, niet op een geblokkeerde kaart, niet als kaart uit staat.
+  await faalt(rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'contant', gegeven_cent: 1000, rest_kaart: String(k.nummer) }] }), 'QR-code');
+  await rpc(bar, 'kaart_blokkeren', { p_kaart_id: info.id, p_blok: true });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'contant', gegeven_cent: 1000, rest_kaart: k.code }] }), 'geblokkeerd');
+  await rpc(baas, 'kaart_blokkeren', { p_kaart_id: info.id, p_blok: false });
+  const zet = (m) => rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, p_lat: true, ...m });
+  await zet({ p_kaart: false });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'contant', gegeven_cent: 1000, rest_kaart: k.code }] }), 'kaart staat uit');
+  await zet({});
+  // Gepast betaald: er gaat niets op de kaart.
+  const gepast = await rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'contant', gegeven_cent: 600, rest_kaart: k.code }] });
+  assert.equal(gepast.betalingen[0].op_kaart_cent, null);
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: k.code })).saldo_cent, 4400);
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 1000 + 4400 + 600 });
+});
