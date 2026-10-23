@@ -3,5 +3,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const proefClient = null as unknown as SupabaseClient;
-export const proefLaden = async () => {};
+export const proefLaden = async () => true;
 export const proefOpnieuw = async () => {};
