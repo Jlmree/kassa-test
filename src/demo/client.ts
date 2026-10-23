@@ -18,6 +18,14 @@ const SESSIE = 'bar-kassa-proef-sessie';
 
 let dbP: Promise<PGlite> | null = null;
 const db = () => (dbP ??= openen().catch((e) => { dbP = null; throw e; }));
+// Werkt de proefkassa zonder opslag (alleen in het geheugen van deze pagina)?
+let zonderOpslag = false;
+
+// Op sommige telefoons (vooral iPhones) blijft de opslag in de browser soms hangen,
+// bijvoorbeeld als de proefversie nog in een ander tabblad open staat. Na zo lang
+// wachten gaat de proefkassa zonder opslag verder, in plaats van eindeloos te laden.
+const MAX_WACHTEN = 45_000;
+const wacht = (ms: number) => new Promise<'tijd'>((klaar) => setTimeout(() => klaar('tijd'), ms));
 
 async function openen() {
   const [{ PGlite }, { pgcrypto }] = await Promise.all([import('@electric-sql/pglite'), import('@electric-sql/pglite/contrib/pgcrypto')]);
@@ -27,22 +35,30 @@ async function openen() {
     } catch { /* geen opslag in de browser (bijv. privévenster) */ }
     return PGlite.create({ extensions: { pgcrypto } });
   };
-  let d = await maak(true);
-  try {
-    if (await toestand(d) === 'klaar') await bijwerken(d);
-    else {
-      // Leeg, of half klaargezet doordat de pagina de vorige keer te vroeg dicht ging: opnieuw beginnen.
-      if (await toestand(d) === 'half') { await d.close(); await wisOpslag(); d = await maak(true); }
+  const metOpslag = async () => {
+    let d = await maak(true);
+    try {
+      if (await toestand(d) === 'klaar') await bijwerken(d);
+      else {
+        // Leeg, of half klaargezet doordat de pagina de vorige keer te vroeg dicht ging: opnieuw beginnen.
+        if (await toestand(d) === 'half') { await d.close(); await wisOpslag(); d = await maak(true); }
+        await klaarzetten(d);
+      }
+    } catch {
+      // Iets klopt niet aan de opgeslagen proefdatabase: weggooien en vers beginnen.
+      try { await d.close(); } catch { /* al dicht */ }
+      await wisOpslag();
+      d = await maak(true);
       await klaarzetten(d);
     }
-  } catch {
-    // Iets klopt niet aan de opgeslagen proefdatabase: weggooien en vers beginnen.
-    try { await d.close(); } catch { /* al dicht */ }
-    await wisOpslag();
-    d = await maak(true);
-    await klaarzetten(d);
-  }
-  return d;
+    return d;
+  };
+  const d = await Promise.race([metOpslag(), wacht(MAX_WACHTEN)]);
+  if (d !== 'tijd') return d;
+  zonderOpslag = true;
+  const g = await maak(false);
+  await klaarzetten(g);
+  return g;
 }
 
 // 'leeg' = vers, 'klaar' = met voorbeeldgegevens, 'half' = onderbroken bij het klaarzetten.
@@ -84,10 +100,11 @@ async function wisOpslag() {
   const naam = OPSLAG.slice('idb://'.length);
   const dbs = await indexedDB.databases?.().catch(() => []) ?? [];
   const weg = [...new Set([...dbs.map((x) => x.name ?? '').filter((n) => n.endsWith(naam)), '/pglite/' + naam])];
-  await Promise.all(weg.map((n) => new Promise<void>((klaar) => {
+  // Niet eindeloos wachten als een ander tabblad de opslag nog vasthoudt.
+  await Promise.race([wacht(5000), Promise.all(weg.map((n) => new Promise<void>((klaar) => {
     const r = indexedDB.deleteDatabase(n);
     r.onsuccess = r.onerror = r.onblocked = () => klaar();
-  })));
+  })))]);
 }
 
 // Een query uitvoeren zoals PostgREST dat doet: als rol "authenticated" met
@@ -292,11 +309,13 @@ export const proefClient = { from: (t: string) => new Lezen(t), rpc, auth } as u
 // Alles wissen en opnieuw beginnen met de voorbeeldgegevens.
 export async function proefOpnieuw() {
   zetSessie(null);
-  try { (await dbP)?.close(); } catch { /* al dicht */ }
+  // Een database die nog hangt bij het openen niet afwachten.
+  try { const d = await Promise.race([dbP, wacht(3000)]); if (d && d !== 'tijd') await d.close(); } catch { /* al dicht */ }
   dbP = null;
   await wisOpslag();
   location.reload();
 }
 
 // Database alvast laden terwijl het inlogscherm getoond wordt.
-export const proefLaden = () => db().then(() => undefined);
+// true: met opslag op dit apparaat; false: alleen zolang de pagina open is.
+export const proefLaden = () => db().then(() => !zonderOpslag);

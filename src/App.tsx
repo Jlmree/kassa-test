@@ -174,7 +174,10 @@ function Aanmelden() {
   // Mag je hier zelf een account aanvragen? (De beheerder kan dat uitzetten; dan alleen met een uitnodiging.)
   const [open, setOpen] = useState(true);
   useEffect(() => { void rpc<boolean>('aanmelden_open').then((o) => { setOpen(o !== false); if (o === false) setNieuw(false); }, () => {}); }, [klaar]);
-  useEffect(() => { if (PROEF) void proefLaden().then(() => setKlaar(true), (e: Error) => { setKlaar(true); melding('De proefkassa kon niet starten: ' + e.message + '. Probeer opnieuw of tik bovenaan op Wissen.'); }); }, []);
+  useEffect(() => { if (PROEF) void proefLaden().then((opgeslagen) => {
+    setKlaar(true);
+    if (!opgeslagen) melding('Opslaan in deze browser lukt nu niet. De proefkassa werkt, maar wat je doet is weg als je de pagina sluit. Sluit andere tabbladen met de proefversie en laad de pagina opnieuw.');
+  }, (e: Error) => { setKlaar(true); melding('De proefkassa kon niet starten: ' + e.message + '. Probeer opnieuw of tik bovenaan op Wissen.'); }); }, []);
   const verstuur = () => run(async () => {
     if (!naam.trim()) throw new Error('Vul je naam in');
     const email = inlogEmail(naam);
@@ -204,7 +207,7 @@ function Aanmelden() {
         <input className="f" id="lw" type="password" autoComplete={nieuw ? 'new-password' : 'current-password'} value={ww} onChange={(e) => setWw(e.target.value)} />
         <button className="big" disabled={bezig || !klaar}>{!klaar ? 'Proefkassa klaarzetten…' : nieuw ? 'Account aanmaken' : 'Inloggen'}</button>
       </form>
-      {!klaar && <p className="mu">De eerste keer duurt dit even: de proefkassa (ongeveer 15 MB) wordt op dit apparaat klaargezet. Laat deze pagina open.</p>}
+      {!klaar && <p className="mu">De eerste keer duurt dit even: de proefkassa (ongeveer 15 MB) wordt op dit apparaat klaargezet. Laat deze pagina open. Staat de proefversie nog in een ander tabblad open, sluit dat dan.</p>}
       {PROEF && !nieuw && (
         <div className="kaartje">
           <p><b>Proefaccounts</b> (wachtwoord <code>proef1234</code>):</p>
