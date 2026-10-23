@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useData } from '../data';
+import { useData, type Methoden } from '../data';
 import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
 import { melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
@@ -13,12 +13,12 @@ const uitleg: Record<Deel, string> = {
   Kaarten: 'Nieuwe tegoedkaarten maken en QR-codes printen',
   Medewerkers: 'Toegang geven, rollen en wachtwoorden',
   Logboek: 'Wie heeft wat gedaan',
-  Instellingen: 'Naam op de bon, bijwerken en wat er nieuw is',
+  Instellingen: 'Naam op de bon, betaalmethoden, bijwerken en wat er nieuw is',
 };
 
 export function Beheer() {
   const [deel, setDeel] = useState<Deel | null>(null);
-  const { producten } = useData();
+  const { producten, methoden } = useData();
   const [wacht, setWacht] = useState(0);
   const laag = producten.filter((p) => p.actief && p.voorraad <= p.voorraad_min);
   const op = laag.filter((p) => p.voorraad <= 0).length;
@@ -33,7 +33,7 @@ export function Beheer() {
   if (!deel) {
     return (
       <div className="menu">
-        {delen.map((d) => (
+        {delen.filter((d) => d !== 'Kaarten' || methoden.kaart).map((d) => (
           <button key={d} className="card wide" onClick={() => setDeel(d)}>
             <div className="hd"><span>{d}</span>{melding_[d] && <span className="pill min">{melding_[d]}</span>}</div>
             <span className="mu">{uitleg[d]}</span>
@@ -449,6 +449,7 @@ const actieNaam: Record<string, string> = {
   kaart_overzetten: 'Kaarttegoed overgezet', product_nieuw: 'Product toegevoegd', prijs_wijzigen: 'Prijs gewijzigd', product_verwijderen: 'Product verwijderd',
   dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
   wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
+  betaalmethoden: 'Betaalmethoden aangepast',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -461,6 +462,7 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'dienst_openen': return `wisselgeld ${e('beginsaldo_cent')}`;
     case 'kaart_overzetten': return `kaart ${d.van} → ${d.naar}, ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
+    case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening'] as const).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'gebruiker_bijwerken': return `${d.gebruiker}: ${d.actief ? rolNaam[d.rol as Rol] : 'uitgeschakeld'}`;
     default: return ['naam', 'product', 'kaart', 'aantal', 'gebruiker'].filter((k) => d[k] != null).map((k) => String(d[k])).join(', ');
   }
@@ -494,9 +496,47 @@ function Instellingen() {
         <input className="f" id="wn" value={naam} onChange={(e) => setNaam(e.target.value)} />
         <button disabled={bezig} onClick={() => run(async () => { await rpc('instellingen_opslaan', { p_naam: naam }); await herlaad(); melding('Opgeslagen'); })}>Opslaan</button>
       </div>
+      <Betaalmethoden />
       <Bijwerken />
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
+    </>
+  );
+}
+
+const methodeLabel: Record<keyof Methoden, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', rekening: 'Op rekening' };
+const methodeUitleg: Record<keyof Methoden, string> = {
+  contant: 'Betalen met contant geld',
+  pin: 'Betalen met de pinautomaat',
+  kaart: 'Tegoedkaarten: opwaarderen en ermee betalen',
+  rekening: 'Bestellingen op een rekening zetten en later afrekenen',
+};
+
+// Welke betaalknoppen de kassa toont, bijvoorbeeld pin uit als er geen pinautomaat is.
+function Betaalmethoden() {
+  const { methoden, rekeningen, herlaad } = useData();
+  const [m, setM] = useState(methoden);
+  const [bezig, run] = useBezig();
+  const veranderd = (Object.keys(m) as (keyof Methoden)[]).some((k) => m[k] !== methoden[k]);
+  const opslaan = () => run(async () => {
+    if (!m.contant && !m.pin && !m.kaart) throw new Error('Zet minstens één van contant, pin of kaart aan');
+    await rpc('betaalmethoden_opslaan', { p_contant: m.contant, p_pin: m.pin, p_kaart: m.kaart, p_rekening: m.rekening });
+    await herlaad();
+    melding('Opgeslagen');
+  });
+  return (
+    <>
+      <h3 className="s">Betaalmethoden</h3>
+      <p className="mu">Wat uit staat, verdwijnt van de kassa op alle telefoons.</p>
+      {(Object.keys(methodeLabel) as (keyof Methoden)[]).map((k) => (
+        <label key={k} className="check">
+          <input type="checkbox" checked={m[k]} onChange={(e) => setM({ ...m, [k]: e.target.checked })} />
+          <span>{methodeLabel[k]}<br /><span className="mu">{methodeUitleg[k]}</span></span>
+        </label>
+      ))}
+      {!m.kaart && methoden.kaart && <p className="card warnbox">Staat er nog tegoed op kaarten, dan kan daar niet meer mee betaald worden zolang kaart uit staat.</p>}
+      {!m.rekening && methoden.rekening && rekeningen.length > 0 && <p className="card warnbox">Er {rekeningen.length === 1 ? 'staat nog 1 rekening' : `staan nog ${rekeningen.length} rekeningen`} open. Die blijven te zien tot ze zijn afgerekend.</p>}
+      <button className="big" disabled={bezig || !veranderd} onClick={opslaan}>Betaalmethoden opslaan</button>
     </>
   );
 }

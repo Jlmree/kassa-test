@@ -1,5 +1,15 @@
 [
   {
+    "datum": "2026-10-23",
+    "titel": "Eigen wifi voor de kassa; betaalmethoden kiezen",
+    "punten": [
+      "De beheerder kiest bij Beheer → Instellingen → Betaalmethoden welke betaalmethoden aan staan: contant, pin, kaart en op rekening. Geen pinautomaat? Zet pin uit, dan verdwijnt de knop op alle telefoons.",
+      "Staat kaart uit, dan verdwijnt ook het tabblad Kaarten. Staat op rekening uit, dan kunnen rekeningen die nog openstaan wel worden afgerekend.",
+      "De kassa draait weer alleen op een computer in het gebouw. Die kan zelf een wifi-netwerk maken voor de telefoons (installeren met --wifi); de kassa staat dan altijd op https://10.42.0.1, ook zonder internet.",
+      "Een beheerder aanmaken of weer binnenkomen gaat nu met /opt/kassa/bin/beheerder.sh."
+    ]
+  },
+  {
     "datum": "2026-10-20",
     "titel": "Beheerder aanmaken bij de installatie",
     "punten": [

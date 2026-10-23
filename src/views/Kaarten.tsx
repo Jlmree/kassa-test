@@ -75,7 +75,7 @@ function KaartNaam({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> }) {
 }
 
 function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void }) {
-  const { profiel, dienst } = useData();
+  const { profiel, dienst, methoden } = useData();
   const { open } = useSheet();
   const [k, setK] = useState<Kaart | null>(null);
   const [v, setV] = useState('');
@@ -106,14 +106,14 @@ function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void 
       <h2>Kaart {k.nummer}{k.naam ? ` · ${k.naam}` : ''}</h2>
       <div className="big-n">{eur(k.saldo_cent)}</div>
       {k.geblokkeerd && <p className="stamp">GEBLOKKEERD</p>}
-      {!k.geblokkeerd && (dienst ? (
+      {!k.geblokkeerd && (!methoden.contant && !methoden.pin ? <p className="mu">Opwaarderen kan niet: contant en pin staan allebei uit.</p> : dienst ? (
         <>
           <label htmlFor="ta">Opwaarderen</label>
           <div className="quick">{[500, 1000, 2000].map((x) => <button key={x} onClick={() => setV(centTekst(x))}>{eur(x)}</button>)}</div>
           <Bedrag id="ta" waarde={v} onChange={setV} placeholder="Ander bedrag, bijvoorbeeld 7,50" />
           <div className="btns" style={{ marginTop: 8 }}>
-            <button className="big m-cash" disabled={bezig} onClick={() => opwaarderen('contant')}>Contant ontvangen</button>
-            <button className="big m-pin" disabled={bezig} onClick={() => opwaarderen('pin')}>Pin ontvangen</button>
+            {methoden.contant && <button className="big m-cash" disabled={bezig} onClick={() => opwaarderen('contant')}>Contant ontvangen</button>}
+            {methoden.pin && <button className="big m-pin" disabled={bezig} onClick={() => opwaarderen('pin')}>Pin ontvangen</button>}
           </div>
         </>
       ) : <p className="card warnbox">Open eerst de kassa (tabblad Dienst) om op te waarderen.</p>)}

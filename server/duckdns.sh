@@ -8,10 +8,13 @@ HOME_ACME=/opt/kassa/acme
 CONF=/etc/kassa/acme
 TLS=/etc/kassa-tls
 . /etc/kassa/instellingen.env 2>/dev/null || true
+. /etc/kassa/wifi.env 2>/dev/null || true
 
 ip_bijwerken() {
   local sub=${KASSA_DOMEIN%.duckdns.org} ip
   ip=$(hostname -I | awk '{print $1}')
+  # Met het eigen wifi-netwerk (wifi.sh) zijn telefoons de server altijd op dit adres.
+  [ "${KASSA_WIFI:-0}" = 1 ] && ip=10.42.0.1
   [ "$(curl -fsS "https://www.duckdns.org/update?domains=$sub&token=$KASSA_DUCKDNS_TOKEN&ip=$ip")" = OK ] \
     || { echo "DuckDNS weigert de update: klopt de naam en het token?"; exit 1; }
 }

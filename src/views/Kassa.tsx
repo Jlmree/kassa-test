@@ -102,7 +102,7 @@ export function MandBalk({ onOpen }: { onOpen: () => void }) {
 /** Onderblad met de bestelling en de betaalknoppen. */
 export function Bestelling() {
   const { mand, setMand, doel, setDoel } = useMand();
-  const { producten, rekeningen, dienst, herlaad } = useData();
+  const { producten, rekeningen, dienst, methoden, herlaad } = useData();
   const { open, sluit } = useSheet();
   const [bezig, run] = useBezig();
   const regels = useMemo(() => mandRegels(mand, producten), [mand, producten]);
@@ -149,10 +149,10 @@ export function Bestelling() {
         <p className="warnbox card">Open eerst de kassa (tabblad Dienst) om af te rekenen.</p>
       ) : (
         <div className="btns">
-          <button className="big m-cash" onClick={() => betaal('contant')}>Contant</button>
-          <button className="big m-pin" onClick={() => betaal('pin')}>Pin</button>
-          <button className="big m-card" onClick={() => betaal('kaart')}>Kaart</button>
-          <button className="big m-tab" onClick={() => open(<KiesRekening onKies={opRekening} />)}>Op rekening</button>
+          {methoden.contant && <button className="big m-cash" onClick={() => betaal('contant')}>Contant</button>}
+          {methoden.pin && <button className="big m-pin" onClick={() => betaal('pin')}>Pin</button>}
+          {methoden.kaart && <button className="big m-card" onClick={() => betaal('kaart')}>Kaart</button>}
+          {methoden.rekening && <button className="big m-tab" onClick={() => open(<KiesRekening onKies={opRekening} />)}>Op rekening</button>}
         </div>
       )}
       <button className="ghost" onClick={() => { leeg(); sluit(); }}>Bestelling wissen</button>

@@ -1,12 +1,13 @@
 # Bar-kassa
 
-Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in het gebouw (bijvoorbeeld een HP t620 thin client); medewerkers rekenen af op hun telefoon of tablet via het wifi-netwerk. Alle apparaten zien dezelfde gegevens.
+Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in het gebouw (bijvoorbeeld een HP t620 thin client); medewerkers rekenen af op hun telefoon of tablet via een eigen wifi-netwerk van de kassa (of de wifi van het gebouw). Er is geen internet nodig om te verkopen. Alle apparaten zien dezelfde gegevens.
 
 **Eerst proberen?** De [proefversie](https://jlmree.github.io/kassa-test/) werkt meteen in je browser, met voorbeeldgegevens (twee weken verkopen, kaarten, rekeningen). Log in als *Demo*, *Anna* of *Kees* met wachtwoord `proef1234`. Wat je daar doet blijft alleen op je eigen apparaat.
 
 ## Wat kan het
 
 - **Kassa**: producten aantikken en afrekenen met contant (met wisselgeld), pin, tegoedkaart of een combinatie (kaart + rest contant/pin).
+- **Betaalmethoden kiezen**: de beheerder zet contant, pin, kaart en op rekening aan of uit (bijv. geen pin in een kantine zonder pinautomaat). Wat uit staat, verdwijnt van de kassa.
 - **Rekeningen**: open rekeningen op naam, bijbestellen vanaf elk apparaat, regels schrappen, later afrekenen.
 - **Tegoedkaarten**: kaarten met QR-code maken en printen, opwaarderen, scannen met de camera van de telefoon, blokkeren bij verlies, tegoed overzetten naar een nieuwe kaart, geschiedenis per kaart.
 - **Dienst (kasopmaak)**: kassa openen met wisselgeld, aan het eind tellen per munt/biljet; de kassa rekent uit wat er in de la hoort en laat het verschil zien.
@@ -26,6 +27,7 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
   - **Beheerder**: daarnaast producten, prijzen en voorraad, kaarten maken, alle bonnen annuleren, kaarten deblokkeren, rapporten, logboek en medewerkers.
 - De beheerder wordt bij het installeren op de server zelf aangemaakt. Accounts die in de app worden aangemaakt, hebben geen toegang totdat een beheerder ze goedkeurt; zo kan niemand via internet als eerste beheerder worden.
 - De database is alleen vanaf de server zelf bereikbaar; telefoons praten uitsluitend via https met de webserver.
+- Het eigen wifi-netwerk van de kassa is beveiligd met een wachtwoord (WPA2); alleen wie dat heeft, komt bij de kassa.
 
 ## Installeren op de HP t620
 
@@ -40,9 +42,13 @@ Een t620 (of een andere oude 64-bit pc) is ruim voldoende: de kassa gebruikt ong
 
 Ubuntu Server 24.04 werkt ook.
 
-### 2. Vast adres
+### 2. Wifi voor de telefoons
 
-Geef de t620 in je router een **vast IP-adres** (zoek naar "DHCP-reservering" of "vast IP"), bijvoorbeeld `192.168.1.50`. Zo vinden de telefoons hem altijd terug.
+Kies een van de twee:
+
+**A. Eigen wifi-netwerk van de kassa (aanbevolen).** De t620 is dan zelf het wifi-punt: de telefoons verbinden met het netwerk *Kassa* en de kassa staat altijd op `https://10.42.0.1`. Je hebt de wifi van het gebouw niet nodig, en een router die het adres verandert kan niets stuk maken. Nodig: wifi in de t620 (er zit een M.2-sleuf voor een wifi-kaart in; veel exemplaren hebben er al een) of een USB-wifi-stick die als wifi-punt kan werken ("AP-modus"; bijvoorbeeld een stick met een MediaTek MT7612U- of Ralink RT5370-chip). Zit de t620 met een netwerkkabel aan internet, dan geeft hij dat door aan de telefoons; zonder internet werkt de kassa gewoon. Eén wifi-punt dekt een kantine of barruimte; voor een groot gebouw is B beter.
+
+**B. Wifi van het gebouw of een los wifi-punt.** Sluit de t620 met een kabel aan op de router (of op een los wifi-punt) en geef hem in de router een **vast IP-adres** (zoek naar "DHCP-reservering" of "vast IP"), bijvoorbeeld `192.168.1.50`. Zo vinden de telefoons hem altijd terug.
 
 ### 3. Kassa installeren
 
@@ -51,8 +57,10 @@ Alles zit in één installatiebestand: **`kassa-installatie.run`** (ongeveer 25 
 ```sh
 su -
 wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
-bash kassa-installatie.run
+bash kassa-installatie.run --wifi
 ```
+
+Met `--wifi` maakt de t620 het netwerk *Kassa* met een bedacht wachtwoord; aan het eind staan de naam, het wachtwoord en een QR-code om te verbinden. Zelf kiezen kan ook: `--wifi-naam "Kantine Kassa" --wifi-wachtwoord geheim123` (minstens 8 tekens). Later nog eens zien: `/opt/kassa/bin/wifi.sh status`. Uitzetten: `--zonder-wifi`. Kies je voor B (wifi van het gebouw), laat `--wifi` dan weg.
 
 (Op Ubuntu: `sudo -i` in plaats van `su -`.) Het bestand kan ook via een USB-stick op de t620 komen; zie de handleiding. De commando's hieronder voer je ook als root uit.
 
@@ -62,7 +70,7 @@ Dit duurt een paar minuten (er is internet nodig voor PostgreSQL en de webserver
 
 Om de camera te mogen gebruiken (QR-kaarten scannen) moet de verbinding beveiligd zijn. De kassa maakt daarvoor een eigen certificaat dat elk apparaat **eenmalig** installeert:
 
-1. Open op de telefoon `http://192.168.1.50` (het adres van je t620). Je krijgt een welkomstpagina.
+1. Verbind de telefoon met de wifi van de kassa (scan de QR-code van de installatie met de camera) en open `http://10.42.0.1`. Bij B open je het vaste adres van de t620, bijvoorbeeld `http://192.168.1.50`. Je krijgt een welkomstpagina.
 2. Volg de stappen: certificaat downloaden en vertrouwen (iPhone: in Safari; Android: via Instellingen → Beveiliging).
 3. Tik op **Naar de kassa** en zet hem op je beginscherm.
 
@@ -72,7 +80,7 @@ Om de camera te mogen gebruiken (QR-kaarten scannen) moet de verbinding beveilig
 bash kassa-installatie.run --duckdns mijnbar.duckdns.org <jouw token>
 ```
 
-De kassa krijgt dan een echt certificaat en is bereikbaar op `https://mijnbar.duckdns.org`. Alleen vanaf je eigen wifi: de naam wijst naar het interne adres van de t620. (Sommige routers blokkeren dat; zoek dan in de router naar "DNS-rebind-bescherming" en voeg een uitzondering toe voor de naam.)
+De kassa krijgt dan een echt certificaat en is bereikbaar op `https://mijnbar.duckdns.org`, alleen op de wifi van de kassa (of van het gebouw): de naam wijst naar het interne adres van de t620. Met het eigen wifi-netwerk werkt de naam ook als er even geen internet is. Voor het certificaat heeft de t620 bij het installeren en daarna eens per twee maanden internet nodig (via de kabel). (Bij B blokkeren sommige routers zo'n naam; zoek dan in de router naar "DNS-rebind-bescherming" en voeg een uitzondering toe voor de naam.)
 
 ### Kassa ook op het scherm van de t620
 
@@ -86,29 +94,7 @@ De t620 start daarna vanzelf op in de kassa, schermvullend en zonder bureaublad;
 
 ### 5. Eerste keer
 
-Aan het eind van de installatie vraagt het script een naam en wachtwoord voor de beheerder; daarmee log je in de app in. (Overgeslagen? Dan later met `/opt/kassa/bin/kassas.sh beheerder`.) Laat daarna je medewerkers zelf een account aanmaken in de app en keur ze goed bij *Beheer → Medewerkers*.
-
-## Op een cloudserver, ook voor meerdere verenigingen
-
-De kassa draait ook op een gehuurde Linux-server (bijvoorbeeld de kleinste cloudserver van Hetzner, Debian 12 of Ubuntu 24.04). Telefoons kunnen dan overal inloggen, ook via 4G. Een webhostingpakket (alleen PHP en MySQL) is niet genoeg.
-
-Elke kassa krijgt een eigen adres. Laat dat adres eerst naar het IP-adres van de server wijzen (een A-record bij je domein, of een gratis naam op [duckdns.org](https://www.duckdns.org) waar je het IP-adres van de server invult). Daarna, als root op de server:
-
-```sh
-wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
-bash kassa-installatie.run --naam voetbal --domein voetbal.mijndomein.nl
-bash kassa-installatie.run --naam tennis  --domein tennis.mijndomein.nl
-```
-
-- Elke kassa heeft een **eigen database, eigen accounts, eigen sleutel en eigen back-ups**. Een account of login van de ene kassa werkt nooit bij een andere.
-- De server haalt per adres zelf een echt certificaat (Let's Encrypt); poort 80 en 443 moeten open staan.
-- Een naam is 2 tot 20 kleine letters of cijfers. Aan het eind vraagt de installatie een naam en wachtwoord voor de beheerder van die kassa (later kan het met `/opt/kassa/bin/kassas.sh beheerder <naam>`).
-- Bijwerken (in de app of met `bijwerken.sh`) werkt alle kassa's op de server tegelijk bij.
-- Overzicht: `/opt/kassa/bin/kassas.sh` toont per kassa het adres, aantal accounts, omzet van de laatste 30 dagen en de laatste back-up. Een kassa weghalen: `/opt/kassa/bin/kassas.sh verwijderen tennis` (er blijft een laatste back-up staan).
-- Back-ups staan per kassa in `/var/backups/kassa/<naam>/`. Terugzetten gaat met hetzelfde `terugzetten.sh`; aan de bestandsnaam ziet het bij welke kassa de back-up hoort.
-- Eén kassa gebruikt ongeveer 100–150 MB werkgeheugen. Op een server met 4 GB passen er ruim 20.
-
-Alleen één kassa op een cloudserver? Dat kan ook zonder naam: `bash kassa-installatie.run --domein kassa.mijndomein.nl`.
+Aan het eind van de installatie vraagt het script een naam en wachtwoord voor de beheerder; daarmee log je in de app in. (Overgeslagen? Dan later met `/opt/kassa/bin/beheerder.sh`.) Laat daarna je medewerkers zelf een account aanmaken in de app en keur ze goed bij *Beheer → Medewerkers*. Kies bij *Beheer → Instellingen → Betaalmethoden* welke betaalmethoden jullie gebruiken; zet bijvoorbeeld pin uit als er geen pinautomaat is.
 
 ## Dagelijks gebruik
 
@@ -123,10 +109,11 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 | Wat | Hoe |
 | --- | --- |
 | Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
-| Beheerder aanmaken, of weer binnenkomen als je het wachtwoord van de enige beheerder kwijt bent | `/opt/kassa/bin/kassas.sh beheerder` (een kassa op naam: `kassas.sh beheerder <naam>`) |
+| Beheerder aanmaken, of weer binnenkomen als je het wachtwoord van de enige beheerder kwijt bent | `/opt/kassa/bin/beheerder.sh` |
 | Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
 | Nieuwe versie installeren | In de app: *Beheer → Instellingen → Bijwerken* (de t620 heeft daarvoor internet nodig). Of op de t620: `/opt/kassa/bin/bijwerken.sh`, of zonder internet `/opt/kassa/bin/bijwerken.sh <pad naar kassa-installatie.run>` vanaf een USB-stick. Er wordt altijd eerst een back-up gemaakt; je gegevens blijven staan. |
-| Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` (een kassa op naam: `kassa-<naam>-auth`, `kassa-<naam>-rest`) |
+| Wifi-naam en wachtwoord (met QR-code) | `/opt/kassa/bin/wifi.sh status`. Ander wachtwoord: `bash kassa-installatie.run --wifi-wachtwoord nieuw-wachtwoord` (daarna opnieuw verbinden op elke telefoon). |
+| Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` (met eigen wifi ook `kassa-wifi kassa-wifi-dns`) |
 | Logboek van de server | `journalctl -u kassa-auth -u kassa-rest -u caddy --since today` |
 
 Wachtwoord vergeten? Een beheerder stelt een nieuw wachtwoord in bij *Beheer → Medewerkers*.
@@ -134,12 +121,12 @@ Wachtwoord vergeten? Een beheerder stelt een nieuw wachtwoord in bij *Beheer →
 ## Hoe het in elkaar zit
 
 ```
-telefoon / tablet ──https──▶ Caddy (webserver, certificaat)
-                              ├── /           de app (React)
-                              ├── /auth/v1/   inloggen (Supabase Auth)
-                              └── /rest/v1/   database-API (PostgREST)
-                                                  │
-                                              PostgreSQL  ← alle regels en berekeningen
+telefoon / tablet ──wifi "Kassa" (hostapd, dnsmasq)──https──▶ Caddy (webserver, certificaat)
+                                                                  ├── /           de app (React)
+                                                                  ├── /auth/v1/   inloggen (Supabase Auth)
+                                                                  └── /rest/v1/   database-API (PostgREST)
+                                                                                      │
+                                                                                  PostgreSQL  ← alle regels en berekeningen
 ```
 
 Alles draait op de t620 zelf, zonder Docker. De app werkt ook met een Supabase-project in de cloud: vul dan het adres en de *anon public* sleutel in `public/config.js` in en voer `supabase/migrations/*.sql` uit in de SQL Editor.

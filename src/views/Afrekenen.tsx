@@ -8,7 +8,7 @@ type Methode = 'contant' | 'pin' | 'kaart';
 
 /** Betaalscherm voor een bestelling of een rekening. */
 export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; totaal: number; methode: Methode; onKlaar: () => void }) {
-  const { herlaad } = useData();
+  const { herlaad, methoden } = useData();
   const { open } = useSheet();
   const [stap, setStap] = useState<Methode>(methode);
   const [kaart, setKaart] = useState<{ code: string; info: KaartInfo } | null>(null);
@@ -51,10 +51,12 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       )}
       {stap === 'kaart' && kaart && (rest === 0
         ? <button className="big m-card" disabled={bezig} onClick={() => betaal()}>Afschrijven</button>
-        : <div className="btns">
-            <button className="big m-cash" onClick={() => setStap('contant')}>Rest contant</button>
-            <button className="big m-pin" disabled={bezig} onClick={() => setStap('pin')}>Rest pin</button>
-          </div>)}
+        : methoden.contant || methoden.pin
+          ? <div className="btns">
+              {methoden.contant && <button className="big m-cash" onClick={() => setStap('contant')}>Rest contant</button>}
+              {methoden.pin && <button className="big m-pin" disabled={bezig} onClick={() => setStap('pin')}>Rest pin</button>}
+            </div>
+          : <p className="card warnbox">Er staat te weinig tegoed op de kaart. Waardeer de kaart eerst op, of haal iets van de bestelling af.</p>)}
       {stap === 'contant' && <Contant bedrag={rest} bezig={bezig} onBetaal={(g) => betaal({ methode: 'contant', gegeven_cent: g })} />}
       {stap === 'pin' && (
         <>

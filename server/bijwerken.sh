@@ -2,7 +2,7 @@
 # Kassa bijwerken naar de nieuwste versie (of met een gedownload installatiebestand).
 #   /opt/kassa/bin/bijwerken.sh [kassa-installatie.run]
 set -euo pipefail
-REPO=$(sed -n 's/^KASSA_REPO=//p' /etc/kassa/server.env /etc/kassa/instellingen.env 2>/dev/null | head -n 1 || true)
+REPO=$(sed -n 's/^KASSA_REPO=//p' /etc/kassa/instellingen.env 2>/dev/null)
 REPO=${REPO:-Jlmree/kassa-test}
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 if [ -n "${1:-}" ]; then
