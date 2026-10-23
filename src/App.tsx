@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import { ingesteld, inlogEmail, lees, PROEF, rpc, lidGevraagd, saldoGevraagd, sb, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
+import { ingesteld, inlogEmail, lees, PROEF, rpc, lidGevraagd, saldoGevraagd, sb, uitnodigingGevraagd, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
 import { proefLaden, proefOpnieuw } from '@proef';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
 import { Bestelling, Kassa, MandBalk, MandContext, useMand, type Mand } from './views/Kassa';
@@ -10,6 +10,7 @@ import { Kaarten } from './views/Kaarten';
 import { Dienst } from './views/Dienst';
 import { LidOverzicht, Saldo, SaldoZuil } from './views/Saldo';
 import { Streeplijst } from './views/Streeplijst';
+import { UitnodigingAannemen } from './views/Uitnodigen';
 import { Beheer } from './views/Beheer';
 import { NieuwNaUpdate } from './wijzigingen';
 
@@ -17,6 +18,8 @@ export function App() {
   if (!ingesteld) return <NietIngesteld />;
   // Klant met een tegoedkaart: alleen het saldo, zonder inloggen.
   if (zuilGevraagd()) return <>{PROEF && <ProefBalk />}<SaldoZuil /><Melding /></>;
+  const uitn = uitnodigingGevraagd();
+  if (uitn) return <>{PROEF && <ProefBalk />}<UitnodigingAannemen code={uitn} /><Melding /></>;
   const lid = lidGevraagd();
   if (lid != null) return <>{PROEF && <ProefBalk />}<LidOverzicht code={lid} /><Melding /></>;
   const saldo = saldoGevraagd();
@@ -168,6 +171,9 @@ function Aanmelden() {
   const [ww, setWw] = useState(PROEF ? 'proef1234' : '');
   const [bezig, run] = useBezig();
   const [klaar, setKlaar] = useState(!PROEF);
+  // Mag je hier zelf een account aanvragen? (De beheerder kan dat uitzetten; dan alleen met een uitnodiging.)
+  const [open, setOpen] = useState(true);
+  useEffect(() => { void rpc<boolean>('aanmelden_open').then((o) => { setOpen(o !== false); if (o === false) setNieuw(false); }, () => {}); }, [klaar]);
   useEffect(() => { if (PROEF) void proefLaden().then(() => setKlaar(true), (e: Error) => { setKlaar(true); melding('De proefkassa kon niet starten: ' + e.message + '. Probeer opnieuw of tik bovenaan op Wissen.'); }); }, []);
   const verstuur = () => run(async () => {
     if (!naam.trim()) throw new Error('Vul je naam in');
@@ -189,7 +195,7 @@ function Aanmelden() {
       <h1>Bar-kassa</h1>
       <div className="chips">
         <button className={!nieuw ? 'on' : ''} onClick={() => setNieuw(false)}>Inloggen</button>
-        <button className={nieuw ? 'on' : ''} onClick={() => setNieuw(true)}>Account aanmaken</button>
+        {open && <button className={nieuw ? 'on' : ''} onClick={() => setNieuw(true)}>Account aanmaken</button>}
       </div>
       <form onSubmit={(e) => { e.preventDefault(); void verstuur(); }}>
         <label htmlFor="ln">Naam</label>
@@ -205,7 +211,8 @@ function Aanmelden() {
           <p><b>Demo</b>: beheerder, ziet alles. <b>Anna</b>: medewerker. <b>Kees</b>: wacht nog op goedkeuring.</p>
         </div>
       )}
-      {nieuw && !PROEF && <p className="mu">Een nieuw account moet eerst door een beheerder worden goedgekeurd.</p>}
+      {nieuw && !PROEF && <p className="mu">Een nieuw account moet eerst door een beheerder worden goedgekeurd. Sneller: vraag de beheerder om een uitnodiging (een QR-code), dan ben je meteen binnen.</p>}
+      {!open && <p className="mu">Nieuw? Vraag de beheerder om een uitnodiging: je scant een QR-code en kiest een wachtwoord.</p>}
       {!nieuw && <p className="mu">Wachtwoord vergeten? Vraag een beheerder om een nieuw wachtwoord in te stellen.</p>}
     </div>
   );

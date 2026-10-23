@@ -48,6 +48,15 @@
     <p class="mu">Zet de kassa daarna op je beginscherm (Delen of menu → Zet op beginscherm), dan opent hij als een app.</p>
   </div>
 </main>
-<script>document.getElementById('open').href = 'https://' + location.host + '/';</script>
+<script>
+  // Een uitnodiging (?uitnodiging=…) gaat mee naar de kassa.
+  document.getElementById('open').href = 'https://' + location.host + '/' + location.search;
+  if (new URLSearchParams(location.search).has('uitnodiging')) {
+    var p = document.createElement('div');
+    p.className = 'card';
+    p.innerHTML = '<b>Je bent uitgenodigd.</b> Installeer eerst het certificaat (stap 1 en 2) en tik daarna op <i>Naar de kassa</i>; dan kies je je wachtwoord.';
+    document.querySelector('main h1').after(p);
+  }
+</script>
 </body>
 </html>

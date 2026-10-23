@@ -51,6 +51,18 @@ export function lidCode(t: string): string | null {
   try { return /^https?:\/\//i.test(t.trim()) ? new URL(t.trim()).searchParams.get('lid') : null; } catch { return null; }
 }
 
+/** Uitnodiging voor een nieuwe medewerker (?uitnodiging=CODE). */
+export const uitnodigingGevraagd = () => new URLSearchParams(location.search).get('uitnodiging');
+/**
+ * Link in de QR-code van een uitnodiging. Met een eigen certificaat (de kassa op een IP-adres)
+ * gaat hij via de welkomstpagina (http), zodat een nieuwe telefoon eerst het certificaat installeert.
+ */
+export function uitnodigingLink(code: string) {
+  const q = '?uitnodiging=' + encodeURIComponent(code);
+  if (location.protocol === 'https:' && /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)) return `http://${location.hostname}/${q}`;
+  return location.origin + location.pathname.replace(/[^/]*$/, '') + q;
+}
+
 /** Link naar de eigen streeplijst van een lid. */
 export const lidLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?lid=' + encodeURIComponent(code);
 export const lidGevraagd = () => new URLSearchParams(location.search).get('lid');
