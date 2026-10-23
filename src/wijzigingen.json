@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Saldo-zuil aan de bar",
+    "punten": [
+      "Hang een oude telefoon of tablet aan de muur: klanten houden hun kaart voor de camera en zien tien seconden hun saldo, daarna staat hij vanzelf weer klaar. Een USB-scanner aan een scherm werkt ook. Instellen: Beheer → Instellingen → Saldo-zuil.",
+      "De camera-scanner kijkt nu vijf keer per seconde op een kleiner beeld: dat is zuiniger met de batterij en sneller op oudere telefoons."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Klanten bekijken zelf hun saldo",
     "punten": [
       "Op nieuwe tegoedkaarten staat een QR-code die met de gewone camera van een telefoon de saldo-pagina opent: saldo en de laatste tien keren opwaarderen of betalen. Zonder account, en er kan niets mee veranderd worden.",

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { datumTijd, eur, kaartCode, rpc } from '../lib';
-import { Rij, useBezig } from '../ui';
+import { Rij, Scanner, useBezig } from '../ui';
 
 interface KaartSaldo {
   nummer: number; naam: string | null; saldo_cent: number; geblokkeerd: boolean; winkel: string;
@@ -64,6 +64,101 @@ export function Saldo({ start }: { start: string }) {
         </>
       )}
       <p className="mu c"><a href={location.pathname.replace(/saldo\/?$/, '')}>Medewerker? Naar de kassa</a></p>
+    </div>
+  );
+}
+
+const TOON_SECONDEN = 10;
+
+/**
+ * Saldo-zuil: een oude telefoon of tablet aan de muur (of een scherm met een
+ * USB-scanner). Klanten houden hun kaart voor de camera en zien even hun saldo;
+ * daarna staat de zuil vanzelf weer klaar. Geen inloggen, alleen bekijken.
+ */
+export function SaldoZuil() {
+  const [k, setK] = useState<KaartSaldo | null>(null);
+  const [fout, setFout] = useState('');
+  const [over, setOver] = useState(0);
+  const [voorkant, setVoorkant] = useState(() => { try { return localStorage.getItem('zuil-camera') !== 'achter'; } catch { return true; } });
+  const bezig = useRef(false);
+
+  const toon = useCallback(async (invoer: string) => {
+    const c = kaartCode(invoer);
+    if (!c || bezig.current) return;
+    bezig.current = true;
+    try {
+      setK(await rpc<KaartSaldo>('kaart_saldo', { p_code: c }));
+      setFout('');
+    } catch (e) {
+      setK(null);
+      setFout((e as Error).message);
+    } finally {
+      bezig.current = false;
+      setOver(TOON_SECONDEN);
+    }
+  }, []);
+
+  // Aftellen, daarna terug naar "houd je kaart voor de camera".
+  useEffect(() => {
+    if (!over) return;
+    const t = setTimeout(() => { if (over === 1) { setK(null); setFout(''); } setOver(over - 1); }, 1000);
+    return () => clearTimeout(t);
+  }, [over]);
+
+  // Een USB-scanner typt de code en drukt op Enter.
+  useEffect(() => {
+    let buf = '', tijd = 0;
+    const toets = (e: KeyboardEvent) => {
+      if (Date.now() - tijd > 300) buf = '';
+      tijd = Date.now();
+      if (e.key === 'Enter') { if (buf.length >= 8) void toon(buf); buf = ''; }
+      else if (e.key.length === 1) buf += e.key;
+    };
+    window.addEventListener('keydown', toets);
+    return () => window.removeEventListener('keydown', toets);
+  }, [toon]);
+
+  // Scherm niet op slot laten gaan (waar de browser dat toestaat).
+  useEffect(() => {
+    type Slot = { release: () => Promise<void> };
+    const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<Slot> } }).wakeLock;
+    let slot: Slot | null = null;
+    const vraag = () => { if (wl && document.visibilityState === 'visible') wl.request('screen').then((s) => (slot = s), () => {}); };
+    vraag();
+    document.addEventListener('visibilitychange', vraag);
+    return () => { document.removeEventListener('visibilitychange', vraag); void slot?.release(); };
+  }, []);
+
+  const wissel = () => {
+    const v = !voorkant;
+    setVoorkant(v);
+    try { localStorage.setItem('zuil-camera', v ? 'voor' : 'achter'); } catch { /* geen opslag */ }
+  };
+
+  return (
+    <div className="zuil">
+      {k || fout ? (
+        <div className="zuil-uitkomst" onClick={() => setOver(1)}>
+          {k ? (
+            <>
+              <p className="mu">Kaart {k.nummer}</p>
+              <div className="zuil-saldo">{eur(k.saldo_cent)}</div>
+              {k.geblokkeerd ? <p className="stamp">GEBLOKKEERD</p> : <p className="mu">Opwaarderen doe je aan de bar.</p>}
+              {k.historie.slice(0, 3).map((h, i) => (
+                <Rij key={i} l={<>{soortNaam[h.soort] ?? h.soort} <span className="mu">{datumTijd(h.ts)}</span></>} r={(h.bedrag_cent > 0 ? '+' : '') + eur(h.bedrag_cent)} />
+              ))}
+            </>
+          ) : <p className="card warnbox">{fout}</p>}
+          <p className="mu c">Over {over} seconden weer klaar</p>
+        </div>
+      ) : (
+        <>
+          <h1>Saldo bekijken</h1>
+          <p className="zuil-uitleg">Houd de QR-code van je kaart voor de camera</p>
+          <Scanner key={String(voorkant)} voorkant={voorkant} zonderCamera="Camera niet beschikbaar. Geef de browser toestemming voor de camera, of sluit een USB-scanner aan." onCode={(c) => void toon(c)} />
+          <button className="ghost" onClick={wissel}>Andere camera</button>
+        </>
+      )}
     </div>
   );
 }

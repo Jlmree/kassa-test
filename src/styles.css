@@ -225,3 +225,16 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 /* Saldo-pagina voor klanten */
 .saldo .card { margin-top: 12px; }
 .saldo a { color: var(--acc); font-weight: 600; }
+
+/* Saldo-zuil (telefoon of tablet aan de muur) */
+.zuil { max-width: 560px; margin: 0 auto; padding: 24px 16px; text-align: center; }
+.zuil h1 { margin: 8px 0 4px; }
+.zuil-uitleg { font-size: 20px; margin: 0 0 14px; }
+.zuil .scan { width: 100%; border-radius: 18px; }
+.zuil-uitkomst { padding-top: 6vh; }
+.zuil-uitkomst .row { text-align: left; }
+.zuil-saldo { font-size: clamp(56px, 18vw, 120px); font-weight: 800; margin: 4px 0 8px; }
+.scan.spiegel { transform: scaleX(-1); }
+.qrs-zuil { width: 180px; margin: 10px auto 0; }
+.stappen { margin: 0; padding-left: 20px; }
+.stappen li { margin: 4px 0; }

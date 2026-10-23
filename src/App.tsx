@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import { ingesteld, inlogEmail, lees, PROEF, rpc, saldoGevraagd, sb, toonInlognaam, type Profiel } from './lib';
+import { ingesteld, inlogEmail, lees, PROEF, rpc, saldoGevraagd, sb, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
 import { proefLaden, proefOpnieuw } from '@proef';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
 import { Bestelling, Kassa, MandBalk, MandContext, useMand, type Mand } from './views/Kassa';
 import { Rekeningen } from './views/Rekeningen';
 import { Kaarten } from './views/Kaarten';
 import { Dienst } from './views/Dienst';
-import { Saldo } from './views/Saldo';
+import { Saldo, SaldoZuil } from './views/Saldo';
 import { Beheer } from './views/Beheer';
 import { NieuwNaUpdate } from './wijzigingen';
 
 export function App() {
   if (!ingesteld) return <NietIngesteld />;
   // Klant met een tegoedkaart: alleen het saldo, zonder inloggen.
+  if (zuilGevraagd()) return <>{PROEF && <ProefBalk />}<SaldoZuil /><Melding /></>;
   const saldo = saldoGevraagd();
   if (saldo != null) return <>{PROEF && <ProefBalk />}<Saldo start={saldo} /><Melding /></>;
   return <>{PROEF && <ProefBalk />}<Inlog /><Melding /></>;
