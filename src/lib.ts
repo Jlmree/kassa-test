@@ -46,6 +46,15 @@ export function kaartCode(t: string): string {
   return s;
 }
 
+/** De code van een lid uit een gescande QR-code (link met ?lid=), anders null. */
+export function lidCode(t: string): string | null {
+  try { return /^https?:\/\//i.test(t.trim()) ? new URL(t.trim()).searchParams.get('lid') : null; } catch { return null; }
+}
+
+/** Link naar de eigen streeplijst van een lid. */
+export const lidLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?lid=' + encodeURIComponent(code);
+export const lidGevraagd = () => new URLSearchParams(location.search).get('lid');
+
 /** Link voor op de kaart: opent de saldo-pagina van deze kassa. */
 export const saldoLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?saldo=' + encodeURIComponent(code);
 

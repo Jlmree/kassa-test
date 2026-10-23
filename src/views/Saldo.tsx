@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { datumTijd, eur, kaartCode, rpc } from '../lib';
+import { datumTijd, eur, kaartCode, lidCode, methodeNaam, rpc } from '../lib';
 import { Rij, Scanner, useBezig } from '../ui';
 
 interface KaartSaldo {
   nummer: number; naam: string | null; saldo_cent: number; geblokkeerd: boolean; winkel: string;
   historie: { ts: string; bedrag_cent: number; soort: string }[];
 }
+// De server geeft een fout terug als {"fout": "..."} (zodat mislukte pogingen geteld blijven).
+async function zonderFout<T>(p: Promise<T | { fout: string }>): Promise<T> {
+  const r = await p;
+  if (r && typeof r === 'object' && 'fout' in r) throw new Error(r.fout);
+  return r as T;
+}
+const saldoVan = (code: string) => zonderFout(rpc<KaartSaldo | { fout: string }>('kaart_saldo', { p_code: code }));
+
+interface LidStand {
+  naam: string; open_cent: number; maand_cent: number; winkel: string;
+  regels: { ts: string; soort: 'streep' | 'afbetaald'; bedrag_cent: number; bonnummer: number | null; door_naam: string | null; wat: string | null }[];
+}
+const lidVan = (code: string) => zonderFout(rpc<LidStand | { fout: string }>('lid_overzicht', { p_code: code }));
+
 const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet', overzetting: 'Overgezet' };
 
 /** Saldo-pagina voor klanten: geopend via de QR-code op de kaart, zonder inloggen. Alleen bekijken. */
@@ -17,7 +31,7 @@ export function Saldo({ start }: { start: string }) {
   const [bezig, run] = useBezig();
   const laad = useCallback((c: string) => run(async () => {
     try {
-      setK(await rpc<KaartSaldo>('kaart_saldo', { p_code: c }));
+      setK(await saldoVan(c));
       setFout('');
     } catch (e) { setK(null); setFout((e as Error).message); }
   }), [run]);
@@ -77,20 +91,22 @@ const TOON_SECONDEN = 10;
  */
 export function SaldoZuil() {
   const [k, setK] = useState<KaartSaldo | null>(null);
+  const [lid, setLid] = useState<LidStand | null>(null);
   const [fout, setFout] = useState('');
   const [over, setOver] = useState(0);
   const [voorkant, setVoorkant] = useState(() => { try { return localStorage.getItem('zuil-camera') !== 'achter'; } catch { return true; } });
   const bezig = useRef(false);
 
   const toon = useCallback(async (invoer: string) => {
-    const c = kaartCode(invoer);
+    const lc = lidCode(invoer);
+    const c = lc ?? kaartCode(invoer);
     if (!c || bezig.current) return;
     bezig.current = true;
     try {
-      setK(await rpc<KaartSaldo>('kaart_saldo', { p_code: c }));
+      if (lc) { setLid(await lidVan(lc)); setK(null); } else { setK(await saldoVan(c)); setLid(null); }
       setFout('');
     } catch (e) {
-      setK(null);
+      setK(null); setLid(null);
       setFout((e as Error).message);
     } finally {
       bezig.current = false;
@@ -101,7 +117,7 @@ export function SaldoZuil() {
   // Aftellen, daarna terug naar "houd je kaart voor de camera".
   useEffect(() => {
     if (!over) return;
-    const t = setTimeout(() => { if (over === 1) { setK(null); setFout(''); } setOver(over - 1); }, 1000);
+    const t = setTimeout(() => { if (over === 1) { setK(null); setLid(null); setFout(''); } setOver(over - 1); }, 1000);
     return () => clearTimeout(t);
   }, [over]);
 
@@ -137,9 +153,18 @@ export function SaldoZuil() {
 
   return (
     <div className="zuil">
-      {k || fout ? (
+      {k || lid || fout ? (
         <div className="zuil-uitkomst" onClick={() => setOver(1)}>
-          {k ? (
+          {lid ? (
+            <>
+              <p className="mu">Streeplijst van {lid.naam}</p>
+              <div className="zuil-saldo">{eur(lid.open_cent)}</div>
+              <p className="mu">{lid.open_cent > 0 ? 'staat nog open' : 'Alles is betaald.'}{lid.maand_cent ? ` · deze maand ${eur(lid.maand_cent)} gestreept` : ''}</p>
+              {lid.regels.slice(0, 3).map((r, i) => (
+                <Rij key={i} l={<>{r.soort === 'streep' ? r.wat : 'Afbetaald'} <span className="mu">{datumTijd(r.ts)}</span></>} r={(r.soort === 'streep' ? '' : '− ') + eur(r.bedrag_cent)} />
+              ))}
+            </>
+          ) : k ? (
             <>
               <p className="mu">Kaart {k.nummer}</p>
               <div className="zuil-saldo">{eur(k.saldo_cent)}</div>
@@ -154,9 +179,47 @@ export function SaldoZuil() {
       ) : (
         <>
           <h1>Saldo bekijken</h1>
-          <p className="zuil-uitleg">Houd de QR-code van je kaart voor de camera</p>
+          <p className="zuil-uitleg">Houd de QR-code van je kaart of je streeplijst voor de camera</p>
           <Scanner key={String(voorkant)} voorkant={voorkant} zonderCamera="Camera niet beschikbaar. Geef de browser toestemming voor de camera, of sluit een USB-scanner aan." onCode={(c) => void toon(c)} />
           <button className="ghost" onClick={wissel}>Andere camera</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Eigen streeplijst van een lid: geopend via de persoonlijke QR-code, zonder inloggen. Alleen bekijken. */
+export function LidOverzicht({ code }: { code: string }) {
+  const [l, setL] = useState<LidStand | null>(null);
+  const [fout, setFout] = useState('');
+  const [bezig, run] = useBezig();
+  const laad = useCallback(() => run(async () => {
+    try { setL(await lidVan(code)); setFout(''); } catch (e) { setFout((e as Error).message); }
+  }), [code, run]);
+  useEffect(() => { void laad(); }, [laad]);
+  return (
+    <div className="login saldo">
+      {fout && <><h1>Streeplijst</h1><p className="card warnbox">{fout}</p></>}
+      {!l && !fout && <p className="mu">Laden…</p>}
+      {l && (
+        <>
+          <p className="mu">{l.winkel} · Streeplijst</p>
+          <h1>{l.naam}</h1>
+          <p className="mu c">Staat nog open</p>
+          <div className="big-n">{eur(l.open_cent)}</div>
+          <p className="mu c">{l.maand_cent ? `Deze maand ${eur(l.maand_cent)} gestreept. ` : ''}Afrekenen doe je aan de bar.</p>
+          <button className="big alt" disabled={bezig} onClick={() => void laad()}>Vernieuwen</button>
+          <h3 className="s">Wat er op je lijst staat</h3>
+          <div className="card">
+            {l.regels.map((r, i) => (
+              <Rij key={i}
+                l={<>{r.soort === 'streep' ? r.wat : `Afbetaald (${methodeNaam[r.wat ?? ''] ?? r.wat})`}<br />
+                  <span className="mu">{datumTijd(r.ts)}{r.bonnummer ? ` · bon ${r.bonnummer}` : ''}{r.door_naam ? ` · ingeschonken door ${r.door_naam}` : ''}</span></>}
+                r={(r.soort === 'streep' ? '' : '− ') + eur(r.bedrag_cent)} />
+            ))}
+            {!l.regels.length && <p className="mu">Nog niets gestreept.</p>}
+          </div>
+          <p className="mu">Klopt er iets niet? Meld het aan de bar of bij het bestuur. Bewaar deze pagina als bladwijzer; deel de link niet, want wie hem heeft kan je lijst zien.</p>
         </>
       )}
     </div>

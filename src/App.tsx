@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import { ingesteld, inlogEmail, lees, PROEF, rpc, saldoGevraagd, sb, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
+import { ingesteld, inlogEmail, lees, PROEF, rpc, lidGevraagd, saldoGevraagd, sb, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
 import { proefLaden, proefOpnieuw } from '@proef';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
 import { Bestelling, Kassa, MandBalk, MandContext, useMand, type Mand } from './views/Kassa';
 import { Rekeningen } from './views/Rekeningen';
 import { Kaarten } from './views/Kaarten';
 import { Dienst } from './views/Dienst';
-import { Saldo, SaldoZuil } from './views/Saldo';
+import { LidOverzicht, Saldo, SaldoZuil } from './views/Saldo';
 import { Streeplijst } from './views/Streeplijst';
 import { Beheer } from './views/Beheer';
 import { NieuwNaUpdate } from './wijzigingen';
@@ -17,6 +17,8 @@ export function App() {
   if (!ingesteld) return <NietIngesteld />;
   // Klant met een tegoedkaart: alleen het saldo, zonder inloggen.
   if (zuilGevraagd()) return <>{PROEF && <ProefBalk />}<SaldoZuil /><Melding /></>;
+  const lid = lidGevraagd();
+  if (lid != null) return <>{PROEF && <ProefBalk />}<LidOverzicht code={lid} /><Melding /></>;
   const saldo = saldoGevraagd();
   if (saldo != null) return <>{PROEF && <ProefBalk />}<Saldo start={saldo} /><Melding /></>;
   return <>{PROEF && <ProefBalk />}<Inlog /><Melding /></>;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData } from '../data';
-import { centTekst, csvRij, datumTijd, downloaden, eur, methodeNaam, naarCent, rpc } from '../lib';
-import { Bedrag, melding, Rij, useBezig, useSheet } from '../ui';
+import { centTekst, csvRij, datumTijd, downloaden, eur, lidLink, methodeNaam, naarCent, rpc } from '../lib';
+import { Bedrag, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 
 export interface Lid { id: number; naam: string; actief: boolean; open_cent: number; maand_cent: number; laatst: string | null }
 
@@ -101,6 +101,7 @@ interface Historie {
 
 function LidScherm({ id, onWijziging }: { id: number; onWijziging: () => Promise<void> }) {
   const { profiel, dienst, methoden } = useData();
+  const { open } = useSheet();
   const [lid, setLid] = useState<Lid | null>(null);
   const [h, setH] = useState<Historie | null>(null);
   const [v, setV] = useState('');
@@ -158,7 +159,49 @@ function LidScherm({ id, onWijziging }: { id: number; onWijziging: () => Promise
         ))}
         {!h.regels.length && <p className="mu">Nog niets gestreept.</p>}
       </div>
+      <button className="ghost" onClick={() => open(<LidQr lid={lid} />)}>Eigen overzicht voor {lid.naam} (QR-code)</button>
       {beheer && <LidBeheer lid={lid} bezig={bezig} onOpslaan={wijzig} />}
+    </>
+  );
+}
+
+/** QR-code waarmee een lid de eigen streeplijst bekijkt (scannen, printen of de link sturen). */
+function LidQr({ lid }: { lid: Lid }) {
+  const { profiel, winkel } = useData();
+  const [code, setCode] = useState<string | null>(null);
+  const [zeker, setZeker] = useState(false);
+  const [bezig, run] = useBezig();
+  useEffect(() => { void run(async () => setCode(await rpc<string>('lid_code', { p_lid: lid.id }))); }, [lid.id, run]);
+  const vervang = () => run(async () => {
+    setCode(await rpc<string>('lid_nieuwe_code', { p_lid: lid.id }));
+    setZeker(false);
+    melding('Nieuwe code gemaakt; de oude werkt niet meer');
+  });
+  if (!code) return <p className="mu">Laden…</p>;
+  const link = lidLink(code);
+  return (
+    <>
+      <h2>Eigen overzicht voor {lid.naam}</h2>
+      <p className="mu">Laat {lid.naam} deze code scannen met de eigen telefoon, of print hem. Daarmee ziet {lid.naam} wat er op de streeplijst staat en wie er heeft ingeschonken, zonder in te loggen. Ook de saldo-zuil leest deze code.</p>
+      <div className="print kaarten een">
+        <div className="kk">
+          <Qr tekst={link} />
+          <div className="kk-t">
+            <span className="kk-w">{winkel}</span>
+            <span>Streeplijst</span>
+            <b>{lid.naam}</b>
+            <small>{code}</small>
+            <span className="kk-s">Scan voor je streeplijst</span>
+          </div>
+        </div>
+      </div>
+      <div className="btns">
+        <button onClick={() => window.print()}>Printen of PDF</button>
+        <button onClick={() => { void navigator.clipboard?.writeText(link).then(() => melding('Link gekopieerd'), () => melding(link)); }}>Link kopiëren</button>
+      </div>
+      {profiel.rol === 'beheerder' && (!zeker
+        ? <button className="ghost" onClick={() => setZeker(true)}>Nieuwe code maken (oude werkt dan niet meer)</button>
+        : <button className="big warn" disabled={bezig} onClick={vervang}>Ja, nieuwe code voor {lid.naam}</button>)}
     </>
   );
 }

@@ -1,6 +1,17 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Beveiliging",
+    "punten": [
+      "Back-ups op de USB-stick zijn versleuteld. Wie de stick meeneemt, kan er zonder het back-upwachtwoord niets mee. Oude, onversleutelde back-ups worden van de stick gehaald. Het wachtwoord zie je bij de installatie en met /opt/kassa/bin/backup.sh wachtwoord: schrijf het op.",
+      "Na 10 verkeerde wachtwoorden in 10 minuten gaat een account 10 minuten op slot. Een beheerder haalt het eraf door een nieuw wachtwoord in te stellen.",
+      "Op de saldo-pagina en de saldo-zuil zijn na 10 verkeerde codes de codes 10 minuten geblokkeerd.",
+      "Leden zien hun eigen streeplijst, met wie er heeft ingeschonken: Streeplijst → lid → Eigen overzicht (QR-code om te scannen of te printen). Ook de saldo-zuil leest deze code.",
+      "Beheer → Controle: per medewerker de annuleringen, kasverschillen, opwaarderingen en het contante geld van de streeplijst, met wat opvalt."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Streeplijst per lid",
     "punten": [
       "Bij de bestelling staat de knop Streeplijst: tik een naam (of zoek), en de bestelling staat op de lat van dat lid. Een nieuw lid voeg je daar meteen toe.",

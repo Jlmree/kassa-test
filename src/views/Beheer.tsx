@@ -4,9 +4,10 @@ import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam
 import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
+import { Controle } from './Controle';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
-const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Logboek', 'Instellingen'] as const;
+const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
 const uitleg: Record<Deel, string> = {
   Rapport: 'Omzet, betaalmethoden, producten en kasverschillen per periode',
@@ -14,6 +15,7 @@ const uitleg: Record<Deel, string> = {
   Kaarten: 'Nieuwe tegoedkaarten maken en QR-codes printen',
   Streeplijst: 'Per maand wat ieder lid heeft gestreept, en exporteren voor de incasso',
   Medewerkers: 'Toegang geven, rollen en wachtwoorden',
+  Controle: 'Annuleringen, kasverschillen en contant geld per medewerker',
   Logboek: 'Wie heeft wat gedaan',
   Instellingen: 'Naam op de bon, betaalmethoden, bijwerken en wat er nieuw is',
 };
@@ -55,6 +57,7 @@ export function Beheer() {
       {deel === 'Kaarten' && <KaartenMaken />}
       {deel === 'Streeplijst' && <StreeplijstMaand />}
       {deel === 'Medewerkers' && <Medewerkers />}
+      {deel === 'Controle' && <Controle />}
       {deel === 'Logboek' && <Logboek />}
       {deel === 'Instellingen' && <Instellingen />}
     </>
@@ -455,7 +458,7 @@ const actieNaam: Record<string, string> = {
   dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
   wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
   betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
-  lat_afbetalen: 'Streeplijst afbetaald',
+  lat_afbetalen: 'Streeplijst afbetaald', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
