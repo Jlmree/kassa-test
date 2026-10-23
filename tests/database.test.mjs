@@ -601,3 +601,35 @@ test('gratis weggeven: voorraad omlaag, kas klopt, reden in rapport en logboek',
   await zet({});
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 1000 });
 });
+
+test('uitgaven: uit de kas of voorgeschoten; kas en wisselgeld-voorstel kloppen', async () => {
+  await faalt(rpc(gast, 'uitgave_registreren', { p_omschrijving: 'Boodschappen', p_bedrag_cent: 100 }));
+  // Kassa dicht: boodschappen uit de kas. Het voorstel bij openen = vorige telling min de uitgave.
+  const vorig = (await rpc(bar, 'wisselgeld_voorstel')).geteld_cent;
+  await rpc(bar, 'uitgave_registreren', { p_omschrijving: 'Boodschappen', p_bedrag_cent: 2500 });
+  assert.deepEqual(await rpc(bar, 'wisselgeld_voorstel'), { geteld_cent: vorig, uitgaven_cent: 2500, voorstel_cent: Math.max(0, vorig - 2500) });
+  // Iemand schiet voor: staat open, telt niet in de kas.
+  const v = await rpc(bar, 'uitgave_registreren', { p_omschrijving: 'Boodschappen', p_bedrag_cent: 4500, p_voorgeschoten_door: 'Jan' });
+  assert.equal((await rpc(bar, 'wisselgeld_voorstel')).uitgaven_cent, 2500);
+  await faalt(rpc(bar, 'uitgave_registreren', { p_omschrijving: ' ', p_bedrag_cent: 100 }), 'waarvoor');
+  // Kassa open: terugbetalen uit de kas gaat af van wat er in de la hoort.
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 10000 });
+  await faalt(rpc(bar, 'uitgave_terugbetalen', { p_id: v, p_hoe: 'overboeking' }), 'beheerder');
+  await rpc(bar, 'uitgave_terugbetalen', { p_id: v, p_hoe: 'kas' });
+  await faalt(rpc(bar, 'uitgave_terugbetalen', { p_id: v, p_hoe: 'kas' }), 'al terugbetaald');
+  await rpc(bar, 'uitgave_registreren', { p_omschrijving: 'IJs', p_bedrag_cent: 1000 });
+  let d = await rpc(bar, 'dienst_overzicht');
+  assert.deepEqual([d.uitgaven_cent, d.verwacht_cent], [5500, 10000 - 5500]);
+  // Verkeerd geregistreerd: alleen de beheerder haalt het weg; de kas telt het dan niet meer.
+  const { data: lijst } = await bar.from('uitgaven').select('id,omschrijving').is('verwijderd_ts', null).order('id');
+  const ijs = lijst.find((x) => x.omschrijving === 'IJs');
+  await faalt(rpc(bar, 'uitgave_verwijderen', { p_id: ijs.id }), 'beheerder');
+  await rpc(baas, 'uitgave_verwijderen', { p_id: ijs.id });
+  d = await rpc(bar, 'dienst_overzicht');
+  assert.equal(d.verwacht_cent, 10000 - 4500);
+  const r = await rpc(baas, 'rapport', { p_van: new Date(Date.now() - 3600e3).toISOString(), p_tot: new Date(Date.now() + 3600e3).toISOString() });
+  assert.deepEqual([r.uitgaven_cent, r.uitgaven_per_reden, r.voorgeschoten_open_cent], [7000, [{ reden: 'Boodschappen', aantal: 2, bedrag_cent: 7000 }], 0]);
+  const { data: log } = await baas.from('logboek').select('actie').in('actie', ['uitgave', 'uitgave_terugbetaald', 'uitgave_verwijderen']);
+  assert.equal(log.length, 5);
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 5500 });
+});

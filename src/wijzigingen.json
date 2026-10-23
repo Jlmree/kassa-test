@@ -1,6 +1,17 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Uitgaven registreren en categorie kiezen",
+    "punten": [
+      "Dienst → Uitgave registreren: leg vast dat er geld is uitgegeven, bijvoorbeeld voor boodschappen. Uit de kas, of voorgeschoten door iemand. Dat kan ook als de kassa dicht is.",
+      "Uit de kas: staat de kassa open, dan gaat het af van wat er in de la hoort. Is hij dicht, dan trekt het voorstel voor het wisselgeld bij de volgende opening het eraf.",
+      "Voorgeschoten: het staat bij Nog terug te betalen tot het is terugbetaald uit de kas, of door de beheerder als overgemaakt is afgestreept.",
+      "Het rapport laat de uitgaven per omschrijving zien. Alleen een beheerder kan een verkeerde registratie weghalen.",
+      "Bij een product kies je de categorie nu uit een lijst, of je kiest Nieuwe categorie… en typt er een."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Gratis weggeven en boodschappenlijst",
     "punten": [
       "Onder de betaalknoppen staat Gratis: voor een drankje voor de bardienst, een sponsor of iets dat kapot is. Kies de reden en tik op Gratis weggeven. De voorraad gaat omlaag en de kas blijft kloppen.",

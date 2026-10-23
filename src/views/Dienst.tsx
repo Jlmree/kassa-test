@@ -3,6 +3,7 @@ import { useData } from '../data';
 import { centTekst, datumTijd, eur, lees, methodeNaam, naarCent, rpc, sb, tijd, type Bon, type Dienst as D, type Product } from '../lib';
 import { Bedrag, melding, Rij, useBezig, useSheet } from '../ui';
 import { BonScherm } from './Afrekenen';
+import { Uitgaven } from './Uitgaven';
 
 export function Dienst() {
   const { dienst } = useData();
@@ -25,13 +26,17 @@ export function Verschil({ c }: { c: number }) {
 }
 
 interface VorigeDienst { gesloten_ts: string | null; geteld_cent: number | null; verwacht_cent: number | null }
+interface Voorstel { geteld_cent: number; uitgaven_cent: number; voorstel_cent: number }
 
 function DienstOpenen() {
   const { herlaad } = useData();
   const [v, setV] = useState('');
   const [vorige, setVorige] = useState<VorigeDienst | null>(null);
+  const [voorstel, setVoorstel] = useState<Voorstel | null>(null);
   const [bezig, run] = useBezig();
   useEffect(() => {
+    // Vorige telling, min wat er sindsdien uit de kas ging (boodschappen e.d.).
+    void rpc<Voorstel | null>('wisselgeld_voorstel').then(setVoorstel, () => {});
     void lees(sb.from('diensten').select('gesloten_ts,geteld_cent,verwacht_cent').order('id', { ascending: false }).limit(1))
       .then((r) => setVorige((r as VorigeDienst[])[0] ?? null), () => {});
   }, []);
@@ -50,11 +55,14 @@ function DienstOpenen() {
       </div>
       <div className="card">
         <label htmlFor="bs" style={{ marginTop: 0 }}>Wisselgeld in de la bij het begin</label>
-        {vorige?.geteld_cent != null && (
+        {voorstel && (
           <div className="quick">
-            <button onClick={() => setV(centTekst(vorige.geteld_cent!))}>Zelfde als vorige telling ({eur(vorige.geteld_cent)})</button>
+            <button onClick={() => setV(centTekst(voorstel.voorstel_cent))}>
+              {voorstel.uitgaven_cent ? `Vorige telling min uitgaven (${eur(voorstel.voorstel_cent)})` : `Zelfde als vorige telling (${eur(voorstel.voorstel_cent)})`}
+            </button>
           </div>
         )}
+        {!!voorstel?.uitgaven_cent && <p className="mu">Vorige telling {eur(voorstel.geteld_cent)}, sindsdien {eur(voorstel.uitgaven_cent)} uit de kas gehaald.</p>}
         <Bedrag id="bs" waarde={v} onChange={setV} />
         <p className="mu">Tel het geld in de la voordat je begint. Aan het eind tel je opnieuw, zodat je ziet of het klopt.</p>
         <button className="big" disabled={bezig} onClick={openen}>Kassa openen</button>
@@ -67,6 +75,7 @@ function DienstOpenen() {
       )}
       <LaatsteBonnen />
       <LeveringKnop />
+      <Uitgaven />
     </>
   );
 }
@@ -92,6 +101,7 @@ function OpenDienst({ d }: { d: D }) {
       {!oud && <button className="big alt" onClick={() => open(<DienstSluiten />)}>Kassa sluiten en tellen</button>}
       <LaatsteBonnen />
       <LeveringKnop />
+      <Uitgaven />
     </>
   );
 }
@@ -176,6 +186,7 @@ export function DienstKaarten({ d }: { d: D }) {
         <Rij l="+ Contant verkocht" r={eur(d.contant_cent)} />
         {d.opwaardering_contant_cent > 0 && <Rij l="+ Kaarten opgewaardeerd, contant" r={eur(d.opwaardering_contant_cent)} />}
         {(d.afbetaald_contant_cent ?? 0) > 0 && <Rij l="+ Streeplijst afbetaald, contant" r={eur(d.afbetaald_contant_cent!)} />}
+        {(d.uitgaven_cent ?? 0) > 0 && <Rij l="− Uitgaven uit de kas" r={eur(d.uitgaven_cent!)} />}
         <Rij l={<b>= Hoort in de la</b>} r={eur(d.verwacht_cent)} sterk />
         {d.geteld_cent != null && (
           <>
