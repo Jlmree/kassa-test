@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useData } from '../data';
 import { centTekst, datumTijd, eur, lees, naarCent, nieuweSleutel, rpc, sb, type KaartInfo } from '../lib';
-import { Bedrag, melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { Bedrag, melding, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { KaartKiezen } from './Afrekenen';
 
 type Kaart = Omit<KaartInfo, 'betaalcode'>;
@@ -127,6 +127,7 @@ function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void 
 }
 
 function KaartBeheer({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> }) {
+  const { winkel } = useData();
   const [code, setCode] = useState<string | null>(null);
   const [naar, setNaar] = useState('');
   const [bezig, run] = useBezig();
@@ -143,8 +144,8 @@ function KaartBeheer({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> })
   return (
     <>
       {code && (
-        <div className="bon print qrs one">
-          <div className="qc"><Qr tekst={code} /><b>Kaart {k.nummer}</b><small>{code}</small></div>
+        <div className="print kaarten een">
+          <QrKaart nummer={k.nummer} code={code} winkel={winkel} />
         </div>
       )}
       {code && <button className="ghost" onClick={() => window.print()}>QR-code printen</button>}

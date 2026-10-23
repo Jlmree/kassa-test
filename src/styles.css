@@ -37,7 +37,6 @@ code { background: var(--card); padding: 1px 5px; border-radius: 4px; }
 .proef + .app { padding-top: 0; }
 .kaartje { margin-top: 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 header { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-header .logo { width: 34px; height: 34px; border-radius: 8px; flex: none; }
 header b { font-size: 20px; font-weight: 800; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who { padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); font-weight: 600; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
@@ -144,25 +143,41 @@ textarea.f { height: 120px; font: 12px monospace; }
 .bl { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
 .bl.tt { border-top: 1px dashed #555; margin-top: 6px; padding-top: 6px; font-size: 16px; }
 .stamp { color: #b23a26; text-align: center; font-weight: 800; border: 2px solid #b23a26; padding: 2px; margin: 6px 0; }
-.qrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.qrs.one { grid-template-columns: 1fr; max-width: 180px; margin: 14px auto; }
-.qc { border: 1px dashed #999; padding: 6px; text-align: center; break-inside: avoid; display: flex; flex-direction: column; }
 .qr svg { width: 100%; height: auto; display: block; }
-.qc small { font-size: 12px; letter-spacing: 1px; }
 
 .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 16px; z-index: 30; font-weight: 600; max-width: calc(100% - 32px); text-align: center; }
 .login { max-width: 420px; margin: 0 auto; padding: 40px 16px; }
-.logo-groot { display: block; width: 120px; height: 120px; border-radius: 24px; margin: 0 auto 12px; }
-.bon .logo-bon { display: block; width: 72px; height: 72px; margin: 0 auto 6px; border-radius: 10px; }
+/* Logo van de club: doorschijnend op de achtergrond, op de bon en op de kaarten. */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: url('./logo.webp') center 55% / min(70vw, 420px) no-repeat; opacity: .05; filter: grayscale(1); }
+.bon { position: relative; overflow: hidden; }
+.bon > * { position: relative; }
+.bon > .watermerk, .kk > .watermerk { position: absolute; pointer-events: none; }
+.bon > .watermerk { width: 70%; left: 15%; top: 50%; transform: translateY(-50%); opacity: .04; filter: grayscale(1); }
+
+/* Tegoedkaarten op creditcardformaat (85,6 × 54 mm). */
+.kaarten { display: grid; grid-template-columns: repeat(auto-fill, 85.6mm); gap: 2mm; justify-content: center; margin: 12px 0; }
+.kaarten.een { grid-template-columns: 85.6mm; }
+.kk { position: relative; overflow: hidden; width: 85.6mm; height: 54mm; box-sizing: border-box; padding: 4mm; display: flex; gap: 3mm; align-items: center;
+  background: #fff; color: #111; border: 1px dashed #999; border-radius: 3mm; break-inside: avoid; }
+.kk > .watermerk { right: 3mm; top: 50%; transform: translateY(-50%); width: 30mm; opacity: .1; }
+.kk .qr { width: 44mm; flex: none; position: relative; }
+.kk-t { display: flex; flex-direction: column; gap: 1mm; min-width: 0; position: relative; font-size: 3.2mm; }
+.kk-t .kk-w { font-weight: 800; font-size: 3.6mm; line-height: 1.15; }
+.kk-t b { font-size: 5mm; margin-top: 2mm; }
+.kk-t small { font-family: "Courier New", monospace; font-size: 3.2mm; letter-spacing: .3mm; }
 .center { display: grid; place-items: center; height: 100%; padding: 16px; }
 
 @media print {
   body { background: #fff; }
-  .app, .login, .toast { display: none !important; }
+  .app, .login, .toast, .proef { display: none !important; }
   .sheet { position: static; background: none; display: block; }
   .sh { padding: 0; max-height: none; max-width: none; background: #fff; }
   .sh > :not(.print) { display: none !important; }
   .bon { border: 0; }
+  body::before { display: none; }
+  @page { size: A4; margin: 8mm; }
+  .kk { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
 
 /* Wat is er nieuw */

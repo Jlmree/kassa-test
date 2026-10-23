@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
 import { bonTekst, eur, methodeNaam, datumTijd, type Bon } from './lib';
-import logo from './logo.png';
+import logo from './logo.webp';
 
 // ─── Melding onderin ───
 
@@ -75,7 +75,7 @@ export function SheetProvider({ children }: { children: ReactNode }) {
 export function BonPapier({ bon }: { bon: Bon }) {
   return (
     <div className="bon print">
-      <img className="logo-bon" src={logo} alt="" />
+      <img className="watermerk" src={logo} alt="" />
       <h3>{bon.winkel}</h3>
       <p className="c">{datumTijd(bon.ts)}</p>
       <p className="c">Bon {bon.bonnummer}</p>
@@ -112,6 +112,22 @@ export async function deelBon(bon: Bon) {
 }
 
 // ─── QR ───
+
+/** Tegoedkaart op creditcardformaat (85,6 × 54 mm), om te printen en uit te knippen. */
+export function QrKaart({ nummer, code, winkel }: { nummer: number; code: string; winkel: string }) {
+  return (
+    <div className="kk">
+      <img className="watermerk" src={logo} alt="" />
+      <Qr tekst={code} />
+      <div className="kk-t">
+        <span className="kk-w">{winkel}</span>
+        <span>Tegoedkaart</span>
+        <b>Kaart {nummer}</b>
+        <small>{code}</small>
+      </div>
+    </div>
+  );
+}
 
 export function Qr({ tekst }: { tekst: string }) {
   const q = qrcode(0, 'M');

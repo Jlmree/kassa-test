@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden } from '../data';
 import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol } from '../lib';
-import { melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { melding, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
@@ -340,6 +340,7 @@ function OudeKassa() {
 
 function KaartenMaken() {
   const { open } = useSheet();
+  const { winkel } = useData();
   const [n, setN] = useState('12');
   const [van, setVan] = useState('');
   const [tot, setTot] = useState('');
@@ -348,8 +349,9 @@ function KaartenMaken() {
     <>
       <h2>{lijst.length} kaarten</h2>
       <div className="btns"><button className="big" onClick={() => window.print()}>Printen of PDF</button></div>
-      <div className="bon print qrs">
-        {lijst.map((k) => <div className="qc" key={k.nummer}><Qr tekst={k.code} /><b>Kaart {k.nummer}</b><small>{k.code}</small></div>)}
+      <p className="mu">Op creditcardformaat, tien per A4. Print op 100% (niet "passend maken") en knip langs de stippellijnen.</p>
+      <div className="print kaarten">
+        {lijst.map((k) => <QrKaart key={k.nummer} nummer={k.nummer} code={k.code} winkel={winkel} />)}
       </div>
     </>,
   );
