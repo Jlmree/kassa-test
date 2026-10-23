@@ -299,8 +299,8 @@ test('klant bekijkt zelf het saldo, alleen met de kaartcode', async () => {
   assert.equal(s.saldo_cent, info.saldo_cent);
   assert.ok(s.historie.length > 0 && s.historie.length <= 10);
   assert.deepEqual(Object.keys(s.historie[0]).sort(), ['bedrag_cent', 'soort', 'ts']);
-  await faalt(rpc(anon, 'kaart_saldo', { p_code: String(info.nummer) }), 'code van je kaart');
-  await faalt(rpc(anon, 'kaart_saldo', { p_code: 'AAAA-AAAA' }), 'niet gevonden');
+  assert.match((await rpc(anon, 'kaart_saldo', { p_code: String(info.nummer) })).fout, /code van je kaart/);
+  assert.match((await rpc(anon, 'kaart_saldo', { p_code: 'AAAA-AAAA' })).fout, /niet gevonden/);
   // Verder ziet een klant zonder account niets.
   await faalt(rpc(anon, 'kaart_info', { p_zoek: kaart.code }));
 });
@@ -415,4 +415,56 @@ test('wijzigingsteller loopt op bij elke wijziging', async () => {
   await rpc(bar, 'rekening_maken', { p_naam: 'Teller' });
   const v2 = await rpc(bar, 'versie');
   assert.ok(v2 > v1);
+});
+
+test('lid ziet de eigen streeplijst met een eigen code', async () => {
+  const anon = client();
+  const lid = (await rpc(bar, 'streeplijst')).find((l) => l.naam === 'Piet Lid');
+  const code = await rpc(bar, 'lid_code', { p_lid: lid.id });
+  assert.match(code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  const o = await rpc(anon, 'lid_overzicht', { p_code: code });
+  assert.equal(o.naam, 'Piet Lid');
+  assert.equal(o.open_cent, 0);
+  assert.ok(o.regels.some((r) => r.soort === 'streep' && r.door_naam === 'Bar'));
+  // Nieuwe code: de oude werkt niet meer.
+  await faalt(rpc(bar, 'lid_nieuwe_code', { p_lid: lid.id }), 'beheerder');
+  const nieuw = await rpc(baas, 'lid_nieuwe_code', { p_lid: lid.id });
+  assert.notEqual(nieuw, code);
+  assert.match((await rpc(anon, 'lid_overzicht', { p_code: code })).fout, /niet gevonden/);
+  assert.equal((await rpc(anon, 'lid_overzicht', { p_code: nieuw })).naam, 'Piet Lid');
+  await faalt(rpc(anon, 'lid_code', { p_lid: lid.id }));
+});
+
+test('controle per medewerker, alleen voor beheerder', async () => {
+  const van = new Date(Date.now() - 86400e3).toISOString(), tot = new Date(Date.now() + 3600e3).toISOString();
+  await faalt(rpc(bar, 'controle', { p_van: van, p_tot: tot }), 'beheerder');
+  const c = await rpc(baas, 'controle', { p_van: van, p_tot: tot });
+  const b = c.medewerkers.find((m) => m.naam === 'Bar');
+  assert.ok(b.bonnen > 0 && b.omzet_cent > 0);
+  assert.ok(b.geannuleerd >= 1);
+  assert.equal(b.diensten, 1);
+  assert.equal(b.kasverschil_cent, -50);
+  assert.equal(b.tekorten, 1);
+  assert.equal(b.afbetaald_contant_cent, 300);
+  assert.ok(c.annuleringen.length >= 4);
+  assert.deepEqual(c.tekorten.map((t) => [t.verschil_cent, t.gesloten_door]), [[-50, 'Bar']]);
+});
+
+test('na 10 verkeerde wachtwoorden op slot; nieuw wachtwoord van de beheerder haalt het eraf', async () => {
+  const email = `slot-${run}@test.nl`;
+  const c = client();
+  assert.ifError((await c.auth.signUp({ email, password: 'goed-wachtwoord', options: { data: { naam: 'Slot' } } })).error);
+  for (let i = 0; i < 10; i++) await client().auth.signInWithPassword({ email, password: 'fout-' + i });
+  const { error } = await client().auth.signInWithPassword({ email, password: 'goed-wachtwoord' });
+  assert.match(error?.message ?? '', /Te veel verkeerde wachtwoorden/);
+  const { data: p } = await baas.from('profielen').select('id,naam');
+  await rpc(baas, 'wachtwoord_instellen', { p_id: p.find((x) => x.naam === 'Slot').id, p_wachtwoord: 'nieuw-wachtwoord' });
+  assert.ifError((await client().auth.signInWithPassword({ email, password: 'nieuw-wachtwoord' })).error);
+});
+
+test('na te veel verkeerde codes is de saldo-pagina even dicht', async () => {
+  const anon = client();
+  for (let i = 0; i < 10; i++) await rpc(anon, 'kaart_saldo', { p_code: `ZZZZ-ZZ${String(i).padStart(2, '2')}` });
+  assert.match((await rpc(anon, 'kaart_saldo', { p_code: kaart.code })).fout, /Te veel verkeerde codes/);
+  assert.match((await rpc(anon, 'lid_overzicht', { p_code: kaart.code })).fout, /Te veel verkeerde codes/);
 });

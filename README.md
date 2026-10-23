@@ -31,6 +31,10 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
 - De beheerder wordt bij het installeren op de server zelf aangemaakt. Accounts die in de app worden aangemaakt, hebben geen toegang totdat een beheerder ze goedkeurt; zo kan niemand via internet als eerste beheerder worden.
 - De database is alleen vanaf de server zelf bereikbaar; telefoons praten uitsluitend via https met de webserver.
 - Het eigen wifi-netwerk van de kassa is beveiligd met een wachtwoord (WPA2); alleen wie dat heeft, komt bij de kassa.
+- Na 10 verkeerde wachtwoorden in 10 minuten gaat een account 10 minuten op slot (een nieuw wachtwoord van de beheerder haalt het eraf). Op de saldo-pagina zijn na 10 verkeerde codes de codes 10 minuten geblokkeerd.
+- Back-ups op de USB-stick zijn versleuteld met een eigen wachtwoord (bij de installatie getoond; later: `/opt/kassa/bin/backup.sh wachtwoord`). Schrijf het op en bewaar het buiten de kantine: zonder dit wachtwoord is een back-up op een andere computer niet terug te zetten.
+- *Beheer → Controle* laat per medewerker annuleringen, kasverschillen en contant ontvangen geld zien. Leden kunnen hun eigen streeplijst bekijken (met wie er inschonk), zodat een verkeerd streepje opvalt.
+- Zelf doen: geef de beheerder en het Linux-account van de computer sterke wachtwoorden, zet tweestapsverificatie aan op het GitHub-account waar de updates vandaan komen, en gebruik liefst DuckDNS in plaats van een eigen certificaat op elke telefoon.
 
 ## Installeren op de HP t620
 
@@ -113,7 +117,7 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 | --- | --- |
 | Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
 | Beheerder aanmaken, of weer binnenkomen als je het wachtwoord van de enige beheerder kwijt bent | `/opt/kassa/bin/beheerder.sh` |
-| Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump` |
+| Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump`, of van de USB-stick: `terugzetten.sh <stick>/kassa/<bestand>.dump.enc` (vraagt het back-upwachtwoord als de back-up van een andere computer komt) |
 | Nieuwe versie installeren | In de app: *Beheer → Instellingen → Bijwerken* (de t620 heeft daarvoor internet nodig). Of op de t620: `/opt/kassa/bin/bijwerken.sh`, of zonder internet `/opt/kassa/bin/bijwerken.sh <pad naar kassa-installatie.run>` vanaf een USB-stick. Er wordt altijd eerst een back-up gemaakt; je gegevens blijven staan. |
 | Wifi-naam en wachtwoord (met QR-code) | `/opt/kassa/bin/wifi.sh status`. Ander wachtwoord: `bash kassa-installatie.run --wifi-wachtwoord nieuw-wachtwoord` (daarna opnieuw verbinden op elke telefoon). |
 | Status bekijken | `systemctl status kassa-auth kassa-rest caddy postgresql` (met eigen wifi ook `kassa-wifi kassa-wifi-dns`) |
