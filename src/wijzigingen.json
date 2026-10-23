@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Klanten bekijken zelf hun saldo",
+    "punten": [
+      "Op nieuwe tegoedkaarten staat een QR-code die met de gewone camera van een telefoon de saldo-pagina opent: saldo en de laatste tien keren opwaarderen of betalen. Zonder account, en er kan niets mee veranderd worden.",
+      "Kaarten die al geprint zijn blijven werken. Klanten typen dan de code onder de QR-code op het adres van de kassa met /saldo erachter. Of print de kaarten opnieuw bij Beheer → Kaarten (zelfde nummers en codes).",
+      "De telefoon van de klant moet op een netwerk zitten waar de kassa te bereiken is."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Logo van de club",
     "punten": [
       "Het logo van 43 MEDCOY staat doorschijnend op de achtergrond van de kassa en van de bon, en is het app-icoon op het beginscherm. Stond de kassa al op je beginscherm? Haal hem weg en zet hem er opnieuw op voor het nieuwe icoon.",

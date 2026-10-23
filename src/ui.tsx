@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
-import { bonTekst, eur, methodeNaam, datumTijd, type Bon } from './lib';
+import { bonTekst, eur, methodeNaam, datumTijd, saldoLink, type Bon } from './lib';
 import logo from './logo.webp';
 
 // ─── Melding onderin ───
@@ -118,12 +118,13 @@ export function QrKaart({ nummer, code, winkel }: { nummer: number; code: string
   return (
     <div className="kk">
       <img className="watermerk" src={logo} alt="" />
-      <Qr tekst={code} />
+      <Qr tekst={saldoLink(code)} />
       <div className="kk-t">
         <span className="kk-w">{winkel}</span>
         <span>Tegoedkaart</span>
         <b>Kaart {nummer}</b>
         <small>{code}</small>
+        <span className="kk-s">Scan voor je saldo</span>
       </div>
     </div>
   );
