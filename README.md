@@ -7,6 +7,7 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
 ## Wat kan het
 
 - **Kassa**: producten aantikken en afrekenen met contant (met wisselgeld), pin, tegoedkaart of een combinatie (kaart + rest contant/pin).
+- **Te weinig wisselgeld**: is het wisselgeld meer dan er volgens de kassa in de la zit, dan waarschuwt de kassa. Het wisselgeld kan dan als tegoed op een barkaart (een nieuwe uit de stapel of de kaart van de klant); het hele bedrag gaat in de la en de kas klopt bij het sluiten. De kassa kent alleen het totaal in de la, niet de briefjes en munten: zorg bij het openen voor genoeg klein geld.
 - **Betaalmethoden kiezen**: de beheerder zet contant, pin, kaart en op rekening aan of uit (bijv. geen pin in een kantine zonder pinautomaat). Wat uit staat, verdwijnt van de kassa.
 - **Rekeningen**: open rekeningen op naam, bijbestellen vanaf elk apparaat, regels schrappen, later afrekenen.
 - **Streeplijst per lid**: leden zetten een streep (één tik op hun naam) en betalen later, bijvoorbeeld per maand: contant, pin of overboeking. Per lid wat er openstaat en de geschiedenis; per maand een overzicht met export voor de incasso.

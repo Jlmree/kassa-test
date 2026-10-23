@@ -113,6 +113,8 @@ export interface RekeningRegel { id: number; rekening_id: number; product_id: nu
 export interface Betaling {
   methode: 'contant' | 'pin' | 'kaart' | 'lat'; bedrag_cent: number; kaart_nummer?: number | null; kaart_saldo_na?: number | null;
   gegeven_cent?: number | null; wisselgeld_cent?: number | null; lid_naam?: string | null;
+  // Wisselgeld dat als tegoed op een barkaart is gezet.
+  op_kaart_nummer?: number | null; op_kaart_cent?: number | null; op_kaart_saldo_na?: number | null;
 }
 export interface Bon {
   id: number; bonnummer: number; ts: string; door_naam: string | null; rekening_naam: string | null;
@@ -156,7 +158,10 @@ export function bonTekst(b: Bon) {
   if (b.rekening_naam) r.push(`Rekening van ${b.rekening_naam}`);
   if (b.geannuleerd) r.push('*** GEANNULEERD ***');
   r.push('', ...b.regels.map((l) => `${l.aantal}× ${l.naam}  ${eur(l.prijs_cent * l.aantal)}`), '', `Totaal: ${eur(b.totaal_cent)}`);
-  for (const p of b.betalingen) r.push(`${methodeNaam[p.methode]}${p.kaart_nummer ? ' ' + p.kaart_nummer : ''}${p.lid_naam ? ' ' + p.lid_naam : ''}: ${eur(p.bedrag_cent)}`);
+  for (const p of b.betalingen) {
+    r.push(`${methodeNaam[p.methode]}${p.kaart_nummer ? ' ' + p.kaart_nummer : ''}${p.lid_naam ? ' ' + p.lid_naam : ''}: ${eur(p.bedrag_cent)}`);
+    if (p.op_kaart_cent) r.push(`Op kaart ${p.op_kaart_nummer}: ${eur(p.op_kaart_cent)}`);
+  }
   return r.join('\n');
 }
 

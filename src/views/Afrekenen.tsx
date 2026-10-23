@@ -21,7 +21,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   const vanKaart = kaart ? Math.min(kaart.info.saldo_cent, totaal) : 0;
   const rest = totaal - vanKaart;
 
-  const betaal = (rest?: { methode: 'contant' | 'pin' | 'lat'; gegeven_cent?: number; lid?: number }) => run(async () => {
+  const betaal = (rest?: { methode: 'contant' | 'pin' | 'lat'; gegeven_cent?: number; rest_kaart?: string; lid?: number }) => run(async () => {
     const betalingen: Record<string, unknown>[] = [];
     if (kaart) betalingen.push({ methode: 'kaart', kaart: kaart.code });
     if (rest) betalingen.push(rest);
@@ -61,7 +61,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
               {methoden.lat && <button className="big m-lat" onClick={() => setStap('lat')}>Rest op de streeplijst</button>}
             </div>
           : <p className="card warnbox">Er staat te weinig tegoed op de kaart. Waardeer de kaart eerst op, of haal iets van de bestelling af.</p>)}
-      {stap === 'contant' && <Contant bedrag={rest} bezig={bezig} onBetaal={(g) => betaal({ methode: 'contant', gegeven_cent: g })} />}
+      {stap === 'contant' && <Contant bedrag={rest} bezig={bezig} onBetaal={(g, restKaart) => betaal({ methode: 'contant', gegeven_cent: g, rest_kaart: restKaart })} />}
       {stap === 'lat' && lid && (
         <>
           {!kaart && <h2>Streeplijst</h2>}
@@ -83,10 +83,36 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   );
 }
 
-function Contant({ bedrag, bezig, onBetaal }: { bedrag: number; bezig: boolean; onBetaal: (gegeven: number) => void }) {
+function Contant({ bedrag, bezig, onBetaal }: { bedrag: number; bezig: boolean; onBetaal: (gegeven: number, restKaart?: string) => void }) {
+  const { dienst, methoden } = useData();
   const [v, setV] = useState('');
+  const [opKaart, setOpKaart] = useState<'kiezen' | { code: string; info: KaartInfo } | null>(null);
   const g = v ? naarCent(v) : bedrag;
   const snel = [...new Set([bedrag, ...[500, 1000, 2000, 5000].filter((x) => x > bedrag)])].slice(0, 5);
+  const wissel = !isNaN(g) && g > bedrag ? g - bedrag : 0;
+  // Wat er volgens de kassa in de la zit, zonder het geld van deze klant. De kassa kent
+  // alleen het totaal, niet de briefjes en munten: een waarschuwing, geen verbod.
+  const la = dienst?.verwacht_cent ?? null;
+  const teWeinig = wissel > 0 && la != null && wissel > la;
+
+  if (opKaart === 'kiezen') return (
+    <>
+      <KaartKiezen titel="Wisselgeld op een barkaart" leegMag onKaart={(code, info) => setOpKaart({ code, info })} />
+      <button className="ghost" onClick={() => setOpKaart(null)}>Terug</button>
+    </>
+  );
+  if (opKaart) return (
+    <>
+      <h2>Op kaart {opKaart.info.nummer}{opKaart.info.naam ? ` · ${opKaart.info.naam}` : ''}</h2>
+      <Rij l="Te betalen" r={eur(bedrag)} />
+      <Rij l="Gegeven" r={eur(g)} />
+      <Rij l="Op de kaart" r={eur(wissel)} sterk />
+      <Rij l="Saldo daarna" r={eur(opKaart.info.saldo_cent + wissel)} />
+      <p className="mu c">Geef de klant de kaart mee. Het tegoed is bij een volgende bestelling te gebruiken.</p>
+      <button className="big m-card" disabled={bezig} onClick={() => onBetaal(g, opKaart.code)}>Afronden</button>
+      <button className="ghost" onClick={() => setOpKaart(null)}>Terug</button>
+    </>
+  );
   return (
     <>
       <h2>Contant</h2>
@@ -97,13 +123,24 @@ function Contant({ bedrag, bezig, onBetaal }: { bedrag: number; bezig: boolean; 
       <label htmlFor="gegeven">Gegeven bedrag</label>
       <Bedrag id="gegeven" waarde={v} onChange={setV} />
       <div className="chg">{!v ? '' : isNaN(g) ? 'Ongeldig bedrag' : g >= bedrag ? `Wisselgeld: ${eur(g - bedrag)}` : `Nog ${eur(bedrag - g)} tekort`}</div>
-      <button className="big m-cash" disabled={bezig || isNaN(g) || g < bedrag} onClick={() => onBetaal(g)}>Afronden</button>
+      {teWeinig && (
+        <p className="card warnbox">
+          Volgens de kassa zit er maar {eur(la)} in de la. Je moet {eur(wissel)} teruggeven.
+          {methoden.kaart ? ' Zet het wisselgeld op een barkaart, of pas het gegeven bedrag aan.' : ' Pas het gegeven bedrag aan, of geef terug als er toch genoeg in de la zit.'}
+        </p>
+      )}
+      {teWeinig && methoden.kaart && <button className="big m-card" onClick={() => setOpKaart('kiezen')}>Wisselgeld op een barkaart</button>}
+      <button className="big m-cash" disabled={bezig || isNaN(g) || g < bedrag} onClick={() => onBetaal(g)}>{teWeinig ? 'Toch teruggeven' : 'Afronden'}</button>
+      {!teWeinig && wissel > 0 && methoden.kaart && <button className="ghost" onClick={() => setOpKaart('kiezen')}>Wisselgeld op een barkaart</button>}
     </>
   );
 }
 
 /** Kaart scannen of code typen; alleen een echte kaartcode is genoeg om te betalen. */
-export function KaartKiezen({ totaal, onKaart, betalen = true }: { totaal?: number; onKaart: (code: string, info: KaartInfo) => void; betalen?: boolean }) {
+// leegMag: ook een kaart zonder tegoed (om er wisselgeld op te zetten); wel met de echte kaartcode.
+export function KaartKiezen({ totaal, onKaart, betalen = true, leegMag = false, titel }: {
+  totaal?: number; onKaart: (code: string, info: KaartInfo) => void; betalen?: boolean; leegMag?: boolean; titel?: string;
+}) {
   const [code, setCode] = useState('');
   const [bezig, run] = useBezig();
   const zoek = (invoer: string) => run(async () => {
@@ -111,12 +148,12 @@ export function KaartKiezen({ totaal, onKaart, betalen = true }: { totaal?: numb
     const info = await rpc<KaartInfo>('kaart_info', { p_zoek: c });
     if (betalen && !info.betaalcode) throw new Error('Scan de QR-code of typ de kaartcode (het kaartnummer is niet genoeg om te betalen)');
     if (info.geblokkeerd && betalen) throw new Error(`Kaart ${info.nummer} is geblokkeerd`);
-    if (betalen && info.saldo_cent <= 0) throw new Error(`Er staat geen tegoed op kaart ${info.nummer}`);
+    if (betalen && !leegMag && info.saldo_cent <= 0) throw new Error(`Er staat geen tegoed op kaart ${info.nummer}`);
     onKaart(c, info);
   });
   return (
     <>
-      <h2>{betalen ? 'Betalen met kaart' : 'Kaart zoeken'}</h2>
+      <h2>{titel ?? (betalen ? 'Betalen met kaart' : 'Kaart zoeken')}</h2>
       {totaal != null && <p className="mu">Te betalen: {eur(totaal)}</p>}
       <Scanner onCode={(c) => { setCode(kaartCode(c)); void zoek(c); }} />
       <label htmlFor="kc">{betalen ? 'Of typ de kaartcode' : 'Of typ de kaartcode of het kaartnummer'}</label>
