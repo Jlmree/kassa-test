@@ -124,7 +124,7 @@ export function Bestelling() {
     void herlaad();
     melding(`Op rekening van ${naam}`);
   });
-  const betaal = (methode: 'contant' | 'pin' | 'kaart' | 'lat') => open(
+  const betaal = (methode: 'contant' | 'pin' | 'kaart' | 'lat' | 'gratis') => open(
     <Afrekenen bron={{ soort: 'bestelling', regels: regels.map((r) => ({ product_id: r.id, aantal: r.aantal })) }} totaal={som} methode={methode} onKlaar={leeg} />,
   );
 
@@ -156,6 +156,7 @@ export function Bestelling() {
           {methoden.rekening && <button className="big m-tab" onClick={() => open(<KiesRekening onKies={opRekening} />)}>Op rekening</button>}
         </div>
       )}
+      {!rek && dienst && methoden.gratis && <button className="ghost" onClick={() => betaal('gratis')}>Gratis (bardienst, sponsor, kapot)</button>}
       <button className="ghost" onClick={() => { leeg(); sluit(); }}>Bestelling wissen</button>
     </>
   );

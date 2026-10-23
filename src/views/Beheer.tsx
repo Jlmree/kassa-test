@@ -77,7 +77,7 @@ interface RapportData {
   per_uur: { uur: number; bonnen: number; bedrag_cent: number }[];
   opwaarderingen: { methode: string; aantal: number; bedrag_cent: number }[];
   kaarttegoed_cent: number; kaarten_actief: number; open_rekeningen_cent: number; diensten: Dienst[];
-  vervallen_cent?: number;
+  vervallen_cent?: number; gratis_cent?: number; gratis_per_reden?: { reden: string; aantal: number; bedrag_cent: number }[];
 }
 
 // Een baravond loopt door tot 06:00: verkopen na middernacht horen bij de avond ervoor.
@@ -127,9 +127,9 @@ function Rapport() {
         verkoop_regels: { naam: string; aantal: number; prijs_cent: number }[]; betalingen: { methode: string; bedrag_cent: number }[];
       }[];
     const m = (b: typeof rows[number], x: string) => centTekst(b.betalingen.filter((p) => p.methode === x).reduce((a, p) => a + p.bedrag_cent, 0));
-    const csv = [csvRij(['bon', 'datum', 'tijd', 'bediend door', 'rekening', 'totaal', 'contant', 'pin', 'kaart', 'streeplijst', 'geannuleerd', 'regels'])]
+    const csv = [csvRij(['bon', 'datum', 'tijd', 'bediend door', 'rekening', 'totaal', 'contant', 'pin', 'kaart', 'streeplijst', 'gratis', 'geannuleerd', 'regels'])]
       .concat(rows.map((b) => csvRij([b.bonnummer, isoDag(new Date(b.ts)), tijd(b.ts), b.door_naam, b.rekening_naam, centTekst(b.totaal_cent),
-        m(b, 'contant'), m(b, 'pin'), m(b, 'kaart'), m(b, 'lat'), b.geannuleerd ? 'ja' : '', b.verkoop_regels.map((l) => `${l.aantal}x ${l.naam}`).join(', ')])));
+        m(b, 'contant'), m(b, 'pin'), m(b, 'kaart'), m(b, 'lat'), m(b, 'gratis'), b.geannuleerd ? 'ja' : '', b.verkoop_regels.map((l) => `${l.aantal}x ${l.naam}`).join(', ')])));
     downloaden(`verkopen-${isoDag(van)}-tot-${isoDag(plusDagen(tot, -1))}.csv`, csv.join('\n'));
   });
   const exporteerProducten = () => {
@@ -157,14 +157,19 @@ function Rapport() {
       {r && (
         <>
           <div className="kpi">
-            <div><span className="mu">Omzet</span><b>{eur(r.omzet_cent)}</b></div>
+            <div><span className="mu">Omzet</span><b>{eur(r.omzet_cent)}</b>{!!r.gratis_cent && <span className="mu">waarvan {eur(r.gratis_cent)} gratis</span>}</div>
             <div><span className="mu">Bonnen</span><b>{r.bonnen}</b></div>
             <div><span className="mu">Gemiddeld per bon</span><b>{eur(r.bonnen ? Math.round(r.omzet_cent / r.bonnen) : 0)}</b></div>
             <div><span className="mu">Geannuleerd</span><b>{r.geannuleerd}</b><span className="mu">{eur(r.geannuleerd_cent)}</span></div>
           </div>
           <Blok titel="Betaalmethoden">
-            <Verdeling delen={['contant', 'pin', 'kaart'].map((m) => ({ methode: m, bedrag_cent: r.per_methode.find((x) => x.methode === m)?.bedrag_cent ?? 0 }))} />
+            <Verdeling delen={['contant', 'pin', 'kaart', 'lat', 'gratis'].map((m) => ({ methode: m, bedrag_cent: r.per_methode.find((x) => x.methode === m)?.bedrag_cent ?? 0 }))} />
           </Blok>
+          {!!r.gratis_per_reden?.length && (
+            <Blok titel="Gratis weggegeven" rechts={<span>{eur(r.gratis_cent ?? 0)}</span>}>
+              {r.gratis_per_reden.map((x) => <Rij key={x.reden} l={`${x.reden} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
+            </Blok>
+          )}
           {r.per_dag.length > 1 && <Blok titel="Per dag">{r.per_dag.map((x) => <Staaf key={x.dag} l={datum(x.dag)} w={x.bedrag_cent} max={maxDag} r={eur(x.bedrag_cent)} />)}</Blok>}
           {r.per_uur.length > 0 && <Blok titel="Per uur">{r.per_uur.map((x) => <Staaf key={x.uur} l={`${x.uur}:00`} w={x.bedrag_cent} max={maxUur} r={eur(x.bedrag_cent)} />)}</Blok>}
           <Blok titel="Producten" rechts={<span className="mu">{r.per_product.reduce((a, x) => a + x.aantal, 0)} stuks</span>}>
@@ -224,6 +229,39 @@ function Ingeklapt<T>({ lijst, n = 6, rij }: { lijst: T[]; n?: number; rij: (x: 
 
 // ───────────── Producten & voorraad ─────────────
 
+/** Wat er gehaald moet worden: alles op of onder het minimum, aanvullen tot twee keer het minimum. */
+function Boodschappen() {
+  const { producten, winkel } = useData();
+  const laag = producten.filter((p) => p.actief && p.voorraad <= p.voorraad_min);
+  const [aantal, setAantal] = useState<Record<number, string>>(() =>
+    Object.fromEntries(laag.map((p) => [p.id, String(Math.max(1, 2 * p.voorraad_min - Math.max(0, p.voorraad)))])));
+  const regels = laag.map((p) => ({ p, n: parseInt(aantal[p.id] ?? '') || 0 })).filter((x) => x.n > 0);
+  const tekst = [`Boodschappen ${winkel} (${datum(new Date())}):`, ...regels.map((x) => `- ${x.n}× ${x.p.naam}`)].join('\n');
+  const delen = async () => {
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Boodschappenlijst', text: tekst }); return; }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+    }
+    try { await navigator.clipboard.writeText(tekst); melding('Lijst gekopieerd, plak hem in WhatsApp of de mail'); } catch { melding('Delen lukt hier niet'); }
+  };
+  return (
+    <>
+      <h2>Boodschappenlijst</h2>
+      <p className="mu">Alles wat op of bijna op is, aangevuld tot twee keer het minimum. Pas de aantallen gerust aan; 0 laat een product weg.</p>
+      {laag.map((p) => (
+        <div className="row" key={p.id}>
+          <span>{p.naam} <span className="mu">· nu {Math.max(0, p.voorraad)}, minimum {p.voorraad_min}</span></span>
+          <input className="f n" inputMode="numeric" value={aantal[p.id] ?? ''} aria-label={`Aantal ${p.naam}`}
+            onChange={(e) => setAantal({ ...aantal, [p.id]: e.target.value.replace(/[^0-9]/g, '') })} />
+        </div>
+      ))}
+      <button className="big" disabled={!regels.length} onClick={() => void delen()}>Delen (WhatsApp, mail)</button>
+      <pre className="lijst">{tekst}</pre>
+    </>
+  );
+}
+
 function Producten() {
   const { producten } = useData();
   const { open } = useSheet();
@@ -236,6 +274,7 @@ function Producten() {
           <b>Op of bijna op</b>
           {laag.map((p) => <Rij key={p.id} l={p.naam} r={p.voorraad <= 0 ? 'op' : `${p.voorraad} over`} onClick={() => open(<ProductScherm id={p.id} />)} />)}
           <p className="mu">Tik op een product en boek een levering of telling.</p>
+          <button className="big" onClick={() => open(<Boodschappen />)}>Boodschappenlijst</button>
         </div>
       )}
       {cats.map((c) => (
@@ -516,7 +555,7 @@ const actieNaam: Record<string, string> = {
   betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
   lat_afbetalen: 'Streeplijst afbetaald', uitnodiging_maken: 'Uitnodiging gemaakt', uitnodiging_intrekken: 'Uitnodiging ingetrokken',
   uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
-  kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd',
+  kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd', gratis: 'Gratis weggegeven',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -530,8 +569,9 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'kaart_overzetten': return `kaart ${d.van} → ${d.naar}, ${e('bedrag_cent')}`;
     case 'kaart_verwijderen': return `kaart ${d.kaart}${d.naam ? ` (${d.naam})` : ''}${d.vervallen_cent ? `, ${e('vervallen_cent')} tegoed vervallen` : ''}`;
     case 'kaarten_opruimen': return `${d.aantal} kaarten zonder tegoed`;
+    case 'gratis': return `Bon ${d.bon}, ${e('bedrag_cent')} (${d.reden})`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
-    case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
+    case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat', 'gratis'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;
     case 'gebruiker_bijwerken': return `${d.gebruiker}: ${d.actief ? rolNaam[d.rol as Rol] : 'uitgeschakeld'}`;
     default: return ['naam', 'product', 'kaart', 'aantal', 'gebruiker'].filter((k) => d[k] != null).map((k) => String(d[k])).join(', ');
@@ -575,13 +615,14 @@ function Instellingen() {
   );
 }
 
-const methodeLabel: Record<keyof Methoden, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', rekening: 'Op rekening', lat: 'Streeplijst' };
+const methodeLabel: Record<keyof Methoden, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', rekening: 'Op rekening', lat: 'Streeplijst', gratis: 'Gratis' };
 const methodeUitleg: Record<keyof Methoden, string> = {
   contant: 'Betalen met contant geld',
   pin: 'Betalen met de pinautomaat',
   kaart: 'Tegoedkaarten: opwaarderen en ermee betalen',
   rekening: 'Bestellingen op een rekening zetten en later afrekenen',
   lat: 'Leden zetten een streep en betalen later, bijvoorbeeld per maand',
+  gratis: 'Weggeven zonder betaling (bardienst, sponsor, kapot), met een reden; staat in het rapport',
 };
 
 // Een oude telefoon of tablet aan de muur waar klanten hun kaart voor houden.
@@ -614,7 +655,7 @@ function Betaalmethoden() {
   const veranderd = (Object.keys(m) as (keyof Methoden)[]).some((k) => m[k] !== methoden[k]);
   const opslaan = () => run(async () => {
     if (!m.contant && !m.pin && !m.kaart && !m.lat) throw new Error('Zet minstens één van contant, pin, kaart of streeplijst aan');
-    await rpc('betaalmethoden_opslaan', { p_contant: m.contant, p_pin: m.pin, p_kaart: m.kaart, p_rekening: m.rekening, p_lat: m.lat });
+    await rpc('betaalmethoden_opslaan', { p_contant: m.contant, p_pin: m.pin, p_kaart: m.kaart, p_rekening: m.rekening, p_lat: m.lat, p_gratis: m.gratis });
     await herlaad();
     melding('Opgeslagen');
   });
