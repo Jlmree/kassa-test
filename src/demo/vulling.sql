@@ -32,6 +32,8 @@ begin
   perform set_config('request.jwt.claim.sub', demo::text, true);
   -- Eerst de kaarten, los van welke dagen de bar open was.
   perform public.kaarten_maken(20);
+  -- Leden voor de streeplijst.
+  perform public.lid_opslaan(null, x) from unnest(array['Bram', 'Daan', 'Eva', 'Fatima', 'Henk', 'Iris', 'Joost', 'Lotte', 'Mark', 'Noor', 'Sander', 'Yara']) x;
   for i in reverse 14..0 loop
     -- proef.vandaag: alleen voor de test, die alle weekdagen nabootst.
     dag := coalesce(nullif(current_setting('proef.vandaag', true), '')::date, (now() at time zone 'Europe/Amsterdam')::date) - i;
@@ -58,10 +60,16 @@ begin
       v := public.afrekenen(regels,
         case
           when kaart is not null then jsonb_build_array(jsonb_build_object('methode', 'kaart', 'kaart', kaart), jsonb_build_object('methode', 'contant'))
-          when random() < 0.55 then jsonb_build_array(jsonb_build_object('methode', 'contant', 'gegeven_cent', 2000))
+          when random() < 0.25 then jsonb_build_array(jsonb_build_object('methode', 'lat', 'lid', (select id from public.leden order by random() limit 1)))
+          when random() < 0.55 then jsonb_build_array(jsonb_build_object('methode', 'contant', 'gegeven_cent', 5000))
           else jsonb_build_array(jsonb_build_object('methode', 'pin'))
         end, null);
     end loop;
+    -- Af en toe betaalt een lid de streeplijst contant af.
+    if random() < 0.4 then
+      perform public.lat_afbetalen(l.id, public._lid_open(l.id), 'contant')
+      from (select id from public.leden where public._lid_open(id) > 0 order by random() limit 1) l;
+    end if;
     if i = 0 then
       -- Vandaag: kassa blijft open; verkopen in het afgelopen uur.
       update public.verkopen set ts = now() - random() * interval '60 minutes' where dienst_id = d;
@@ -73,6 +81,7 @@ begin
       update public.diensten set geopend_ts = open_ts, gesloten_ts = open_ts + interval '5 hours 10 minutes' where id = d;
       update public.verkopen set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
       update public.kaart_mutaties set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
+      update public.lat_betalingen set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
       update public.logboek set ts = open_ts + interval '5 hours 10 minutes' where id > log_id;
     end if;
     update public.voorraad_mutaties m set ts = v.ts from public.verkopen v where v.id = m.verkoop_id and v.dienst_id = d;

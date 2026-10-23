@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useData } from '../data';
 import { centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, type Bon, type KaartInfo, type Regel } from '../lib';
+import { KiesLid, type Lid } from './Streeplijst';
 import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
-type Methode = 'contant' | 'pin' | 'kaart';
+type Methode = 'contant' | 'pin' | 'kaart' | 'lat';
 
 /** Betaalscherm voor een bestelling of een rekening. */
 export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; totaal: number; methode: Methode; onKlaar: () => void }) {
@@ -12,6 +13,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   const { open } = useSheet();
   const [stap, setStap] = useState<Methode>(methode);
   const [kaart, setKaart] = useState<{ code: string; info: KaartInfo } | null>(null);
+  const [lid, setLid] = useState<Lid | null>(null);
   const [bezig, run] = useBezig();
   // Eén kenmerk per betaalscherm: een tweede poging na een verbindingsfout boekt niet dubbel.
   const [sleutel] = useState(nieuweSleutel);
@@ -19,7 +21,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   const vanKaart = kaart ? Math.min(kaart.info.saldo_cent, totaal) : 0;
   const rest = totaal - vanKaart;
 
-  const betaal = (rest?: { methode: 'contant' | 'pin'; gegeven_cent?: number }) => run(async () => {
+  const betaal = (rest?: { methode: 'contant' | 'pin' | 'lat'; gegeven_cent?: number; lid?: number }) => run(async () => {
     const betalingen: Record<string, unknown>[] = [];
     if (kaart) betalingen.push({ methode: 'kaart', kaart: kaart.code });
     if (rest) betalingen.push(rest);
@@ -37,6 +39,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   });
 
   if (stap === 'kaart' && !kaart) return <KaartKiezen totaal={totaal} onKaart={(code, info) => setKaart({ code, info })} />;
+  if (stap === 'lat' && !lid) return <KiesLid onKies={setLid} />;
 
   return (
     <>
@@ -51,13 +54,23 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       )}
       {stap === 'kaart' && kaart && (rest === 0
         ? <button className="big m-card" disabled={bezig} onClick={() => betaal()}>Afschrijven</button>
-        : methoden.contant || methoden.pin
+        : methoden.contant || methoden.pin || methoden.lat
           ? <div className="btns">
               {methoden.contant && <button className="big m-cash" onClick={() => setStap('contant')}>Rest contant</button>}
               {methoden.pin && <button className="big m-pin" disabled={bezig} onClick={() => setStap('pin')}>Rest pin</button>}
+              {methoden.lat && <button className="big m-lat" onClick={() => setStap('lat')}>Rest op de streeplijst</button>}
             </div>
           : <p className="card warnbox">Er staat te weinig tegoed op de kaart. Waardeer de kaart eerst op, of haal iets van de bestelling af.</p>)}
       {stap === 'contant' && <Contant bedrag={rest} bezig={bezig} onBetaal={(g) => betaal({ methode: 'contant', gegeven_cent: g })} />}
+      {stap === 'lat' && lid && (
+        <>
+          {!kaart && <h2>Streeplijst</h2>}
+          <div className="big-n">{eur(rest)}</div>
+          <p className="mu c">{lid.open_cent > 0 ? `${lid.naam} heeft al ${eur(lid.open_cent)} open staan.` : `Op de lat van ${lid.naam}.`}</p>
+          <button className="big m-lat" disabled={bezig} onClick={() => betaal({ methode: 'lat', lid: lid.id })}>Op de streeplijst van {lid.naam}</button>
+          <button className="ghost" onClick={() => setLid(null)}>Ander lid kiezen</button>
+        </>
+      )}
       {stap === 'pin' && (
         <>
           {!kaart && <h2>Pin</h2>}

@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden } from '../data';
-import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
+import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
 import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
+import { StreeplijstMaand } from './Streeplijst';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
-const delen = ['Rapport', 'Producten', 'Kaarten', 'Medewerkers', 'Logboek', 'Instellingen'] as const;
+const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
 const uitleg: Record<Deel, string> = {
   Rapport: 'Omzet, betaalmethoden, producten en kasverschillen per periode',
   Producten: 'Prijzen, categorieën en voorraad',
   Kaarten: 'Nieuwe tegoedkaarten maken en QR-codes printen',
+  Streeplijst: 'Per maand wat ieder lid heeft gestreept, en exporteren voor de incasso',
   Medewerkers: 'Toegang geven, rollen en wachtwoorden',
   Logboek: 'Wie heeft wat gedaan',
   Instellingen: 'Naam op de bon, betaalmethoden, bijwerken en wat er nieuw is',
@@ -33,7 +35,7 @@ export function Beheer() {
   if (!deel) {
     return (
       <div className="menu">
-        {delen.filter((d) => d !== 'Kaarten' || methoden.kaart).map((d) => (
+        {delen.filter((d) => (d !== 'Kaarten' || methoden.kaart) && (d !== 'Streeplijst' || methoden.lat)).map((d) => (
           <button key={d} className="card wide" onClick={() => setDeel(d)}>
             <div className="hd"><span>{d}</span>{melding_[d] && <span className="pill min">{melding_[d]}</span>}</div>
             <span className="mu">{uitleg[d]}</span>
@@ -51,6 +53,7 @@ export function Beheer() {
       {deel === 'Rapport' && <Rapport />}
       {deel === 'Producten' && <Producten />}
       {deel === 'Kaarten' && <KaartenMaken />}
+      {deel === 'Streeplijst' && <StreeplijstMaand />}
       {deel === 'Medewerkers' && <Medewerkers />}
       {deel === 'Logboek' && <Logboek />}
       {deel === 'Instellingen' && <Instellingen />}
@@ -118,9 +121,9 @@ function Rapport() {
         verkoop_regels: { naam: string; aantal: number; prijs_cent: number }[]; betalingen: { methode: string; bedrag_cent: number }[];
       }[];
     const m = (b: typeof rows[number], x: string) => centTekst(b.betalingen.filter((p) => p.methode === x).reduce((a, p) => a + p.bedrag_cent, 0));
-    const csv = [csvRij(['bon', 'datum', 'tijd', 'bediend door', 'rekening', 'totaal', 'contant', 'pin', 'kaart', 'geannuleerd', 'regels'])]
+    const csv = [csvRij(['bon', 'datum', 'tijd', 'bediend door', 'rekening', 'totaal', 'contant', 'pin', 'kaart', 'streeplijst', 'geannuleerd', 'regels'])]
       .concat(rows.map((b) => csvRij([b.bonnummer, isoDag(new Date(b.ts)), tijd(b.ts), b.door_naam, b.rekening_naam, centTekst(b.totaal_cent),
-        m(b, 'contant'), m(b, 'pin'), m(b, 'kaart'), b.geannuleerd ? 'ja' : '', b.verkoop_regels.map((l) => `${l.aantal}x ${l.naam}`).join(', ')])));
+        m(b, 'contant'), m(b, 'pin'), m(b, 'kaart'), m(b, 'lat'), b.geannuleerd ? 'ja' : '', b.verkoop_regels.map((l) => `${l.aantal}x ${l.naam}`).join(', ')])));
     downloaden(`verkopen-${isoDag(van)}-tot-${isoDag(plusDagen(tot, -1))}.csv`, csv.join('\n'));
   });
   const exporteerProducten = () => {
@@ -451,7 +454,8 @@ const actieNaam: Record<string, string> = {
   kaart_overzetten: 'Kaarttegoed overgezet', product_nieuw: 'Product toegevoegd', prijs_wijzigen: 'Prijs gewijzigd', product_verwijderen: 'Product verwijderd',
   dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
   wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
-  betaalmethoden: 'Betaalmethoden aangepast',
+  betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
+  lat_afbetalen: 'Streeplijst afbetaald',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -464,7 +468,8 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'dienst_openen': return `wisselgeld ${e('beginsaldo_cent')}`;
     case 'kaart_overzetten': return `kaart ${d.van} → ${d.naar}, ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
-    case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening'] as const).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
+    case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
+    case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;
     case 'gebruiker_bijwerken': return `${d.gebruiker}: ${d.actief ? rolNaam[d.rol as Rol] : 'uitgeschakeld'}`;
     default: return ['naam', 'product', 'kaart', 'aantal', 'gebruiker'].filter((k) => d[k] != null).map((k) => String(d[k])).join(', ');
   }
@@ -507,12 +512,13 @@ function Instellingen() {
   );
 }
 
-const methodeLabel: Record<keyof Methoden, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', rekening: 'Op rekening' };
+const methodeLabel: Record<keyof Methoden, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', rekening: 'Op rekening', lat: 'Streeplijst' };
 const methodeUitleg: Record<keyof Methoden, string> = {
   contant: 'Betalen met contant geld',
   pin: 'Betalen met de pinautomaat',
   kaart: 'Tegoedkaarten: opwaarderen en ermee betalen',
   rekening: 'Bestellingen op een rekening zetten en later afrekenen',
+  lat: 'Leden zetten een streep en betalen later, bijvoorbeeld per maand',
 };
 
 // Een oude telefoon of tablet aan de muur waar klanten hun kaart voor houden.
@@ -544,8 +550,8 @@ function Betaalmethoden() {
   const [bezig, run] = useBezig();
   const veranderd = (Object.keys(m) as (keyof Methoden)[]).some((k) => m[k] !== methoden[k]);
   const opslaan = () => run(async () => {
-    if (!m.contant && !m.pin && !m.kaart) throw new Error('Zet minstens één van contant, pin of kaart aan');
-    await rpc('betaalmethoden_opslaan', { p_contant: m.contant, p_pin: m.pin, p_kaart: m.kaart, p_rekening: m.rekening });
+    if (!m.contant && !m.pin && !m.kaart && !m.lat) throw new Error('Zet minstens één van contant, pin, kaart of streeplijst aan');
+    await rpc('betaalmethoden_opslaan', { p_contant: m.contant, p_pin: m.pin, p_kaart: m.kaart, p_rekening: m.rekening, p_lat: m.lat });
     await herlaad();
     melding('Opgeslagen');
   });

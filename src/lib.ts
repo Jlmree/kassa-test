@@ -90,8 +90,8 @@ export interface Product {
 export interface Rekening { id: number; naam: string; open: boolean; aangemaakt: string }
 export interface RekeningRegel { id: number; rekening_id: number; product_id: number; naam: string; prijs_cent: number; aantal: number; ts: string }
 export interface Betaling {
-  methode: 'contant' | 'pin' | 'kaart'; bedrag_cent: number; kaart_nummer?: number | null; kaart_saldo_na?: number | null;
-  gegeven_cent?: number | null; wisselgeld_cent?: number | null;
+  methode: 'contant' | 'pin' | 'kaart' | 'lat'; bedrag_cent: number; kaart_nummer?: number | null; kaart_saldo_na?: number | null;
+  gegeven_cent?: number | null; wisselgeld_cent?: number | null; lid_naam?: string | null;
 }
 export interface Bon {
   id: number; bonnummer: number; ts: string; door_naam: string | null; rekening_naam: string | null;
@@ -102,6 +102,8 @@ export interface Dienst {
   id: number; geopend_ts: string; gesloten_ts: string | null; geopend_door: string | null; gesloten_door: string | null;
   beginsaldo_cent: number; omzet_cent: number; bonnen: number; contant_cent: number; pin_cent: number; kaart_cent: number;
   opwaardering_contant_cent: number; opwaardering_pin_cent: number; verwacht_cent: number;
+  // Streeplijst (ontbreekt bij diensten van vóór de streeplijst).
+  lat_cent?: number; afbetaald_contant_cent?: number; afbetaald_pin_cent?: number;
   geteld_cent: number | null; opmerking: string | null;
 }
 export interface KaartInfo { id: number; nummer: number; naam: string | null; saldo_cent: number; geblokkeerd: boolean; betaalcode: boolean }
@@ -126,14 +128,14 @@ export const centTekst = (c: number) => (c / 100).toFixed(2).replace('.', ',');
 export const tijd = (ts: string) => new Date(ts).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
 export const datum = (ts: string | Date) => new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
 export const datumTijd = (ts: string) => `${datum(ts)} ${tijd(ts)}`;
-export const methodeNaam: Record<string, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart' };
+export const methodeNaam: Record<string, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', lat: 'Streeplijst', overboeking: 'Overboeking' };
 
 export function bonTekst(b: Bon) {
   const r = [b.winkel, datumTijd(b.ts), `Bon ${b.bonnummer}`];
   if (b.rekening_naam) r.push(`Rekening van ${b.rekening_naam}`);
   if (b.geannuleerd) r.push('*** GEANNULEERD ***');
   r.push('', ...b.regels.map((l) => `${l.aantal}× ${l.naam}  ${eur(l.prijs_cent * l.aantal)}`), '', `Totaal: ${eur(b.totaal_cent)}`);
-  for (const p of b.betalingen) r.push(`${methodeNaam[p.methode]}${p.kaart_nummer ? ' ' + p.kaart_nummer : ''}: ${eur(p.bedrag_cent)}`);
+  for (const p of b.betalingen) r.push(`${methodeNaam[p.methode]}${p.kaart_nummer ? ' ' + p.kaart_nummer : ''}${p.lid_naam ? ' ' + p.lid_naam : ''}: ${eur(p.bedrag_cent)}`);
   return r.join('\n');
 }
 

@@ -9,6 +9,7 @@ import { Rekeningen } from './views/Rekeningen';
 import { Kaarten } from './views/Kaarten';
 import { Dienst } from './views/Dienst';
 import { Saldo, SaldoZuil } from './views/Saldo';
+import { Streeplijst } from './views/Streeplijst';
 import { Beheer } from './views/Beheer';
 import { NieuwNaUpdate } from './wijzigingen';
 
@@ -70,7 +71,7 @@ function Inlog() {
   return <DataProvider profiel={profiel}><Kassasysteem /></DataProvider>;
 }
 
-type Tab = 'kassa' | 'rekeningen' | 'kaarten' | 'dienst' | 'beheer';
+type Tab = 'kassa' | 'rekeningen' | 'kaarten' | 'streeplijst' | 'dienst' | 'beheer';
 
 function Kassasysteem() {
   const [tab, setTab] = useState<Tab>('kassa');
@@ -94,6 +95,7 @@ function Scherm({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const tabs: [Tab, string][] = [['kassa', 'Kassa']];
   if (methoden.rekening || rekeningen.length) tabs.push(['rekeningen', 'Rekeningen']);
   if (methoden.kaart) tabs.push(['kaarten', 'Kaarten']);
+  if (methoden.lat) tabs.push(['streeplijst', 'Streeplijst']);
   tabs.push(['dienst', 'Dienst']);
   if (profiel.rol === 'beheerder') tabs.push(['beheer', 'Beheer']);
   useEffect(() => { if (!tabs.some(([t]) => t === tab)) setTab('kassa'); });
@@ -111,13 +113,14 @@ function Scherm({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
             {tab === 'kassa' && <Kassa naarDienst={() => setTab('dienst')} />}
             {tab === 'rekeningen' && <Rekeningen bestelVoor={(id) => { setDoel(id); setTab('kassa'); }} />}
             {tab === 'kaarten' && <Kaarten />}
+            {tab === 'streeplijst' && <Streeplijst />}
             {tab === 'dienst' && <Dienst />}
             {tab === 'beheer' && <Beheer />}
           </>
         )}
       </main>
       {tab === 'kassa' && <MandBalk onOpen={() => open(<Bestelling />)} />}
-      <nav>
+      <nav className={tabs.length > 5 ? 'veel' : ''}>
         {tabs.map(([t, l]) => <button key={t} className={t === tab ? 'on' : ''} onClick={() => setTab(t)}>{l}</button>)}
       </nav>
     </div>

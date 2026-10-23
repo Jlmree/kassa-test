@@ -260,9 +260,9 @@ test('rapport: een verkoop na middernacht hoort bij de avond ervoor', async () =
 });
 
 test('betaalmethoden aan of uit', async () => {
-  const zet = (m) => rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, ...m });
+  const zet = (m) => rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, p_lat: true, ...m });
   await faalt(rpc(bar, 'betaalmethoden_opslaan', { p_contant: true, p_pin: false, p_kaart: true, p_rekening: true }), 'beheerder');
-  await faalt(zet({ p_contant: false, p_pin: false, p_kaart: false }), 'minstens één');
+  await faalt(zet({ p_contant: false, p_pin: false, p_kaart: false, p_lat: false }), 'minstens één');
   const koffie = [{ product_id: product('Koffie').id, aantal: 1 }];
   // Een open rekening van vóór het uitzetten.
   const open = await rpc(bar, 'rekening_maken', { p_naam: 'Van gisteren' });
@@ -288,7 +288,7 @@ test('betaalmethoden aan of uit', async () => {
 
   await zet({});
   const { data: log } = await baas.from('logboek').select('actie,details').eq('actie', 'betaalmethoden');
-  assert.deepEqual(log.at(-1).details, { contant: true, pin: true, kaart: true, rekening: true });
+  assert.deepEqual(log.at(-1).details, { contant: true, pin: true, kaart: true, rekening: true, lat: true });
 });
 
 test('klant bekijkt zelf het saldo, alleen met de kaartcode', async () => {
@@ -305,12 +305,63 @@ test('klant bekijkt zelf het saldo, alleen met de kaartcode', async () => {
   await faalt(rpc(anon, 'kaart_info', { p_zoek: kaart.code }));
 });
 
+test('streeplijst: op de lat, afbetalen, maandoverzicht', async () => {
+  const koffie = product('Koffie').id, bier = product('Bier').id;
+  const piet = await rpc(bar, 'lid_opslaan', { p_id: null, p_naam: 'Piet Lid' });
+  await faalt(rpc(bar, 'lid_opslaan', { p_id: null, p_naam: ' piet lid ' }), 'staat al');
+  await faalt(rpc(bar, 'lid_opslaan', { p_id: piet, p_naam: 'Piet', p_actief: true }), 'beheerder');
+  const stand = async () => (await bar.from('producten').select('voorraad').eq('id', bier).single()).data.voorraad;
+  const voor = await stand();
+  const bon = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: bier, aantal: 2 }], p_betalingen: [{ methode: 'lat', lid: piet }], p_verwacht_cent: 400 });
+  assert.deepEqual(bon.betalingen.map((b) => [b.methode, b.bedrag_cent, b.lid_naam]), [['lat', 400, 'Piet Lid']]);
+  assert.equal(await stand(), voor - 2);
+  // Kaart eerst, de rest op de lat.
+  const tegoed = (await rpc(bar, 'kaart_info', { p_zoek: kaart.code })).saldo_cent;
+  const n = Math.floor(tegoed / 100) + 1;   // net meer koffie dan er tegoed is
+  const b2 = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: koffie, aantal: n }], p_betalingen: [{ methode: 'kaart', kaart: kaart.code }, { methode: 'lat', lid: piet }] });
+  assert.deepEqual(b2.betalingen.map((b) => [b.methode, b.bedrag_cent]), [['kaart', tegoed], ['lat', n * 100 - tegoed]]);
+  const open = 400 + n * 100 - tegoed;
+  let lijst = await rpc(bar, 'streeplijst');
+  assert.equal(lijst.find((l) => l.id === piet).open_cent, open);
+  // Annuleren haalt het streepje weg.
+  const b3 = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: koffie, aantal: 1 }], p_betalingen: [{ methode: 'lat', lid: piet }] });
+  await rpc(bar, 'verkoop_annuleren', { p_verkoop_id: b3.id });
+  assert.equal((await rpc(bar, 'lid_historie', { p_lid: piet })).open_cent, open);
+
+  // Afbetalen: contant telt mee in de la, niet meer dan er openstaat, overboeking alleen beheerder.
+  const la = (await rpc(bar, 'dienst_overzicht')).verwacht_cent;
+  assert.equal(await rpc(bar, 'lat_afbetalen', { p_lid: piet, p_bedrag_cent: 300, p_methode: 'contant' }), open - 300);
+  const d = await rpc(bar, 'dienst_overzicht');
+  assert.equal(d.verwacht_cent, la + 300);
+  assert.equal(d.afbetaald_contant_cent, 300);
+  assert.ok(d.lat_cent >= open);
+  await faalt(rpc(bar, 'lat_afbetalen', { p_lid: piet, p_bedrag_cent: open, p_methode: 'pin' }), 'meer afbetalen kan niet');
+  await faalt(rpc(bar, 'lat_afbetalen', { p_lid: piet, p_bedrag_cent: 10, p_methode: 'overboeking' }), 'beheerder');
+  assert.equal(await rpc(baas, 'lat_afbetalen', { p_lid: piet, p_bedrag_cent: open - 300, p_methode: 'overboeking', p_opmerking: 'incasso' }), 0);
+  const h = await rpc(bar, 'lid_historie', { p_lid: piet });
+  assert.deepEqual(h.regels.map((r) => r.soort).sort(), ['afbetaald', 'afbetaald', 'streep', 'streep']);
+
+  const maand = await rpc(baas, 'streeplijst_maand', { p_maand: new Date().toISOString().slice(0, 10) });
+  assert.deepEqual(maand.find((m) => m.id === piet), { id: piet, naam: 'Piet Lid', actief: true, gestreept_cent: open, keer: 2, afbetaald_cent: open, open_cent: 0 });
+  await faalt(rpc(bar, 'streeplijst_maand', { p_maand: '2026-10-01' }), 'beheerder');
+
+  // Uit de lijst gehaald, of de streeplijst uitgezet: niet meer strepen.
+  await rpc(baas, 'lid_opslaan', { p_id: piet, p_naam: 'Piet Lid', p_actief: false });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: koffie, aantal: 1 }], p_betalingen: [{ methode: 'lat', lid: piet }] }), 'niet meer op de streeplijst');
+  await rpc(baas, 'lid_opslaan', { p_id: piet, p_naam: 'Piet Lid', p_actief: true });
+  await rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, p_lat: false });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: koffie, aantal: 1 }], p_betalingen: [{ methode: 'lat', lid: piet }] }), 'streeplijst staat uit');
+  await rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, p_lat: true });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: koffie, aantal: 1 }], p_betalingen: [{ methode: 'lat' }] }), 'Kies een lid');
+});
+
 test('kassa sluiten: verwacht = begin + contant verkocht + contant opgewaardeerd', async () => {
   // Contant: 500 (bier+chips) + 800 (rekening Piet) + 100 (koffie hieronder); opwaardering contant 1000.
   const laat = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'contant' }] });
   const d = await rpc(bar, 'dienst_overzicht');
-  assert.equal(d.verwacht_cent, 5000 + 500 + 800 + 100 + 1000);
-  const dicht = await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 7350, p_opmerking: 'briefje van 50 cent kwijt' });
+  // + 300 contant afbetaald van de streeplijst.
+  assert.equal(d.verwacht_cent, 5000 + 500 + 800 + 100 + 1000 + 300);
+  const dicht = await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 7650, p_opmerking: 'briefje van 50 cent kwijt' });
   assert.equal(dicht.geteld_cent - dicht.verwacht_cent, -50);
   await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Bier').id, aantal: 1 }], p_betalingen: [{ methode: 'pin' }] }), 'Open eerst');
   // Na het tellen: een medewerker annuleert geen bon meer; als de beheerder het doet, blijft de telling staan.
@@ -324,7 +375,7 @@ test('rapport en logboek alleen voor beheerder', async () => {
   const van = new Date(Date.now() - 3600e3).toISOString(), tot = new Date(Date.now() + 3600e3).toISOString();
   await faalt(rpc(bar, 'rapport', { p_van: van, p_tot: tot }), 'beheerder');
   const r = await rpc(baas, 'rapport', { p_van: van, p_tot: tot });
-  assert.equal(r.geannuleerd, 3);
+  assert.equal(r.geannuleerd, 4);
   assert.ok(r.omzet_cent > 0);
   assert.equal(r.diensten.length, 1);
   assert.deepEqual((await bar.from('logboek').select('*')).data, []);
