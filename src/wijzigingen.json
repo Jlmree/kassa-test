@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Logo van de club",
+    "punten": [
+      "Het logo van 43 MEDCOY staat bovenin de kassa, op het inlogscherm en op de bon (ook geprint).",
+      "Zet je de kassa op het beginscherm van je telefoon, dan is het logo het app-icoon. Stond hij er al op? Haal hem weg en zet hem er opnieuw op."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Eigen wifi voor de kassa; betaalmethoden kiezen",
     "punten": [
       "De beheerder kiest bij Beheer → Instellingen → Betaalmethoden welke betaalmethoden aan staan: contant, pin, kaart en op rekening. Geen pinautomaat? Zet pin uit, dan verdwijnt de knop op alle telefoons.",
