@@ -20,7 +20,7 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
 - **Rapporten**: per dag, week, maand of zelf gekozen periode; omzet per betaalmethode, product, medewerker, dag en uur; kaarttegoed in omloop; kasverschillen; export naar CSV (Excel).
 - **Medewerkers en rechten**: iedereen logt in met een eigen naam en wachtwoord. Een beheerder nodigt nieuwe medewerkers uit met een QR-code (scannen, wachtwoord kiezen, klaar; met de wifi-code erbij) of keurt aanvragen goed, en kan wachtwoorden opnieuw instellen.
 - **Logboek**: wie heeft wanneer een bon geannuleerd, een prijs gewijzigd, de kassa gesloten, enzovoort.
-- **Automatische back-ups** elk uur, ook naar een USB-stick.
+- **Automatische back-ups** elk uur dat er iets is veranderd, ook naar een USB-stick. Oude back-ups worden uitgedund, zodat de schijf en de stick niet vollopen.
 
 ## Beveiliging
 
@@ -117,7 +117,7 @@ Producten uit de oude kassa overnemen: *Beheer → Producten → Producten overn
 
 | Wat | Hoe |
 | --- | --- |
-| Back-ups | Elk uur automatisch in `/var/backups/kassa` (14 dagen bewaard). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er elk uur ook een kopie naartoe (90 dagen bewaard). |
+| Back-ups | Elk uur automatisch in `/var/backups/kassa`, maar alleen als er sinds de vorige iets is veranderd (dus niet 's nachts of als de bar dicht is). Steek een USB-stick met de naam **KASSA-BACKUP** in de t620, dan gaat er ook een kopie naartoe. Bewaard, op de t620 en op de stick: alles van de laatste 2 dagen, daarna de laatste van elke dag tot 90 dagen, daarna de laatste van elke maand tot 2 jaar; de nieuwste blijft altijd staan. Met de hand een back-up maken: `/opt/kassa/bin/backup.sh`. |
 | Beheerder aanmaken, of weer binnenkomen als je het wachtwoord van de enige beheerder kwijt bent | `/opt/kassa/bin/beheerder.sh` |
 | Back-up terugzetten | `/opt/kassa/bin/terugzetten.sh /var/backups/kassa/<bestand>.dump`, of van de USB-stick: `terugzetten.sh <stick>/kassa/<bestand>.dump.enc` (vraagt het back-upwachtwoord als de back-up van een andere computer komt) |
 | Nieuwe versie installeren | In de app: *Beheer → Instellingen → Bijwerken* (de t620 heeft daarvoor internet nodig). Of op de t620: `/opt/kassa/bin/bijwerken.sh`, of zonder internet `/opt/kassa/bin/bijwerken.sh <pad naar kassa-installatie.run>` vanaf een USB-stick. Er wordt altijd eerst een back-up gemaakt; je gegevens blijven staan. |

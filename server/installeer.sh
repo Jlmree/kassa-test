@@ -352,7 +352,7 @@ cat > /etc/systemd/system/kassa-backup.service <<EOF
 Description=Bar-kassa back-up
 [Service]
 Type=oneshot
-ExecStart=$OPT/bin/backup.sh
+ExecStart=$OPT/bin/backup.sh elkuur
 EOF
 cat > /etc/systemd/system/kassa-backup.timer <<EOF
 [Unit]
@@ -471,7 +471,7 @@ echo
 [ -f /etc/systemd/system/kassa-scherm.service ] && echo "Eigen scherm: de kassa staat ook op het scherm van deze server (onderhoud: Ctrl+Alt+F2)."
 [ "$GEEN_BEHEERDER" = 1 ] && echo "Er is nog geen beheerder. Maak die aan met:  $OPT/bin/beheerder.sh"
 echo "Medewerkers maken in de app zelf een account aan; de beheerder keurt ze goed bij Beheer → Medewerkers."
-echo "Back-ups: elk uur in /var/backups/kassa (en versleuteld op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
+echo "Back-ups: elk uur als er iets veranderd is, in /var/backups/kassa (en versleuteld op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
 if [ "$NIEUW_BACKUP_WW" = 1 ]; then
   printf '\n\033[1;33mWachtwoord van de back-ups op de USB-stick:  %s\033[0m\n' "$(cat "$ETC/backup.wachtwoord")"
   echo "Schrijf dit op en bewaar het buiten de kantine. Zonder dit wachtwoord is een back-up op een andere computer niet terug te zetten."
