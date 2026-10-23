@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
 import { bonTekst, eur, methodeNaam, datumTijd, type Bon } from './lib';
+import logo from './logo.png';
 
 // ─── Melding onderin ───
 
@@ -74,6 +75,7 @@ export function SheetProvider({ children }: { children: ReactNode }) {
 export function BonPapier({ bon }: { bon: Bon }) {
   return (
     <div className="bon print">
+      <img className="logo-bon" src={logo} alt="" />
       <h3>{bon.winkel}</h3>
       <p className="c">{datumTijd(bon.ts)}</p>
       <p className="c">Bon {bon.bonnummer}</p>

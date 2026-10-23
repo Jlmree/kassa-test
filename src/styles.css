@@ -37,6 +37,7 @@ code { background: var(--card); padding: 1px 5px; border-radius: 4px; }
 .proef + .app { padding-top: 0; }
 .kaartje { margin-top: 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 header { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+header .logo { width: 34px; height: 34px; border-radius: 8px; flex: none; }
 header b { font-size: 20px; font-weight: 800; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who { padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); font-weight: 600; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
@@ -151,6 +152,8 @@ textarea.f { height: 120px; font: 12px monospace; }
 
 .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 16px; z-index: 30; font-weight: 600; max-width: calc(100% - 32px); text-align: center; }
 .login { max-width: 420px; margin: 0 auto; padding: 40px 16px; }
+.logo-groot { display: block; width: 120px; height: 120px; border-radius: 24px; margin: 0 auto 12px; }
+.bon .logo-bon { display: block; width: 72px; height: 72px; margin: 0 auto 6px; border-radius: 10px; }
 .center { display: grid; place-items: center; height: 100%; padding: 16px; }
 
 @media print {
