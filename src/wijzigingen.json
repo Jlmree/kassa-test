@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Zuinigere back-ups",
+    "punten": [
+      "Elk uur een back-up, maar alleen als er iets is veranderd. 's Nachts en als de bar dicht is, komt er dus geen bij.",
+      "Oude back-ups worden uitgedund: alles van de laatste 2 dagen, daarna één per dag tot 90 dagen, daarna één per maand tot 2 jaar. Zo lopen de t620 en de USB-stick niet vol.",
+      "Voor een update of het terugzetten van een back-up wordt altijd eerst een verse back-up gemaakt, zoals altijd."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Kaarten verwijderen en opruimen",
     "punten": [
       "Een beheerder kan een kaart verwijderen (tik op de kaart, onderaan Kaart verwijderen). De kaart verdwijnt uit de lijst en werkt niet meer; de geschiedenis blijft bewaard.",
