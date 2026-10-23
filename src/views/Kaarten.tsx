@@ -4,14 +4,17 @@ import { centTekst, datumTijd, eur, lees, naarCent, nieuweSleutel, rpc, sb, type
 import { Bedrag, melding, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { KaartKiezen } from './Afrekenen';
 
-type Kaart = Omit<KaartInfo, 'betaalcode'>;
+type Kaart = Omit<KaartInfo, 'betaalcode'> & { laatst_gebruikt: string };
 
-const KOLOMMEN = 'id,nummer,naam,saldo_cent,geblokkeerd';
+const KOLOMMEN = 'id,nummer,naam,saldo_cent,geblokkeerd,laatst_gebruikt';
+// Een kaart die zo lang niet is gebruikt, telt als oud (en kan bij Beheer → Kaarten worden opgeruimd).
+const oud = (k: Kaart) => Date.now() - +new Date(k.laatst_gebruikt) > 365 * 24 * 3600e3;
 const filters = {
   'Alle': () => true,
   'Met tegoed': (k: Kaart) => k.saldo_cent > 0 && !k.geblokkeerd,
   'Met naam': (k: Kaart) => !!k.naam,
   'Geblokkeerd': (k: Kaart) => k.geblokkeerd,
+  'Een jaar niet gebruikt': oud,
 } as const;
 type Filter = keyof typeof filters;
 
@@ -22,7 +25,7 @@ export function Kaarten() {
   const [zoek, setZoek] = useState('');
   const laad = useCallback(async () => {
     try {
-      setKaarten(await lees(sb.from('kaarten').select(KOLOMMEN).order('nummer')) as Kaart[]);
+      setKaarten(await lees(sb.from('kaarten').select(KOLOMMEN).is('verwijderd_ts', null).order('nummer')) as Kaart[]);
     } catch (e) { melding((e as Error).message); }
   }, []);
   useEffect(() => { void laad(); }, [laad]);
@@ -74,7 +77,7 @@ function KaartNaam({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> }) {
   );
 }
 
-function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void }) {
+export function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void }) {
   const { profiel, dienst, methoden } = useData();
   const { open } = useSheet();
   const [k, setK] = useState<Kaart | null>(null);
@@ -106,6 +109,7 @@ function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void 
       <h2>Kaart {k.nummer}{k.naam ? ` · ${k.naam}` : ''}</h2>
       <div className="big-n">{eur(k.saldo_cent)}</div>
       {k.geblokkeerd && <p className="stamp">GEBLOKKEERD</p>}
+      {beheer && <p className="mu c">Laatst gebruikt: {datumTijd(k.laatst_gebruikt)}</p>}
       {!k.geblokkeerd && (!methoden.contant && !methoden.pin ? <p className="mu">Opwaarderen kan niet: contant en pin staan allebei uit.</p> : dienst ? (
         <>
           <label htmlFor="ta">Opwaarderen</label>
@@ -122,6 +126,7 @@ function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () => void 
       {!k.geblokkeerd && <button className="ghost" disabled={bezig} onClick={() => blok(true)}>Kaart blokkeren (kwijt)</button>}
       {k.geblokkeerd && beheer && <button className="ghost" disabled={bezig} onClick={() => blok(false)}>Blokkade opheffen</button>}
       {beheer && <button className="ghost" onClick={() => open(<KaartHistorie k={k} />)}>Geschiedenis bekijken</button>}
+      {beheer && <KaartVerwijderen k={k} onKlaar={onWijziging} />}
     </>
   );
 }
@@ -162,7 +167,36 @@ function KaartBeheer({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> })
   );
 }
 
-const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet (annulering)', overzetting: 'Overgezet' };
+/** Kaart weghalen (kwijt, kapot, of al lang niet gebruikt). Tegoed dat erop staat vervalt. */
+function KaartVerwijderen({ k, onKlaar }: { k: Kaart; onKlaar: () => void }) {
+  const { sluit } = useSheet();
+  const [zeker, setZeker] = useState(false);
+  const [bezig, run] = useBezig();
+  const vak = useRef<HTMLDivElement>(null);
+  // De vraag staat onderaan een lang blad: meteen in beeld schuiven.
+  useEffect(() => { if (zeker) vak.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [zeker]);
+  const weg = () => run(async () => {
+    await rpc('kaart_verwijderen', { p_kaart_id: k.id, p_saldo_cent: k.saldo_cent });
+    sluit();
+    onKlaar();
+    melding(`Kaart ${k.nummer} verwijderd${k.saldo_cent ? `, ${eur(k.saldo_cent)} tegoed vervallen` : ''}`);
+  });
+  if (!zeker) return <button className="ghost" onClick={() => setZeker(true)}>Kaart verwijderen</button>;
+  return (
+    <div className="card warnbox" ref={vak}>
+      <p>
+        Kaart {k.nummer} verdwijnt uit de lijst en werkt daarna niet meer. De geschiedenis blijft bewaard.
+        {k.saldo_cent > 0 && <><br /><b>Er staat nog {eur(k.saldo_cent)} op. Dat tegoed vervalt</b> en komt in het logboek en het rapport.</>}
+      </p>
+      <div className="btns">
+        <button onClick={() => setZeker(false)}>Nee</button>
+        <button className="big warn" disabled={bezig} onClick={weg}>Ja, verwijderen</button>
+      </div>
+    </div>
+  );
+}
+
+const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet (annulering)', overzetting: 'Overgezet', vervallen: 'Vervallen (kaart verwijderd)' };
 
 function KaartHistorie({ k }: { k: Kaart }) {
   const [h, setH] = useState<{ ts: string; bedrag_cent: number; soort: string; methode: string | null; bonnummer: number | null; door_naam: string | null }[] | null>(null);
