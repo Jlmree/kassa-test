@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { lees, rpc, sb, type Dienst, type Product, type Profiel, type Rekening, type RekeningRegel } from './lib';
 
+/** Welke betaalmethoden aan staan (Beheer → Instellingen). */
+export interface Methoden { contant: boolean; pin: boolean; kaart: boolean; rekening: boolean }
+const ALLES_AAN: Methoden = { contant: true, pin: true, kaart: true, rekening: true };
+
 interface Data {
   profiel: Profiel;
   producten: Product[];
@@ -8,6 +12,7 @@ interface Data {
   regels: RekeningRegel[];
   dienst: Dienst | null;
   winkel: string;
+  methoden: Methoden;
   geladen: boolean;
   verbonden: boolean;
   herlaad: () => Promise<void>;
@@ -18,7 +23,7 @@ export const useData = () => useContext(Ctx);
 
 export function DataProvider({ profiel, children }: { profiel: Profiel; children: ReactNode }) {
   const [s, setS] = useState<Omit<Data, 'herlaad' | 'profiel'>>({
-    producten: [], rekeningen: [], regels: [], dienst: null, winkel: 'Bar', geladen: false, verbonden: true,
+    producten: [], rekeningen: [], regels: [], dienst: null, winkel: 'Bar', methoden: ALLES_AAN, geladen: false, verbonden: true,
   });
   const bezig = useRef<Promise<void> | null>(null);
   const opnieuw = useRef(false);
@@ -38,11 +43,13 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           lees(sb.from('rekeningen').select('*').eq('open', true).order('naam')),
           lees(sb.from('rekening_regels').select('*, rekeningen!inner(open)').eq('rekeningen.open', true).order('id')),
           rpc<Dienst | null>('dienst_overzicht'),
-          lees(sb.from('instellingen').select('naam').maybeSingle()),
+          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening').maybeSingle()),
         ]);
+        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean } | null;
         setS({
           producten: producten as Product[], rekeningen: rekeningen as Rekening[], regels: regels as RekeningRegel[],
-          dienst, winkel: (inst as { naam: string } | null)?.naam ?? 'Bar', geladen: true, verbonden: true,
+          dienst, winkel: i?.naam ?? 'Bar', geladen: true,
+          methoden: i ? { contant: i.betaal_contant, pin: i.betaal_pin, kaart: i.betaal_kaart, rekening: i.betaal_rekening } : ALLES_AAN, verbonden: true,
         });
         versie.current = v;
         geladenOp.current = Date.now();

@@ -82,11 +82,16 @@ function Kassasysteem() {
 }
 
 function Scherm({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
-  const { profiel, winkel, verbonden, geladen, dienst } = useData();
+  const { profiel, winkel, verbonden, geladen, dienst, methoden, rekeningen } = useData();
   const { open } = useSheet();
   const { setDoel } = useMand();
-  const tabs: [Tab, string][] = [['kassa', 'Kassa'], ['rekeningen', 'Rekeningen'], ['kaarten', 'Kaarten'], ['dienst', 'Dienst']];
+  // Uitgezette betaalmethoden verdwijnen uit het menu; open rekeningen blijven te zien tot ze zijn afgerekend.
+  const tabs: [Tab, string][] = [['kassa', 'Kassa']];
+  if (methoden.rekening || rekeningen.length) tabs.push(['rekeningen', 'Rekeningen']);
+  if (methoden.kaart) tabs.push(['kaarten', 'Kaarten']);
+  tabs.push(['dienst', 'Dienst']);
   if (profiel.rol === 'beheerder') tabs.push(['beheer', 'Beheer']);
+  useEffect(() => { if (!tabs.some(([t]) => t === tab)) setTab('kassa'); });
   return (
     <div className="app">
       <header>

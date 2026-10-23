@@ -259,6 +259,38 @@ test('rapport: een verkoop na middernacht hoort bij de avond ervoor', async () =
   assert.deepEqual(r.per_dag.map((d) => d.dag), [verwacht]);
 });
 
+test('betaalmethoden aan of uit', async () => {
+  const zet = (m) => rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, ...m });
+  await faalt(rpc(bar, 'betaalmethoden_opslaan', { p_contant: true, p_pin: false, p_kaart: true, p_rekening: true }), 'beheerder');
+  await faalt(zet({ p_contant: false, p_pin: false, p_kaart: false }), 'minstens één');
+  const koffie = [{ product_id: product('Koffie').id, aantal: 1 }];
+  // Een open rekening van vóór het uitzetten.
+  const open = await rpc(bar, 'rekening_maken', { p_naam: 'Van gisteren' });
+  await rpc(bar, 'rekening_toevoegen', { p_rekening_id: open, p_regels: koffie });
+
+  await zet({ p_pin: false, p_rekening: false });
+  const { data: inst } = await bar.from('instellingen').select('betaal_contant,betaal_pin,betaal_kaart,betaal_rekening').single();
+  assert.deepEqual(inst, { betaal_contant: true, betaal_pin: false, betaal_kaart: true, betaal_rekening: false });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: koffie, p_betalingen: [{ methode: 'pin' }] }), 'Betalen met pin staat uit');
+  // Ook niet als restbedrag na een kaart.
+  await faalt(rpc(bar, 'afrekenen', { p_regels: koffie, p_betalingen: [{ methode: 'kaart', kaart: kaart.code }, { methode: 'pin' }] }), 'pin staat uit');
+  const info = await rpc(bar, 'kaart_info', { p_zoek: kaart.code });
+  await faalt(rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 500, p_methode: 'pin' }), 'pin staat uit');
+  await faalt(rpc(bar, 'rekening_maken', { p_naam: 'Nieuw' }), 'Op rekening zetten staat uit');
+  await faalt(rpc(bar, 'rekening_toevoegen', { p_rekening_id: open, p_regels: koffie }), 'Op rekening zetten staat uit');
+  // De open rekening kan nog wel worden afgerekend, met een methode die aan staat.
+  const bon = await rpc(bar, 'afrekenen', { p_rekening_id: open, p_betalingen: [{ methode: 'kaart', kaart: kaart.code }] });
+  assert.equal(bon.totaal_cent, 100);
+
+  await zet({ p_kaart: false });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: koffie, p_betalingen: [{ methode: 'kaart', kaart: kaart.code }] }), 'kaart staat uit');
+  await faalt(rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 500, p_methode: 'contant' }), 'kaart staat uit');
+
+  await zet({});
+  const { data: log } = await baas.from('logboek').select('actie,details').eq('actie', 'betaalmethoden');
+  assert.deepEqual(log.at(-1).details, { contant: true, pin: true, kaart: true, rekening: true });
+});
+
 test('kassa sluiten: verwacht = begin + contant verkocht + contant opgewaardeerd', async () => {
   // Contant: 500 (bier+chips) + 800 (rekening Piet) + 100 (koffie hieronder); opwaardering contant 1000.
   const laat = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'contant' }] });

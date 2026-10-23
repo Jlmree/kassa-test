@@ -5,7 +5,7 @@ import { melding, Rij, useBezig, useSheet } from '../ui';
 import { Afrekenen } from './Afrekenen';
 
 export function Rekeningen({ bestelVoor }: { bestelVoor: (id: number) => void }) {
-  const { rekeningen, regels, herlaad } = useData();
+  const { rekeningen, regels, methoden, herlaad } = useData();
   const { open } = useSheet();
   const [naam, setNaam] = useState('');
   const [bezig, run] = useBezig();
@@ -17,10 +17,12 @@ export function Rekeningen({ bestelVoor }: { bestelVoor: (id: number) => void })
   });
   return (
     <>
-      <form className="inl" onSubmit={(e) => { e.preventDefault(); void nieuw(); }}>
-        <input className="f" placeholder="Naam voor nieuwe rekening" value={naam} onChange={(e) => setNaam(e.target.value)} aria-label="Naam" />
-        <button disabled={bezig}>Maak aan</button>
-      </form>
+      {methoden.rekening ? (
+        <form className="inl" onSubmit={(e) => { e.preventDefault(); void nieuw(); }}>
+          <input className="f" placeholder="Naam voor nieuwe rekening" value={naam} onChange={(e) => setNaam(e.target.value)} aria-label="Naam" />
+          <button disabled={bezig}>Maak aan</button>
+        </form>
+      ) : <p className="mu">Op rekening zetten staat uit. Deze rekeningen stonden nog open en kunnen nog worden afgerekend.</p>}
       <div style={{ height: 12 }} />
       {rekeningen.map((r) => {
         const l = regels.filter((x) => x.rekening_id === r.id);
@@ -37,7 +39,7 @@ export function Rekeningen({ bestelVoor }: { bestelVoor: (id: number) => void })
 }
 
 function RekeningScherm({ id, bestelVoor }: { id: number; bestelVoor: (id: number) => void }) {
-  const { rekeningen, regels, dienst, herlaad } = useData();
+  const { rekeningen, regels, dienst, methoden, herlaad } = useData();
   const { open, sluit } = useSheet();
   const [bezig, run] = useBezig();
   const r = rekeningen.find((x) => x.id === id);
@@ -58,12 +60,12 @@ function RekeningScherm({ id, bestelVoor }: { id: number; bestelVoor: (id: numbe
         </div>
       ))}
       <Rij l={<b>Totaal</b>} r={eur(som)} sterk />
-      <button className="big alt" onClick={() => { bestelVoor(id); sluit(); }}>Bestelling toevoegen</button>
+      {methoden.rekening && <button className="big alt" onClick={() => { bestelVoor(id); sluit(); }}>Bestelling toevoegen</button>}
       {l.length > 0 && (dienst ? (
         <div className="btns" style={{ marginTop: 8 }}>
-          <button className="big m-cash" onClick={() => betaal('contant')}>Contant</button>
-          <button className="big m-pin" onClick={() => betaal('pin')}>Pin</button>
-          <button className="big m-card" onClick={() => betaal('kaart')}>Kaart</button>
+          {methoden.contant && <button className="big m-cash" onClick={() => betaal('contant')}>Contant</button>}
+          {methoden.pin && <button className="big m-pin" onClick={() => betaal('pin')}>Pin</button>}
+          {methoden.kaart && <button className="big m-card" onClick={() => betaal('kaart')}>Kaart</button>}
         </div>
       ) : <p className="card warnbox">Open eerst de kassa (tabblad Dienst) om af te rekenen.</p>)}
       {!l.length && <button className="ghost" disabled={bezig} onClick={weg}>Lege rekening verwijderen</button>}

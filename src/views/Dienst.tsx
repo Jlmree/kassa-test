@@ -141,8 +141,11 @@ const kleur: Record<string, string> = { contant: 'var(--m-cash)', pin: 'var(--m-
 
 // Verdeling over contant / pin / kaart als één balk met legenda.
 export function Verdeling({ delen }: { delen: { methode: string; bedrag_cent: number }[] }) {
+  const { methoden } = useData();
   const tot = delen.reduce((a, x) => a + x.bedrag_cent, 0);
   if (!tot) return <p className="mu">Nog niets verkocht.</p>;
+  // Een uitgezette methode alleen tonen als er toch iets mee betaald is (van vóór het uitzetten).
+  delen = delen.filter((x) => x.bedrag_cent > 0 || methoden[x.methode as keyof typeof methoden] !== false);
   return (
     <>
       <div className="stack">{delen.filter((x) => x.bedrag_cent > 0).map((x) => <i key={x.methode} style={{ flex: x.bedrag_cent, background: kleur[x.methode] }} />)}</div>
