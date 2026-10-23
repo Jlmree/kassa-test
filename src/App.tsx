@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import logo from './logo.png';
 import { ingesteld, inlogEmail, lees, PROEF, rpc, sb, toonInlognaam, type Profiel } from './lib';
 import { proefLaden, proefOpnieuw } from '@proef';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
@@ -96,7 +95,6 @@ function Scherm({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   return (
     <div className="app">
       <header>
-        <img className="logo" src={logo} alt="" />
         <b>{winkel}</b>
         <span className={'dot ' + (dienst ? 'on' : '')} title={dienst ? 'Kassa open' : 'Kassa dicht'} />
         <button className="who" onClick={() => open(<Account />)}>{profiel.naam}</button>
@@ -178,7 +176,6 @@ function Aanmelden() {
   });
   return (
     <div className="login">
-      <img className="logo-groot" src={logo} alt="Logo" />
       <h1>Bar-kassa</h1>
       <div className="chips">
         <button className={!nieuw ? 'on' : ''} onClick={() => setNieuw(false)}>Inloggen</button>
@@ -218,7 +215,6 @@ function Wachten({ profiel, opnieuw }: { profiel: Profiel; opnieuw: () => void }
 function NietIngesteld() {
   return (
     <div className="login">
-      <img className="logo-groot" src={logo} alt="Logo" />
       <h1>Bar-kassa</h1>
       <p>De kassa is nog niet gekoppeld aan een database.</p>
       <p className="mu">Vul in <code>config.js</code> het adres en de <i>anon public</i> sleutel van je Supabase-project in. Zie de README voor de stappen.</p>
