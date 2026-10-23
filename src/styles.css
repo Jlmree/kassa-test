@@ -100,6 +100,7 @@ h3.s { margin: 18px 0 4px; font-size: 16px; }
 .big.m-pin { background: #1565c0; color: #fff; }
 .big.m-card { background: #f0b429; color: #1b2927; }
 .big.m-tab { background: #7b3fa0; color: #fff; }
+.big.m-lat { background: #8d5a2b; color: #fff; }
 .ghost { width: 100%; padding: 12px; margin-top: 6px; color: var(--mu); font-weight: 600; }
 .btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
 .btns button { padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-weight: 600; }
@@ -238,3 +239,14 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .qrs-zuil { width: 180px; margin: 10px auto 0; }
 .stappen { margin: 0; padding-left: 20px; }
 .stappen li { margin: 4px 0; }
+
+/* Streeplijst */
+nav.veel button { font-size: 12.5px; }
+.leden { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.lid { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); font-weight: 700; font-size: 17px; text-align: left; }
+.lid .mu { font-weight: 500; font-size: 14px; }
+.maand { justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.maand b { text-transform: capitalize; font-size: 18px; }
+.maand button { min-width: 48px; }
+.kpi:has(> :nth-child(3)) { grid-template-columns: 1fr 1fr 1fr; }
+.kpi:has(> :nth-child(3)) b { font-size: 19px; }

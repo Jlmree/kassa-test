@@ -124,7 +124,7 @@ export function Bestelling() {
     void herlaad();
     melding(`Op rekening van ${naam}`);
   });
-  const betaal = (methode: 'contant' | 'pin' | 'kaart') => open(
+  const betaal = (methode: 'contant' | 'pin' | 'kaart' | 'lat') => open(
     <Afrekenen bron={{ soort: 'bestelling', regels: regels.map((r) => ({ product_id: r.id, aantal: r.aantal })) }} totaal={som} methode={methode} onKlaar={leeg} />,
   );
 
@@ -152,6 +152,7 @@ export function Bestelling() {
           {methoden.contant && <button className="big m-cash" onClick={() => betaal('contant')}>Contant</button>}
           {methoden.pin && <button className="big m-pin" onClick={() => betaal('pin')}>Pin</button>}
           {methoden.kaart && <button className="big m-card" onClick={() => betaal('kaart')}>Kaart</button>}
+          {methoden.lat && <button className="big m-lat" onClick={() => betaal('lat')}>Streeplijst</button>}
           {methoden.rekening && <button className="big m-tab" onClick={() => open(<KiesRekening onKies={opRekening} />)}>Op rekening</button>}
         </div>
       )}

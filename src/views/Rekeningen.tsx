@@ -46,7 +46,7 @@ function RekeningScherm({ id, bestelVoor }: { id: number; bestelVoor: (id: numbe
   if (!r) return <><h2>Rekening</h2><p className="mu">Deze rekening is afgerekend of verwijderd.</p><button className="ghost" onClick={sluit}>Sluiten</button></>;
   const l = regels.filter((x) => x.rekening_id === id);
   const som = totaal(l);
-  const betaal = (methode: 'contant' | 'pin' | 'kaart') => open(<Afrekenen bron={{ soort: 'rekening', id }} totaal={som} methode={methode} onKlaar={() => {}} />);
+  const betaal = (methode: 'contant' | 'pin' | 'kaart' | 'lat') => open(<Afrekenen bron={{ soort: 'rekening', id }} totaal={som} methode={methode} onKlaar={() => {}} />);
   const schrap = (regel: number) => run(async () => { await rpc('rekening_regel_verwijderen', { p_regel_id: regel }); await herlaad(); melding('Regel verwijderd'); });
   const weg = () => run(async () => { await rpc('rekening_verwijderen', { p_rekening_id: id }); await herlaad(); sluit(); });
   return (
@@ -66,6 +66,7 @@ function RekeningScherm({ id, bestelVoor }: { id: number; bestelVoor: (id: numbe
           {methoden.contant && <button className="big m-cash" onClick={() => betaal('contant')}>Contant</button>}
           {methoden.pin && <button className="big m-pin" onClick={() => betaal('pin')}>Pin</button>}
           {methoden.kaart && <button className="big m-card" onClick={() => betaal('kaart')}>Kaart</button>}
+          {methoden.lat && <button className="big m-lat" onClick={() => betaal('lat')}>Streeplijst</button>}
         </div>
       ) : <p className="card warnbox">Open eerst de kassa (tabblad Dienst) om af te rekenen.</p>)}
       {!l.length && <button className="ghost" disabled={bezig} onClick={weg}>Lege rekening verwijderen</button>}

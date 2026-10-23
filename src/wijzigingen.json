@@ -1,6 +1,16 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Streeplijst per lid",
+    "punten": [
+      "Bij de bestelling staat de knop Streeplijst: tik een naam (of zoek), en de bestelling staat op de lat van dat lid. Een nieuw lid voeg je daar meteen toe.",
+      "In het tabblad Streeplijst zie je per lid wat er nog openstaat, wat er deze maand gestreept is, en de hele geschiedenis. Afbetalen gaat contant of met pin (via de open kassa; contant telt mee in de la). Een beheerder boekt ook een overboeking af.",
+      "Beheer → Streeplijst: per maand wie wat heeft gestreept en afbetaald, met export naar Excel voor de incasso.",
+      "Een streepje telt meteen mee in omzet en voorraad. Annuleren haalt het streepje weg. De streeplijst kan uit bij Beheer → Instellingen → Betaalmethoden."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Saldo-zuil aan de bar",
     "punten": [
       "Hang een oude telefoon of tablet aan de muur: klanten houden hun kaart voor de camera en zien tien seconden hun saldo, daarna staat hij vanzelf weer klaar. Een USB-scanner aan een scherm werkt ook. Instellen: Beheer → Instellingen → Saldo-zuil.",

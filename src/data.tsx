@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { lees, rpc, sb, type Dienst, type Product, type Profiel, type Rekening, type RekeningRegel } from './lib';
 
 /** Welke betaalmethoden aan staan (Beheer → Instellingen). */
-export interface Methoden { contant: boolean; pin: boolean; kaart: boolean; rekening: boolean }
-const ALLES_AAN: Methoden = { contant: true, pin: true, kaart: true, rekening: true };
+export interface Methoden { contant: boolean; pin: boolean; kaart: boolean; rekening: boolean; lat: boolean }
+const ALLES_AAN: Methoden = { contant: true, pin: true, kaart: true, rekening: true, lat: true };
 
 interface Data {
   profiel: Profiel;
@@ -43,13 +43,13 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           lees(sb.from('rekeningen').select('*').eq('open', true).order('naam')),
           lees(sb.from('rekening_regels').select('*, rekeningen!inner(open)').eq('rekeningen.open', true).order('id')),
           rpc<Dienst | null>('dienst_overzicht'),
-          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening').maybeSingle()),
+          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat').maybeSingle()),
         ]);
-        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean } | null;
+        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean } | null;
         setS({
           producten: producten as Product[], rekeningen: rekeningen as Rekening[], regels: regels as RekeningRegel[],
           dienst, winkel: i?.naam ?? 'Bar', geladen: true,
-          methoden: i ? { contant: i.betaal_contant, pin: i.betaal_pin, kaart: i.betaal_kaart, rekening: i.betaal_rekening } : ALLES_AAN, verbonden: true,
+          methoden: i ? { contant: i.betaal_contant, pin: i.betaal_pin, kaart: i.betaal_kaart, rekening: i.betaal_rekening, lat: i.betaal_lat } : ALLES_AAN, verbonden: true,
         });
         versie.current = v;
         geladenOp.current = Date.now();
