@@ -60,13 +60,72 @@ export function SheetProvider({ children }: { children: ReactNode }) {
       {children}
       {inhoud && (
         <div className="sheet" onClick={(e) => e.target === e.currentTarget && sluit()}>
-          <div className="sh" role="dialog" aria-modal="true" key={sleutel}>
-            <div className="grab" />
-            {inhoud}
-          </div>
+          <Blad key={sleutel} sluit={sluit}>{inhoud}</Blad>
         </div>
       )}
     </SheetContext.Provider>
+  );
+}
+
+/** Het blad zelf: omlaag vegen sluit het, zoals op een telefoon gewoon is. */
+function Blad({ children, sluit }: { children: ReactNode; sluit: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current!;
+    const achter = el.parentElement!;
+    let x0 = 0, y0 = 0, dy = 0, vy = 0, yVorig = 0, tVorig = 0;
+    let mogelijk = false, slepen = false;
+    const zet = (y: number, anim: boolean) => {
+      el.style.transition = achter.style.transition = anim ? 'transform .18s ease-out, background-color .18s ease-out' : 'none';
+      el.style.transform = y ? `translateY(${y}px)` : '';
+      achter.style.backgroundColor = y ? `rgba(0, 0, 0, ${0.45 * Math.max(0, 1 - y / el.offsetHeight)})` : '';
+    };
+    const start = (e: TouchEvent) => {
+      // Alleen als het blad bovenaan staat; anders scrol je gewoon door de inhoud.
+      mogelijk = e.touches.length === 1 && (el.scrollTop <= 0 || !!(e.target as Element).closest?.('.grab'));
+      slepen = false;
+      x0 = e.touches[0].clientX; y0 = yVorig = e.touches[0].clientY; tVorig = e.timeStamp; dy = vy = 0;
+    };
+    const beweeg = (e: TouchEvent) => {
+      if (!mogelijk) return;
+      const { clientX: x, clientY: y } = e.touches[0];
+      if (!slepen) {
+        // Omhoog of opzij (bijv. door de snelknoppen): niet slepen.
+        if (y - y0 < -4 || Math.abs(x - x0) > Math.abs(y - y0)) { mogelijk = false; return; }
+        if (y - y0 < 10) return;
+        slepen = true;
+        y0 = y;
+      }
+      e.preventDefault();
+      vy = (y - yVorig) / Math.max(1, e.timeStamp - tVorig);
+      yVorig = y; tVorig = e.timeStamp;
+      dy = Math.max(0, y - y0);
+      zet(dy, false);
+    };
+    const eind = () => {
+      if (!slepen) return;
+      slepen = false;
+      if (dy > Math.min(140, el.offsetHeight / 4) || vy > 0.6) {
+        zet(el.offsetHeight, true);
+        window.setTimeout(sluit, 180);
+      } else zet(0, true);
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', beweeg, { passive: false });
+    el.addEventListener('touchend', eind);
+    el.addEventListener('touchcancel', eind);
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', beweeg);
+      el.removeEventListener('touchend', eind);
+      el.removeEventListener('touchcancel', eind);
+    };
+  }, [sluit]);
+  return (
+    <div className="sh" role="dialog" aria-modal="true" ref={ref}>
+      <div className="grab" />
+      {children}
+    </div>
   );
 }
 

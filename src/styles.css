@@ -133,8 +133,8 @@ textarea.f { height: 120px; font: 12px monospace; }
 .bar { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; font-size: 14px; }
 .bar i { display: block; height: 14px; border-radius: 4px; background: var(--acc); }
 
-.sheet { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
-.sh { width: 100%; max-width: 640px; max-height: 92%; overflow: auto; background: var(--bg); border-radius: 20px 20px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.sheet { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 20; overscroll-behavior: contain; }
+.sh { width: 100%; max-width: 640px; max-height: 92%; overflow: auto; overscroll-behavior: contain; background: var(--bg); border-radius: 20px 20px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
 .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 10px; }
 .scan { width: 100%; max-height: 40vh; object-fit: cover; border-radius: 12px; background: #000; min-height: 150px; }
 
