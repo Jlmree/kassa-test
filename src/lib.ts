@@ -127,7 +127,7 @@ export interface Dienst {
   opwaardering_contant_cent: number; opwaardering_pin_cent: number; verwacht_cent: number;
   // Streeplijst (ontbreekt bij diensten van vóór de streeplijst).
   lat_cent?: number; afbetaald_contant_cent?: number; afbetaald_pin_cent?: number;
-  gratis_cent?: number;
+  gratis_cent?: number; uitgaven_cent?: number;
   geteld_cent: number | null; opmerking: string | null;
 }
 export interface KaartInfo { id: number; nummer: number; naam: string | null; saldo_cent: number; geblokkeerd: boolean; betaalcode: boolean }

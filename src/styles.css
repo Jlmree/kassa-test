@@ -259,3 +259,5 @@ nav.veel button { font-size: 12.5px; }
 /* Boodschappenlijst */
 .row input.f.n { width: 72px; text-align: center; margin: 0; }
 pre.lijst { white-space: pre-wrap; font-family: inherit; color: var(--mu); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.uitg { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+.uitg .row { border-bottom: 0; }

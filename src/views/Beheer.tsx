@@ -77,7 +77,8 @@ interface RapportData {
   per_uur: { uur: number; bonnen: number; bedrag_cent: number }[];
   opwaarderingen: { methode: string; aantal: number; bedrag_cent: number }[];
   kaarttegoed_cent: number; kaarten_actief: number; open_rekeningen_cent: number; diensten: Dienst[];
-  vervallen_cent?: number; gratis_cent?: number; gratis_per_reden?: { reden: string; aantal: number; bedrag_cent: number }[];
+  vervallen_cent?: number; gratis_cent?: number;
+  uitgaven_cent?: number; uitgaven_per_reden?: { reden: string; aantal: number; bedrag_cent: number }[]; voorgeschoten_open_cent?: number; gratis_per_reden?: { reden: string; aantal: number; bedrag_cent: number }[];
 }
 
 // Een baravond loopt door tot 06:00: verkopen na middernacht horen bij de avond ervoor.
@@ -170,6 +171,12 @@ function Rapport() {
               {r.gratis_per_reden.map((x) => <Rij key={x.reden} l={`${x.reden} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
             </Blok>
           )}
+          {(!!r.uitgaven_per_reden?.length || !!r.voorgeschoten_open_cent) && (
+            <Blok titel="Uitgaven" rechts={<span>{eur(r.uitgaven_cent ?? 0)}</span>}>
+              {r.uitgaven_per_reden?.map((x) => <Rij key={x.reden} l={`${x.reden} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
+              {!!r.voorgeschoten_open_cent && <Rij l="Nu nog terug te betalen (voorgeschoten)" r={eur(r.voorgeschoten_open_cent)} />}
+            </Blok>
+          )}
           {r.per_dag.length > 1 && <Blok titel="Per dag">{r.per_dag.map((x) => <Staaf key={x.dag} l={datum(x.dag)} w={x.bedrag_cent} max={maxDag} r={eur(x.bedrag_cent)} />)}</Blok>}
           {r.per_uur.length > 0 && <Blok titel="Per uur">{r.per_uur.map((x) => <Staaf key={x.uur} l={`${x.uur}:00`} w={x.bedrag_cent} max={maxUur} r={eur(x.bedrag_cent)} />)}</Blok>}
           <Blok titel="Producten" rechts={<span className="mu">{r.per_product.reduce((a, x) => a + x.aantal, 0)} stuks</span>}>
@@ -228,6 +235,27 @@ function Ingeklapt<T>({ lijst, n = 6, rij }: { lijst: T[]; n?: number; rij: (x: 
 }
 
 // ───────────── Producten & voorraad ─────────────
+
+const NIEUW = '__nieuw__';
+
+/** Kies een bestaande categorie uit de lijst, of typ een nieuwe. */
+function KiesCategorie({ id, waarde, opties, onChange }: { id: string; waarde: string; opties: string[]; onChange: (c: string) => void }) {
+  const [typen, setTypen] = useState(!opties.length || (!!waarde && !opties.includes(waarde)));
+  if (typen) return (
+    <div className="inl">
+      <input className="f" id={id} autoFocus={!!opties.length} placeholder="Nieuwe categorie, bijv. Warm" maxLength={40} value={waarde} onChange={(e) => onChange(e.target.value)} />
+      {opties.length > 0 && <button onClick={() => { setTypen(false); onChange(opties[0]); }}>Kies uit lijst</button>}
+    </div>
+  );
+  return (
+    <select className="f" id={id} value={opties.includes(waarde) ? waarde : ''}
+      onChange={(e) => { if (e.target.value === NIEUW) { setTypen(true); onChange(''); } else onChange(e.target.value); }}>
+      {!opties.includes(waarde) && <option value="" disabled>Kies een categorie</option>}
+      {opties.map((c) => <option key={c} value={c}>{c}</option>)}
+      <option value={NIEUW}>Nieuwe categorie…</option>
+    </select>
+  );
+}
 
 /** Wat er gehaald moet worden: alles op of onder het minimum, aanvullen tot twee keer het minimum. */
 function Boodschappen() {
@@ -331,8 +359,7 @@ function ProductScherm({ id }: { id: number | null }) {
       <label htmlFor="pn">Naam</label><input className="f" id="pn" value={f.naam} onChange={zet('naam')} />
       <label htmlFor="pp">Prijs in euro</label><input className="f" id="pp" inputMode="decimal" value={f.prijs} onChange={zet('prijs')} />
       <label htmlFor="pc">Categorie</label>
-      <input className="f" id="pc" list="cats" value={f.categorie} onChange={zet('categorie')} />
-      <datalist id="cats">{[...new Set(producten.map((x) => x.categorie))].map((c) => <option key={c} value={c} />)}</datalist>
+      <KiesCategorie id="pc" waarde={f.categorie} opties={[...new Set(producten.map((x) => x.categorie))]} onChange={(c) => setF({ ...f, categorie: c })} />
       <label htmlFor="pv">Volgorde (lager = eerder)</label><input className="f" id="pv" inputMode="numeric" value={f.volgorde} onChange={zet('volgorde')} />
       <label className="check"><input type="checkbox" checked={f.actief} onChange={zet('actief')} /> Tonen in de kassa</label>
       {id == null && (<><label htmlFor="pvr">Voorraad nu</label><input className="f" id="pvr" inputMode="numeric" placeholder="Hoeveel is er nu?" value={f.voorraad} onChange={zet('voorraad')} /></>)}
@@ -556,6 +583,7 @@ const actieNaam: Record<string, string> = {
   lat_afbetalen: 'Streeplijst afbetaald', uitnodiging_maken: 'Uitnodiging gemaakt', uitnodiging_intrekken: 'Uitnodiging ingetrokken',
   uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
   kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd', gratis: 'Gratis weggegeven',
+  uitgave: 'Uitgave geregistreerd', uitgave_terugbetaald: 'Voorschot terugbetaald', uitgave_verwijderen: 'Uitgave verwijderd',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -570,6 +598,9 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'kaart_verwijderen': return `kaart ${d.kaart}${d.naam ? ` (${d.naam})` : ''}${d.vervallen_cent ? `, ${e('vervallen_cent')} tegoed vervallen` : ''}`;
     case 'kaarten_opruimen': return `${d.aantal} kaarten zonder tegoed`;
     case 'gratis': return `Bon ${d.bon}, ${e('bedrag_cent')} (${d.reden})`;
+    case 'uitgave': return `${d.omschrijving}: ${e('bedrag_cent')}${d.voorgeschoten_door ? `, voorgeschoten door ${d.voorgeschoten_door}` : ', uit de kas'}`;
+    case 'uitgave_terugbetaald': return `${d.aan}: ${e('bedrag_cent')} (${d.hoe === 'kas' ? 'uit de kas' : 'overgemaakt'})`;
+    case 'uitgave_verwijderen': return `${d.omschrijving}: ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
     case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat', 'gratis'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;

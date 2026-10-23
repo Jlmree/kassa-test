@@ -109,6 +109,12 @@ begin
   from (values (1, 'Piet de Vries'), (3, 'Fam. Jansen'), (5, 'Voetbal JO11'), (11, 'Sandra'), (12, 'Kees Bakker'), (13, 'Ruud')) as v(nummer, naam)
   where k.nummer = v.nummer;
 
+  -- Boodschappen: een keer uit de kas, een keer voorgeschoten (nog terug te betalen).
+  insert into public.uitgaven (ts, omschrijving, bedrag_cent, door, door_naam) values
+    (now() - interval '6 days', 'Boodschappen', 6840, demo, 'Demo');
+  insert into public.uitgaven (ts, omschrijving, bedrag_cent, voorgeschoten_door, door, door_naam) values
+    (now() - interval '2 days', 'Chips en frisdrank', 2395, 'Henk', anna, 'Anna');
+
   -- Kaarten van vorig seizoen die al ruim een jaar niet zijn gebruikt (om op te ruimen).
   insert into public.kaarten (code, aangemaakt, naam)
   select public._kaartcode(), now() - interval '15 months', null from generate_series(1, 7);
