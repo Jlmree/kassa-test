@@ -421,6 +421,11 @@ if [ "${KASSA_WIFI:-0}" = 1 ]; then
 elif [ -f /etc/systemd/system/kassa-wifi.service ]; then
   "$OPT/bin/wifi.sh" uit
 fi
+# Wifi-naam en wachtwoord voor de wifi-code bij een uitnodiging (alleen beheerders zien ze).
+if [ "${KASSA_WIFI:-0}" = 1 ]; then WN=$KASSA_WIFI_NAAM; WW=$KASSA_WIFI_WACHTWOORD; else WN=; WW=; fi
+runuser -u postgres -- psql -d "$DB" -q -v n="$WN" -v w="$WW" <<'SQL'
+update public.systeem set wifi_naam = nullif(:'n', ''), wifi_wachtwoord = nullif(:'w', '');
+SQL
 
 # Nog geen beheerder? Dan maak je die hier aan, op de server zelf. Een account dat
 # via de app wordt aangemaakt, wordt daarna nooit meer vanzelf beheerder.

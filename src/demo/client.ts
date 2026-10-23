@@ -169,6 +169,7 @@ class Lezen implements PromiseLike<{ data: unknown; error: Fout | null }> {
     return this;
   }
   eq(k: string, v: unknown) { return this.filter(k, '=', v); }
+  is(k: string, v: null) { naam(k); this.waar.push(`t.${naam(k)} is ${v === null ? 'null' : 'not null'}`); return this; }
   gt(k: string, v: unknown) { return this.filter(k, '>', v); }
   gte(k: string, v: unknown) { return this.filter(k, '>=', v); }
   lt(k: string, v: unknown) { return this.filter(k, '<', v); }

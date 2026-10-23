@@ -5,6 +5,7 @@ import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
+import { Uitnodigen } from './Uitnodigen';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
 const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
@@ -422,7 +423,8 @@ function Medewerkers() {
   const wachtend = lijst.filter((p) => p.rol === 'wacht' && p.actief);
   return (
     <>
-      <p className="mu">Nieuwe medewerkers maken zelf een account aan op het inlogscherm. Daarna keur je ze hier goed.</p>
+      <Uitnodigen />
+      <h3 className="s">Medewerkers</h3>
       {wachtend.map((p) => (
         <div className="card warnbox" key={p.id}>
           <div className="hd"><span>{p.naam}</span><span className="mu">wacht</span></div>
@@ -458,7 +460,8 @@ const actieNaam: Record<string, string> = {
   dienst_openen: 'Kassa geopend', dienst_sluiten: 'Kassa gesloten', gebruiker_bijwerken: 'Medewerker gewijzigd',
   wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
   betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
-  lat_afbetalen: 'Streeplijst afbetaald', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
+  lat_afbetalen: 'Streeplijst afbetaald', uitnodiging_maken: 'Uitnodiging gemaakt', uitnodiging_intrekken: 'Uitnodiging ingetrokken',
+  uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {

@@ -450,6 +450,47 @@ test('controle per medewerker, alleen voor beheerder', async () => {
   assert.deepEqual(c.tekorten.map((t) => [t.verschil_cent, t.gesloten_door]), [[-50, 'Bar']]);
 });
 
+test('uitnodigen met een QR-code: één keer, 24 uur, intrekbaar', async () => {
+  const anon = client();
+  await faalt(rpc(bar, 'uitnodiging_maken', { p_naam: 'Jan', p_rol: 'medewerker' }), 'beheerder');
+  const u = await rpc(baas, 'uitnodiging_maken', { p_naam: `Jan ${run}`, p_rol: 'medewerker' });
+  assert.match(u.code, /^[0-9a-f]{32}$/);
+  assert.deepEqual(await rpc(anon, 'uitnodiging_info', { p_code: u.code }), { naam: `Jan ${run}`, rol: 'medewerker', winkel: 'Bar' });
+  // Account aanmaken met de uitnodiging: meteen medewerker, geen goedkeuring nodig.
+  const jan = client();
+  const email = `jan.${run}@kassa.lokaal`;
+  assert.ifError((await jan.auth.signUp({ email, password: 'geheim-wachtwoord', options: { data: { naam: 'Iets anders', uitnodiging: u.code } } })).error);
+  assert.equal(await rpc(jan, 'mijn_rol'), 'medewerker');
+  const { data: p } = await baas.from('profielen').select('naam,rol,actief').eq('naam', `Jan ${run}`).single();
+  assert.deepEqual(p, { naam: `Jan ${run}`, rol: 'medewerker', actief: true });
+  // Nog een keer gebruiken kan niet.
+  assert.match((await rpc(anon, 'uitnodiging_info', { p_code: u.code })).fout, /al gebruikt/);
+  const { error } = await client().auth.signUp({ email: `piet.${run}@kassa.lokaal`, password: 'geheim-wachtwoord', options: { data: { uitnodiging: u.code } } });
+  assert.ok(error);
+  // Ingetrokken of verlopen: niet meer te gebruiken.
+  const v = await rpc(baas, 'uitnodiging_maken', { p_naam: 'Kim', p_rol: 'beheerder' });
+  await rpc(baas, 'uitnodiging_intrekken', { p_id: v.id });
+  assert.match((await rpc(anon, 'uitnodiging_info', { p_code: v.code })).fout, /verlopen of ingetrokken/);
+  assert.ok((await client().auth.signUp({ email: `kim.${run}@kassa.lokaal`, password: 'geheim-wachtwoord', options: { data: { uitnodiging: v.code } } })).error);
+  assert.match((await rpc(anon, 'uitnodiging_info', { p_code: 'f'.repeat(32) })).fout, /bestaat niet/);
+  const { data: log } = await baas.from('logboek').select('actie,door_naam').eq('actie', 'uitnodiging_gebruikt');
+  assert.equal(log.at(-1).door_naam, `Jan ${run}`);
+});
+
+test('zelf aanmelden uit: een account zonder uitnodiging staat uit', async () => {
+  const anon = client();
+  assert.equal(await rpc(anon, 'aanmelden_open'), true);
+  await faalt(rpc(bar, 'aanmelden_instellen', { p_aan: false }), 'beheerder');
+  await rpc(baas, 'aanmelden_instellen', { p_aan: false });
+  assert.equal(await rpc(anon, 'aanmelden_open'), false);
+  const c = client();
+  assert.ifError((await c.auth.signUp({ email: `vreemd-${run}@test.nl`, password: 'geheim-wachtwoord', options: { data: { naam: 'Vreemde' } } })).error);
+  assert.equal(await rpc(c, 'mijn_rol'), null);   // een account dat uit staat heeft geen rol
+  const { data: p } = await baas.from('profielen').select('rol,actief').eq('naam', 'Vreemde').single();
+  assert.deepEqual(p, { rol: 'wacht', actief: false });
+  await rpc(baas, 'aanmelden_instellen', { p_aan: true });
+});
+
 test('na 10 verkeerde wachtwoorden op slot; nieuw wachtwoord van de beheerder haalt het eraf', async () => {
   const email = `slot-${run}@test.nl`;
   const c = client();

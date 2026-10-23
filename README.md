@@ -16,7 +16,7 @@ Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in he
 - **Dienst (kasopmaak)**: kassa openen met wisselgeld, aan het eind tellen per munt/biljet; de kassa rekent uit wat er in de la hoort en laat het verschil zien.
 - **Voorraad**: per product bijhouden, levering inboeken, na tellen corrigeren, waarschuwing als iets bijna op is.
 - **Rapporten**: per dag, week, maand of zelf gekozen periode; omzet per betaalmethode, product, medewerker, dag en uur; kaarttegoed in omloop; kasverschillen; export naar CSV (Excel).
-- **Medewerkers en rechten**: iedereen logt in met een eigen naam en wachtwoord; een beheerder keurt nieuwe medewerkers goed en kan wachtwoorden opnieuw instellen.
+- **Medewerkers en rechten**: iedereen logt in met een eigen naam en wachtwoord. Een beheerder nodigt nieuwe medewerkers uit met een QR-code (scannen, wachtwoord kiezen, klaar; met de wifi-code erbij) of keurt aanvragen goed, en kan wachtwoorden opnieuw instellen.
 - **Logboek**: wie heeft wanneer een bon geannuleerd, een prijs gewijzigd, de kassa gesloten, enzovoort.
 - **Automatische back-ups** elk uur, ook naar een USB-stick.
 
@@ -101,7 +101,7 @@ De t620 start daarna vanzelf op in de kassa, schermvullend en zonder bureaublad;
 
 ### 5. Eerste keer
 
-Aan het eind van de installatie vraagt het script een naam en wachtwoord voor de beheerder; daarmee log je in de app in. (Overgeslagen? Dan later met `/opt/kassa/bin/beheerder.sh`.) Laat daarna je medewerkers zelf een account aanmaken in de app en keur ze goed bij *Beheer → Medewerkers*. Kies bij *Beheer → Instellingen → Betaalmethoden* welke betaalmethoden jullie gebruiken; zet bijvoorbeeld pin uit als er geen pinautomaat is.
+Aan het eind van de installatie vraagt het script een naam en wachtwoord voor de beheerder; daarmee log je in de app in. (Overgeslagen? Dan later met `/opt/kassa/bin/beheerder.sh`.) Nodig daarna je medewerkers uit bij *Beheer → Medewerkers → Iemand uitnodigen*: ze scannen de QR-code, kiezen een wachtwoord en zijn meteen binnen. (Zelf een account aanvragen en laten goedkeuren kan ook; dat zet je daar uit als je alleen met uitnodigingen wilt werken.) Kies bij *Beheer → Instellingen → Betaalmethoden* welke betaalmethoden jullie gebruiken; zet bijvoorbeeld pin uit als er geen pinautomaat is.
 
 ## Dagelijks gebruik
 
