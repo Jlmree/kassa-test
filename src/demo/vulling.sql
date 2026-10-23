@@ -65,6 +65,12 @@ begin
           else jsonb_build_array(jsonb_build_object('methode', 'pin'))
         end, null);
     end loop;
+    -- Een drankje voor de bardienst, af en toe voor een sponsor of iets kapot.
+    if random() < 0.6 then
+      perform public.afrekenen(jsonb_build_array(jsonb_build_object('product_id', (select id from public.producten where naam = 'Bier'), 'aantal', 2)),
+        jsonb_build_array(jsonb_build_object('methode', 'gratis',
+          'reden', (array['Bardienst', 'Bardienst', 'Bardienst', 'Sponsor', 'Kapot of weggegooid'])[1 + floor(random() * 5)::int])), null);
+    end if;
     -- Af en toe betaalt een lid de streeplijst contant af.
     if random() < 0.4 then
       perform public.lat_afbetalen(l.id, public._lid_open(l.id), 'contant')

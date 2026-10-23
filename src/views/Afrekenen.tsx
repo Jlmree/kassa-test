@@ -5,7 +5,7 @@ import { KiesLid, type Lid } from './Streeplijst';
 import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
-type Methode = 'contant' | 'pin' | 'kaart' | 'lat';
+type Methode = 'contant' | 'pin' | 'kaart' | 'lat' | 'gratis';
 
 /** Betaalscherm voor een bestelling of een rekening. */
 export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; totaal: number; methode: Methode; onKlaar: () => void }) {
@@ -21,7 +21,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
   const vanKaart = kaart ? Math.min(kaart.info.saldo_cent, totaal) : 0;
   const rest = totaal - vanKaart;
 
-  const betaal = (rest?: { methode: 'contant' | 'pin' | 'lat'; gegeven_cent?: number; rest_kaart?: string; lid?: number }) => run(async () => {
+  const betaal = (rest?: { methode: 'contant' | 'pin' | 'lat' | 'gratis'; gegeven_cent?: number; rest_kaart?: string; lid?: number; reden?: string }) => run(async () => {
     const betalingen: Record<string, unknown>[] = [];
     if (kaart) betalingen.push({ methode: 'kaart', kaart: kaart.code });
     if (rest) betalingen.push(rest);
@@ -71,6 +71,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
           <button className="ghost" onClick={() => setLid(null)}>Ander lid kiezen</button>
         </>
       )}
+      {stap === 'gratis' && <Gratis bedrag={rest} bezig={bezig} onBetaal={(reden) => betaal({ methode: 'gratis', reden })} />}
       {stap === 'pin' && (
         <>
           {!kaart && <h2>Pin</h2>}
@@ -79,6 +80,27 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
           <button className="big m-pin" disabled={bezig} onClick={() => betaal({ methode: 'pin' })}>Pin gelukt, afronden</button>
         </>
       )}
+    </>
+  );
+}
+
+const REDENEN = ['Bardienst', 'Sponsor', 'Kapot of weggegooid'];
+
+/** Weggeven zonder betaling: de voorraad gaat omlaag, de kas blijft kloppen. De reden komt in het rapport. */
+function Gratis({ bedrag, bezig, onBetaal }: { bedrag: number; bezig: boolean; onBetaal: (reden: string) => void }) {
+  const [reden, setReden] = useState('');
+  const [anders, setAnders] = useState(false);
+  return (
+    <>
+      <h2>Gratis</h2>
+      <div className="big-n">{eur(bedrag)}</div>
+      <p className="mu c">Er komt geen geld binnen. Waarom is het gratis?</p>
+      <div className="quick">
+        {REDENEN.map((r) => <button key={r} className={!anders && reden === r ? 'on' : ''} onClick={() => { setAnders(false); setReden(r); }}>{r}</button>)}
+        <button className={anders ? 'on' : ''} onClick={() => { setAnders(true); setReden(''); }}>Anders…</button>
+      </div>
+      {anders && <input className="f" autoFocus maxLength={60} placeholder="Bijvoorbeeld: jubileum van de club" value={reden} onChange={(e) => setReden(e.target.value)} aria-label="Reden" />}
+      <button className="big" disabled={bezig || !reden.trim()} onClick={() => onBetaal(reden.trim())}>Gratis weggeven</button>
     </>
   );
 }

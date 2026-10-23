@@ -137,7 +137,7 @@ function Levering() {
   );
 }
 
-const kleur: Record<string, string> = { contant: 'var(--m-cash)', pin: 'var(--m-pin)', kaart: 'var(--sun)', lat: '#8d5a2b' };
+const kleur: Record<string, string> = { contant: 'var(--m-cash)', pin: 'var(--m-pin)', kaart: 'var(--sun)', lat: '#8d5a2b', gratis: '#8a8f98' };
 
 // Verdeling over contant / pin / kaart als één balk met legenda.
 export function Verdeling({ delen }: { delen: { methode: string; bedrag_cent: number }[] }) {
@@ -169,7 +169,7 @@ export function DienstKaarten({ d }: { d: D }) {
       <Kaartje titel="Verkopen" rechts={<span>{eur(d.omzet_cent)}</span>}>
         <p className="mu" style={{ margin: '0 0 8px' }}>{d.bonnen} {d.bonnen === 1 ? 'bon' : 'bonnen'}{d.bonnen ? `, gemiddeld ${eur(Math.round(d.omzet_cent / d.bonnen))}` : ''}</p>
         <Verdeling delen={[{ methode: 'contant', bedrag_cent: d.contant_cent }, { methode: 'pin', bedrag_cent: d.pin_cent }, { methode: 'kaart', bedrag_cent: d.kaart_cent },
-          { methode: 'lat', bedrag_cent: d.lat_cent ?? 0 }]} />
+          { methode: 'lat', bedrag_cent: d.lat_cent ?? 0 }, { methode: 'gratis', bedrag_cent: d.gratis_cent ?? 0 }]} />
       </Kaartje>
       <Kaartje titel="Geld in de la">
         <Rij l="Wisselgeld bij begin" r={eur(d.beginsaldo_cent)} />

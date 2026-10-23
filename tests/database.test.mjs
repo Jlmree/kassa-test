@@ -288,7 +288,7 @@ test('betaalmethoden aan of uit', async () => {
 
   await zet({});
   const { data: log } = await baas.from('logboek').select('actie,details').eq('actie', 'betaalmethoden');
-  assert.deepEqual(log.at(-1).details, { contant: true, pin: true, kaart: true, rekening: true, lat: true });
+  assert.deepEqual(log.at(-1).details, { contant: true, pin: true, kaart: true, rekening: true, lat: true, gratis: true });
 });
 
 test('klant bekijkt zelf het saldo, alleen met de kaartcode', async () => {
@@ -578,4 +578,26 @@ test('kaart verwijderen: tegoed vervalt en staat in het rapport; opruimen na 12 
   const [n] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
   assert.ok(n.nummer > k.nummer);
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 750 });
+});
+
+test('gratis weggeven: voorraad omlaag, kas klopt, reden in rapport en logboek', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 1000 });
+  const voor = (await bar.from('producten').select('voorraad').eq('id', product('Bier').id).single()).data.voorraad;
+  const bier = [{ product_id: product('Bier').id, aantal: 2 }];
+  await faalt(rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'gratis' }] }), 'waarom');
+  const bon = await rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'gratis', reden: 'Bardienst' }] });
+  assert.deepEqual(bon.betalingen.map((b) => [b.methode, b.bedrag_cent, b.reden]), [['gratis', 400, 'Bardienst']]);
+  assert.equal((await bar.from('producten').select('voorraad').eq('id', product('Bier').id).single()).data.voorraad, voor - 2);
+  const d = await rpc(bar, 'dienst_overzicht');
+  assert.deepEqual([d.verwacht_cent, d.gratis_cent], [1000, 400]);
+  const r = await rpc(baas, 'rapport', { p_van: new Date(Date.now() - 3600e3).toISOString(), p_tot: new Date(Date.now() + 3600e3).toISOString() });
+  assert.deepEqual([r.gratis_cent, r.gratis_per_reden], [400, [{ reden: 'Bardienst', aantal: 1, bedrag_cent: 400 }]]);
+  const { data: log } = await baas.from('logboek').select('actie,door_naam,details').eq('actie', 'gratis');
+  assert.deepEqual([log.at(-1).door_naam, log.at(-1).details.reden, log.at(-1).details.bedrag_cent], ['Bar', 'Bardienst', 400]);
+  // Uit te zetten door de beheerder.
+  const zet = (m) => rpc(baas, 'betaalmethoden_opslaan', { p_contant: true, p_pin: true, p_kaart: true, p_rekening: true, p_lat: true, ...m });
+  await zet({ p_gratis: false });
+  await faalt(rpc(bar, 'afrekenen', { p_regels: bier, p_betalingen: [{ methode: 'gratis', reden: 'Sponsor' }] }), 'Gratis weggeven staat uit');
+  await zet({});
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 1000 });
 });

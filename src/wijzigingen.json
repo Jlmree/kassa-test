@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Gratis weggeven en boodschappenlijst",
+    "punten": [
+      "Onder de betaalknoppen staat Gratis: voor een drankje voor de bardienst, een sponsor of iets dat kapot is. Kies de reden en tik op Gratis weggeven. De voorraad gaat omlaag en de kas blijft kloppen.",
+      "Het rapport laat per reden zien wat er gratis is weggegeven; elke keer staat in het logboek. De beheerder kan Gratis uitzetten bij de betaalmethoden.",
+      "Beheer → Producten → Boodschappenlijst: alles wat op of bijna op is, met hoeveel er gehaald moet worden. Pas de aantallen aan en deel de lijst via WhatsApp of mail."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Zuinigere back-ups",
     "punten": [
       "Elk uur een back-up, maar alleen als er iets is veranderd. 's Nachts en als de bar dicht is, komt er dus geen bij.",
