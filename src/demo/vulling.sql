@@ -102,6 +102,15 @@ begin
   update public.kaarten k set naam = v.naam
   from (values (1, 'Piet de Vries'), (3, 'Fam. Jansen'), (5, 'Voetbal JO11'), (11, 'Sandra'), (12, 'Kees Bakker'), (13, 'Ruud')) as v(nummer, naam)
   where k.nummer = v.nummer;
+
+  -- Kaarten van vorig seizoen die al ruim een jaar niet zijn gebruikt (om op te ruimen).
+  insert into public.kaarten (code, aangemaakt, naam)
+  select public._kaartcode(), now() - interval '15 months', null from generate_series(1, 7);
+  update public.kaarten set naam = 'Oud lid' where nummer = (select max(nummer) from public.kaarten);
+  update public.kaarten set saldo_cent = 450 where nummer = (select max(nummer) from public.kaarten);
+  insert into public.kaart_mutaties (kaart_id, bedrag_cent, soort, methode, ts)
+  select id, 450, 'opwaardering', 'contant', now() - interval '14 months' from public.kaarten where nummer = (select max(nummer) from public.kaarten);
+  update public.kaarten set laatst_gebruikt = now() - interval '14 months' where aangemaakt < now() - interval '1 year';
 end $$;
 
 -- Voorraad op een geloofwaardige stand; frisdrank bijna op, bapao op.

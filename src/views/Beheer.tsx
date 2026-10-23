@@ -6,6 +6,7 @@ import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
 import { Uitnodigen } from './Uitnodigen';
+import { KaartScherm } from './Kaarten';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 
 const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
@@ -55,7 +56,7 @@ export function Beheer() {
       </div>
       {deel === 'Rapport' && <Rapport />}
       {deel === 'Producten' && <Producten />}
-      {deel === 'Kaarten' && <KaartenMaken />}
+      {deel === 'Kaarten' && <><KaartenMaken /><KaartenOpruimen /></>}
       {deel === 'Streeplijst' && <StreeplijstMaand />}
       {deel === 'Medewerkers' && <Medewerkers />}
       {deel === 'Controle' && <Controle />}
@@ -76,6 +77,7 @@ interface RapportData {
   per_uur: { uur: number; bonnen: number; bedrag_cent: number }[];
   opwaarderingen: { methode: string; aantal: number; bedrag_cent: number }[];
   kaarttegoed_cent: number; kaarten_actief: number; open_rekeningen_cent: number; diensten: Dienst[];
+  vervallen_cent?: number;
 }
 
 // Een baravond loopt door tot 06:00: verkopen na middernacht horen bij de avond ervoor.
@@ -175,6 +177,7 @@ function Rapport() {
           </Blok>
           <Blok titel="Tegoedkaarten en rekeningen">
             {r.opwaarderingen.map((x) => <Rij key={x.methode} l={`Opgewaardeerd, ${x.methode === 'pin' ? 'pin' : 'contant'} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
+            {!!r.vervallen_cent && <Rij l="Tegoed vervallen (kaarten verwijderd)" r={eur(r.vervallen_cent)} />}
             <Rij l={`Tegoed nu op ${r.kaarten_actief} kaarten`} r={eur(r.kaarttegoed_cent)} />
             <Rij l="Nu open op rekeningen" r={eur(r.open_rekeningen_cent)} />
           </Blok>
@@ -385,6 +388,57 @@ function KaartenMaken() {
   );
 }
 
+// ───────────── Kaarten opruimen ─────────────
+
+interface Opruimen { leeg: number; met_tegoed: { id: number; nummer: number; naam: string | null; saldo_cent: number; laatst_gebruikt: string }[] }
+
+/** Kaarten die een jaar niet zijn gebruikt: zonder tegoed in één keer weg, met tegoed per kaart. */
+function KaartenOpruimen() {
+  const { open } = useSheet();
+  const [o, setO] = useState<Opruimen | null>(null);
+  const [zeker, setZeker] = useState(false);
+  const [bezig, run] = useBezig();
+  const laad = useCallback(async () => setO(await rpc<Opruimen>('kaarten_opruimen_overzicht')), []);
+  useEffect(() => { void run(laad); }, [laad, run]);
+  const opruimen = () => run(async () => {
+    const n = await rpc<number>('kaarten_opruimen');
+    setZeker(false);
+    await laad();
+    melding(`${n} ${n === 1 ? 'kaart' : 'kaarten'} opgeruimd`);
+  });
+  if (!o) return null;
+  const tegoed = o.met_tegoed.reduce((a, k) => a + k.saldo_cent, 0);
+  return (
+    <>
+      <h3 className="s">Oude kaarten opruimen</h3>
+      <p className="mu">Kaarten die 12 maanden niet zijn gebruikt. Ze verdwijnen uit de lijst en werken niet meer; de geschiedenis blijft bewaard en het nummer komt niet opnieuw voor.</p>
+      {!o.leeg && !o.met_tegoed.length && <p className="mu">Er zijn geen oude kaarten.</p>}
+      {o.leeg > 0 && (!zeker
+        ? <button className="big" onClick={() => setZeker(true)}>{o.leeg} {o.leeg === 1 ? 'kaart' : 'kaarten'} zonder tegoed opruimen</button>
+        : (
+          <div className="card warnbox">
+            <p>{o.leeg} {o.leeg === 1 ? 'kaart' : 'kaarten'} zonder tegoed verwijderen?</p>
+            <div className="btns">
+              <button onClick={() => setZeker(false)}>Nee</button>
+              <button className="big warn" disabled={bezig} onClick={opruimen}>Ja, opruimen</button>
+            </div>
+          </div>
+        ))}
+      {o.met_tegoed.length > 0 && (
+        <div className="card">
+          <div className="hd"><span>Oud, maar met tegoed ({eur(tegoed)})</span></div>
+          <p className="mu">Deze gaan niet vanzelf weg. Tik op een kaart om hem te bekijken en eventueel te verwijderen; het tegoed vervalt dan.</p>
+          {o.met_tegoed.map((k) => (
+            <Rij key={k.id} onClick={() => open(<KaartScherm id={k.id} onWijziging={() => void laad()} />)}
+              l={<>Kaart {k.nummer}{k.naam ? ` · ${k.naam}` : ''}<br /><span className="mu">laatst gebruikt {datum(k.laatst_gebruikt)}</span></>}
+              r={eur(k.saldo_cent)} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 // ───────────── Medewerkers ─────────────
 
 const rolNaam: Record<Rol, string> = { wacht: 'Wacht op goedkeuring', medewerker: 'Medewerker', beheerder: 'Beheerder' };
@@ -462,6 +516,7 @@ const actieNaam: Record<string, string> = {
   betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
   lat_afbetalen: 'Streeplijst afbetaald', uitnodiging_maken: 'Uitnodiging gemaakt', uitnodiging_intrekken: 'Uitnodiging ingetrokken',
   uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
+  kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -473,6 +528,8 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'dienst_sluiten': return `verschil ${e('verschil_cent')}`;
     case 'dienst_openen': return `wisselgeld ${e('beginsaldo_cent')}`;
     case 'kaart_overzetten': return `kaart ${d.van} → ${d.naar}, ${e('bedrag_cent')}`;
+    case 'kaart_verwijderen': return `kaart ${d.kaart}${d.naam ? ` (${d.naam})` : ''}${d.vervallen_cent ? `, ${e('vervallen_cent')} tegoed vervallen` : ''}`;
+    case 'kaarten_opruimen': return `${d.aantal} kaarten zonder tegoed`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
     case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;

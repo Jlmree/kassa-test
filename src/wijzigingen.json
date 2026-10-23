@@ -1,6 +1,23 @@
 [
   {
     "datum": "2026-10-23",
+    "titel": "Kaarten verwijderen en opruimen",
+    "punten": [
+      "Een beheerder kan een kaart verwijderen (tik op de kaart, onderaan Kaart verwijderen). De kaart verdwijnt uit de lijst en werkt niet meer; de geschiedenis blijft bewaard.",
+      "Staat er nog tegoed op, dan vervalt dat. Het staat in het logboek en in het rapport (Tegoed vervallen).",
+      "Beheer → Kaarten → Oude kaarten opruimen: alle kaarten zonder tegoed die 12 maanden niet zijn gebruikt in één keer weg. Oude kaarten mét tegoed gaan nooit vanzelf weg; die bekijk je per kaart.",
+      "Nieuw filter bij Kaarten: Een jaar niet gebruikt."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
+    "titel": "Vensters omlaag vegen",
+    "punten": [
+      "Een venster dat van onderen omhoog komt (bestelling, bon, kaart, levering) sluit je nu ook door het omlaag te vegen."
+    ]
+  },
+  {
+    "datum": "2026-10-23",
     "titel": "Te weinig wisselgeld",
     "punten": [
       "Betaalt iemand contant en is het wisselgeld meer dan er volgens de kassa in de la zit, dan verschijnt een waarschuwing.",

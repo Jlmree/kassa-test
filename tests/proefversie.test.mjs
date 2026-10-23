@@ -44,7 +44,9 @@ for (let i = 0; i < 7; i++) {
                                     from auth.users order by email`);
     assert.deepEqual(rows.map((r) => [r.email, r.ok]),
       [['anna@kassa.lokaal', true], ['demo@kassa.lokaal', true], ['kees@kassa.lokaal', true]]);
-    assert.equal((await d.query(`select count(*)::int as n from public.kaarten`)).rows[0].n, 20);
+    // 20 kaarten van dit seizoen + 7 oude om op te ruimen.
+    assert.equal((await d.query(`select count(*)::int as n from public.kaarten`)).rows[0].n, 27);
+    assert.equal((await d.query(`select count(*)::int as n from public.kaarten where laatst_gebruikt < now() - interval '12 months'`)).rows[0].n, 7);
     assert.ok((await d.query(`select count(*)::int as n from public.verkopen`)).rows[0].n > 50);
     // Inloggen als Demo werkt: de kassa is open en er is een rapport.
     const dienst = await als(d, 'demo@kassa.lokaal', `select to_json(public.dienst_overzicht()) as v`);

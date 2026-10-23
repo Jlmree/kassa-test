@@ -544,3 +544,38 @@ test('te weinig wisselgeld: de rest als tegoed op een barkaart', async () => {
   assert.equal((await rpc(bar, 'kaart_info', { p_zoek: k.code })).saldo_cent, 4400);
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 1000 + 4400 + 600 });
 });
+
+test('kaart verwijderen: tegoed vervalt en staat in het rapport; opruimen na 12 maanden', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  const [k] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
+  const info = await rpc(bar, 'kaart_info', { p_zoek: k.code });
+  await rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 750, p_methode: 'contant' });
+  await faalt(rpc(bar, 'kaart_verwijderen', { p_kaart_id: info.id, p_saldo_cent: 750 }), 'beheerder');
+  // Het saldo dat de beheerder zag klopt niet meer: niet verwijderen.
+  await faalt(rpc(baas, 'kaart_verwijderen', { p_kaart_id: info.id, p_saldo_cent: 0 }), 'intussen veranderd');
+  await rpc(baas, 'kaart_verwijderen', { p_kaart_id: info.id, p_saldo_cent: 750 });
+  await faalt(rpc(baas, 'kaart_verwijderen', { p_kaart_id: info.id, p_saldo_cent: 0 }), 'al verwijderd');
+  // Weg uit de lijst, niet meer te scannen, niet meer te betalen of op te waarderen.
+  const { data: lijst } = await bar.from('kaarten').select('id').is('verwijderd_ts', null);
+  assert.ok(!lijst.some((x) => x.id === info.id));
+  await faalt(rpc(bar, 'kaart_info', { p_zoek: k.code }), 'verwijderd');
+  await faalt(rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'kaart', kaart: k.code }] }), 'verwijderd');
+  await faalt(rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 500, p_methode: 'contant' }), 'verwijderd');
+  // Het vervallen tegoed staat in het rapport en de geschiedenis; de kas telt het niet.
+  const r = await rpc(baas, 'rapport', { p_van: new Date(Date.now() - 3600e3).toISOString(), p_tot: new Date(Date.now() + 3600e3).toISOString() });
+  assert.equal(r.vervallen_cent, 750);
+  const h = await rpc(baas, 'kaart_historie', { p_kaart_id: info.id });
+  assert.deepEqual(h.map((x) => [x.soort, x.bedrag_cent]), [['vervallen', -750], ['opwaardering', 750]]);
+  assert.equal((await rpc(bar, 'dienst_overzicht')).verwacht_cent, 750);
+  const { data: log } = await baas.from('logboek').select('actie,details').eq('actie', 'kaart_verwijderen');
+  assert.equal(log.at(-1).details.vervallen_cent, 750);
+  // Opruimen: net gebruikte kaarten blijven staan, en alleen een beheerder mag het.
+  await faalt(rpc(bar, 'kaarten_opruimen'), 'beheerder');
+  const o = await rpc(baas, 'kaarten_opruimen_overzicht');
+  assert.deepEqual([o.leeg, o.met_tegoed], [0, []]);
+  assert.equal(await rpc(baas, 'kaarten_opruimen'), 0);
+  // Het nummer komt niet opnieuw voor.
+  const [n] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
+  assert.ok(n.nummer > k.nummer);
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 750 });
+});

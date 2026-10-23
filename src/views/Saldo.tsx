@@ -20,7 +20,7 @@ interface LidStand {
 }
 const lidVan = (code: string) => zonderFout(rpc<LidStand | { fout: string }>('lid_overzicht', { p_code: code }));
 
-const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet', overzetting: 'Overgezet' };
+const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet', overzetting: 'Overgezet', vervallen: 'Vervallen' };
 
 /** Saldo-pagina voor klanten: geopend via de QR-code op de kaart, zonder inloggen. Alleen bekijken. */
 export function Saldo({ start }: { start: string }) {
