@@ -645,7 +645,7 @@ function Instellingen() {
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
       <h3 className="s">Over de Bar-kassa</h3>
-      <p className="mu">© 2026 Jelmer Bosgraaf. Alle rechten voorbehouden.</p>
+      <p className="mu">© 2026 BSGRF. Alle rechten voorbehouden.</p>
       <button className="ghost" onClick={() => open(<Voorwaarden />)}>Voorwaarden lezen</button>
     </>
   );

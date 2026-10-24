@@ -158,4 +158,4 @@ Alles draait op de t620 zelf, zonder Docker. De app werkt ook met een Supabase-p
 
 ## Licentie
 
-Copyright (c) 2026 Jelmer Bosgraaf. Alle rechten voorbehouden. Gebruik alleen volgens de voorwaarden in [LICENTIE.txt](LICENTIE.txt); de software wordt geleverd zoals hij is, zonder garantie of aansprakelijkheid. De programma's van anderen die erin zitten, hebben hun eigen licentie: zie `ONDERDELEN.txt` in het installatiebestand (gemaakt door `server/onderdelen.mjs`).
+Copyright (c) 2026 BSGRF. Alle rechten voorbehouden. Gebruik alleen volgens de voorwaarden in [LICENTIE.txt](LICENTIE.txt); de software wordt geleverd zoals hij is, zonder garantie of aansprakelijkheid. De programma's van anderen die erin zitten, hebben hun eigen licentie: zie `ONDERDELEN.txt` in het installatiebestand (gemaakt door `server/onderdelen.mjs`).
