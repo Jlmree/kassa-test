@@ -33,7 +33,9 @@ function vertaal(m: string) {
   if (/Password should be at least/i.test(m)) return 'Kies een wachtwoord van minstens 8 tekens';
   if (/rate limit/i.test(m)) return 'Te veel pogingen, wacht even en probeer opnieuw';
   if (/JWT expired/i.test(m)) return 'Je sessie is verlopen, log opnieuw in';
-  return m;
+  if (/deadlock detected|could not serialize/i.test(m)) return 'Het was even heel druk op de kassa. Probeer het nog een keer.';
+  // Bedragen uit de database staan met een punt (€ 31.00); in de app met een komma.
+  return m.replace(/€ (\d+)\.(\d{2})\b/g, '€ $1,$2');
 }
 
 // Uniek kenmerk voor één afrekening of opwaardering. Valt de verbinding weg en
