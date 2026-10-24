@@ -642,6 +642,7 @@ function Instellingen() {
       <Betaalmethoden />
       {methoden.kaart && <ZuilUitleg />}
       <Bijwerken />
+      <BackupDownloaden />
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
       <h3 className="s">Over de Bar-kassa</h3>
@@ -733,6 +734,7 @@ function Betaalmethoden() {
 interface Systeem {
   versie: string | null; nieuwste: string | null; gecontroleerd: string | null; verzoek: string | null;
   status: 'klaar' | 'bezig' | 'mislukt'; melding: string | null; bijgewerkt_ts: string | null; wijzigingen: Wijziging[] | null;
+  bijwerken_mag?: boolean; backup_pad?: string | null; backup_bestand?: string | null; backup_ts?: string | null;
 }
 const versieNr = (v: string | null) => parseInt((v ?? '').replace(/\D/g, ''), 10) || 0;
 
@@ -774,7 +776,9 @@ function Bijwerken() {
       {s.status === 'klaar' && !nieuwer && s.bijgewerkt_ts && Date.now() - Date.parse(s.bijgewerkt_ts) < 3600e3 && (
         <button className="big" onClick={() => location.reload()}>Nieuwe versie laden</button>
       )}
-      {!wacht && (nieuwer ? (
+      {!wacht && (nieuwer && s.bijwerken_mag === false ? (
+        <p className="mu">Er is een nieuwe versie. Op deze server staan meerdere kassa's; de beheerder van de server werkt ze allemaal tegelijk bij.</p>
+      ) : nieuwer ? (
         zeker ? (
           <div className="card warnbox">
             <p>De kassa is een paar minuten niet bereikbaar. Er wordt eerst een back-up gemaakt. Niet doen terwijl er afgerekend wordt.</p>
@@ -798,6 +802,23 @@ function Bijwerken() {
         </>
       ))}
       {wacht && <p className="mu">Even geduld…</p>}
+    </>
+  );
+}
+
+// De nieuwste back-up, versleuteld met het back-upwachtwoord, om ergens anders te bewaren
+// (vooral nodig op een gehuurde server, waar geen USB-stick in kan). backup.sh zet hem klaar.
+function BackupDownloaden() {
+  const [s, setS] = useState<Systeem | null>(null);
+  useEffect(() => { void lees(sb.from('systeem').select('backup_pad,backup_bestand,backup_ts').maybeSingle()).then((r) => setS(r as Systeem | null)).catch(() => {}); }, []);
+  if (PROEF || !s?.backup_pad || !s.backup_bestand) return null;
+  return (
+    <>
+      <h3 className="s">Back-up</h3>
+      <p className="mu">De kassa maakt elk uur een back-up als er iets veranderd is. Download hem af en toe en bewaar hem op een andere plek, bijvoorbeeld op je computer of in de cloud.</p>
+      {s.backup_ts && <Rij l="Nieuwste back-up" r={datumTijd(s.backup_ts)} />}
+      <a className="big alt knop-link" href={`/back-up/${s.backup_pad}/${s.backup_bestand}`} download={s.backup_bestand}>Back-up downloaden</a>
+      <p className="mu">Het bestand is versleuteld: terugzetten kan alleen met het back-upwachtwoord dat je bij de installatie kreeg.</p>
     </>
   );
 }

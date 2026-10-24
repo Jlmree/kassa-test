@@ -3,12 +3,18 @@
 # als er nog geen beheerder is; een account uit de app wordt daarna nooit meer
 # vanzelf beheerder. Bestaat de naam al, dan wordt die persoon (weer) beheerder
 # met het nieuwe wachtwoord: de noodknop als je jezelf hebt buitengesloten.
-#   /opt/kassa/bin/beheerder.sh
+#   /opt/kassa/bin/beheerder.sh            voor de (eerste) kassa
+#   /opt/kassa/bin/beheerder.sh voetbal    voor kassa "voetbal" (meerdere kassa's op één server)
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "Start dit als root (met sudo of na su -)."; exit 1; }
-# shellcheck disable=SC1091
-. /etc/kassa/geheim.env
-db() { runuser -u postgres -- psql -d kassa -Atq -v ON_ERROR_STOP=1 "$@"; }
+. /opt/kassa/bin/kassa-lib.sh
+kassa_namen | grep -qx -- "${1:-kassa}" || { echo "Er is geen kassa \"${1:-kassa}\" op deze server ($(kassa_namen | tr '\n' ' '))."; exit 1; }
+kassa_paden "${1:-kassa}"
+# De sleutel van deze kassa (de eerste kassa: geheim.env, de andere: sleutel.env).
+JWT_SECRET=$({ cat "$K_ETC/sleutel.env" "$K_ETC/geheim.env" 2>/dev/null || true; } | sed -n 's/^JWT_SECRET=//p' | head -n 1)
+AUTH_POORT=$(kassa_lees KASSA_AUTH_POORT); AUTH_POORT=${AUTH_POORT:-9999}
+db() { runuser -u postgres -- psql -d "$K_DB" -Atq -v ON_ERROR_STOP=1 "$@"; }
+[ "$K_NAAM" = kassa ] || echo "Beheerder voor kassa \"$K_NAAM\" ($(kassa_lees KASSA_DOMEIN))"
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 jwt() {
@@ -49,7 +55,7 @@ SQL
 else
   esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
   uit=$(mktemp); trap 'rm -f "$uit"' EXIT
-  antwoord=$(curl --noproxy '*' -sS -o "$uit" -w '%{http_code}' -X POST "http://127.0.0.1:9999/admin/users" \
+  antwoord=$(curl --noproxy '*' -sS -o "$uit" -w '%{http_code}' -X POST "http://127.0.0.1:$AUTH_POORT/admin/users" \
     -H "Authorization: Bearer $(jwt service_role)" -H 'Content-Type: application/json' \
     -d "{\"email\":\"$(esc "$email")\",\"password\":\"$(esc "$ww")\",\"email_confirm\":true,\"user_metadata\":{\"naam\":\"$(esc "$naam")\"}}" || true)
   [ "$antwoord" = 200 ] || { echo "Aanmaken mislukt (code ${antwoord:-geen verbinding}): $(cat "$uit")"; exit 1; }

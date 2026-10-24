@@ -3,6 +3,8 @@
 #
 #   bash kassa-installatie.run                                    installeren of bijwerken
 #   bash kassa-installatie.run --duckdns mijnbar.duckdns.org TOKEN    met een echt certificaat via DuckDNS
+#   bash kassa-installatie.run --domein kassa.mijnclub.nl         op een gehuurde server op internet
+#   bash kassa-installatie.run --naam voetbal --domein voetbal.mijnclub.nl   nog een kassa op dezelfde server
 #
 #   bash kassa-installatie.run --akkoord                          zonder vragen (akkoord met de voorwaarden)
 #
