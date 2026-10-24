@@ -1,6 +1,6 @@
 # Bar-kassa
 
-Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in het gebouw (bijvoorbeeld een HP t620 thin client); medewerkers rekenen af op hun telefoon of tablet via een eigen wifi-netwerk van de kassa (of de wifi van het gebouw). Er is geen internet nodig om te verkopen. Alle apparaten zien dezelfde gegevens.
+Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in het gebouw (bijvoorbeeld een HP t620 thin client); medewerkers rekenen af op hun telefoon of tablet via een eigen wifi-netwerk van de kassa (of de wifi van het gebouw). Er is geen internet nodig om te verkopen. Alle apparaten zien dezelfde gegevens. Het kan ook op een gehuurde server op internet, met desnoods meerdere kassa's (voor verschillende kantines) op één server.
 
 **Eerst proberen?** De [proefversie](https://jlmree.github.io/kassa-test/) werkt meteen in je browser, met voorbeeldgegevens (twee weken verkopen, kaarten, rekeningen). Log in als *Demo*, *Anna* of *Kees* met wachtwoord `proef1234`. Wat je daar doet blijft alleen op je eigen apparaat.
 
@@ -109,6 +109,40 @@ De t620 start daarna vanzelf op in de kassa, schermvullend en zonder bureaublad;
 ### 5. Eerste keer
 
 Aan het eind van de installatie vraagt het script een naam en wachtwoord voor de beheerder; daarmee log je in de app in. (Overgeslagen? Dan later met `/opt/kassa/bin/beheerder.sh`.) Nodig daarna je medewerkers uit bij *Beheer → Medewerkers → Iemand uitnodigen*: ze scannen de QR-code, kiezen een wachtwoord en zijn meteen binnen. (Zelf een account aanvragen en laten goedkeuren kan ook; dat zet je daar uit als je alleen met uitnodigingen wilt werken.) Kies bij *Beheer → Instellingen → Betaalmethoden* welke betaalmethoden jullie gebruiken; zet bijvoorbeeld pin uit als er geen pinautomaat is.
+
+## Op een gehuurde server
+
+De kassa kan ook op een gehuurde server (VPS) draaien, bijvoorbeeld bij netcup of Hetzner. Een kleine server met 1 GB geheugen is genoeg voor een paar kassa's; met 2 GB heb je ruimte voor meer. Kies Debian 12 of Ubuntu 24.04.
+
+Dan is er geen apparaat in de kantine nodig: telefoons openen de kassa via hun mobiele internet (of de wifi van het gebouw). Valt het internet in de kantine weg, dan werken telefoons met mobiele data gewoon door; een tablet zonder simkaart niet.
+
+1. Zorg voor een adres dat naar de server wijst: een eigen (sub)domein met een A-record naar het IP-adres van de server, of een gratis naam op [duckdns.org](https://www.duckdns.org) waar je het IP-adres van de server invult.
+2. Log in op de server als root en voer uit:
+
+```sh
+wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
+bash kassa-installatie.run --domein kassa.mijnclub.nl
+```
+
+De server haalt zelf een echt certificaat (Let's Encrypt), dus telefoons hoeven niets te installeren. Er komt een firewall (alleen SSH, http en https open; `/opt/kassa/bin/firewall.sh status`) en veiligheidsupdates van Debian/Ubuntu gaan vanzelf. Log bij voorkeur in met een SSH-sleutel in plaats van een wachtwoord.
+
+**Back-ups**: er kan geen USB-stick in, dus download de back-up geregeld in de app (*Beheer → Instellingen → Back-up downloaden*) en bewaar hem ergens anders. Het bestand is versleuteld met het back-upwachtwoord dat je aan het eind van de installatie krijgt; terugzetten: `/opt/kassa/bin/terugzetten.sh <bestand>.dump.enc`.
+
+### Meerdere kassa's op één server
+
+Elke kantine of vereniging krijgt een eigen kassa met een eigen naam en een eigen adres:
+
+```sh
+bash kassa-installatie.run --naam voetbal --domein voetbal.mijnclub.nl
+bash kassa-installatie.run --naam tennis --domein tennis.mijnclub.nl
+```
+
+Elke kassa heeft een eigen database, eigen accounts en beheerder, eigen sleutel, eigen back-ups en een eigen back-upwachtwoord. Ze zien niets van elkaar: een barkaart, account of inlog van de ene kassa werkt niet bij een andere. Na het toevoegen vraagt de installatie om de beheerder van die kassa (later: `/opt/kassa/bin/beheerder.sh voetbal`).
+
+- Overzicht (adres, accounts, omzet, laatste back-up): `/opt/kassa/bin/kassas.sh`
+- Een kassa weghalen (er blijft een laatste back-up staan): `/opt/kassa/bin/kassas.sh verwijderen voetbal`
+- Back-up terugzetten bij een kassa: `/opt/kassa/bin/terugzetten.sh <bestand> voetbal`
+- Bijwerken geldt voor de hele server: alle kassa's draaien dezelfde versie. Dat doe je vanuit de eerste kassa (zonder `--naam`) of met `/opt/kassa/bin/bijwerken.sh`; de andere kassa's zien in de app dat er een nieuwe versie is, maar kunnen niet zelf bijwerken.
 
 ## Dagelijks gebruik
 

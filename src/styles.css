@@ -262,3 +262,4 @@ pre.lijst { white-space: pre-wrap; font-family: inherit; color: var(--mu); backg
 .uitg { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
 .uitg .row { border-bottom: 0; }
 .voorwaarden { white-space: pre-line; }
+a.knop-link { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
