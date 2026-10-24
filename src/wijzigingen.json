@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-24",
+    "titel": "Voorwaarden voor een kassa op een server",
+    "punten": [
+      "De voorwaarden (versie 2) hebben een artikel over een kassa op een gehuurde server: wie verantwoordelijk is voor de server, het adres, de beveiliging, het internet en de back-ups.",
+      "Kassa's van andere verenigingen op je eigen server zetten mag alleen met toestemming van de maker.",
+      "Bij de volgende installatie in een terminal wordt opnieuw om akkoord gevraagd; bijwerken vanuit de app gaat gewoon door."
+    ]
+  },
+  {
+    "datum": "2026-10-24",
     "titel": "Kassa op een gehuurde server, ook meerdere kantines",
     "punten": [
       "De kassa kan nu ook op een gehuurde server op internet: met een eigen adres, een echt certificaat, een firewall en automatische veiligheidsupdates.",
