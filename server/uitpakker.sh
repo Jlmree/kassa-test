@@ -7,7 +7,7 @@
 #   bash kassa-installatie.run --akkoord                          zonder vragen (akkoord met de voorwaarden)
 #
 # Start als root (na "su -", of met sudo). Je gegevens blijven altijd staan.
-# Copyright (c) 2026 Jelmer Bosgraaf. Alle rechten voorbehouden; zie LICENTIE.txt.
+# Copyright (c) 2026 BSGRF. Alle rechten voorbehouden; zie LICENTIE.txt.
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "Start dit als root:  sudo bash $0   (of eerst: su -)"; exit 1; }
 echo "Bar-kassa installatiebestand, versie @VERSIE@"

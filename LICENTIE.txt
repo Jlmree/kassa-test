@@ -1,7 +1,7 @@
 Bar-kassa: licentie en gebruiksvoorwaarden
 Versie 1, oktober 2026
 
-Copyright (c) 2026 Jelmer Bosgraaf. Alle rechten voorbehouden.
+Copyright (c) 2026 BSGRF. Alle rechten voorbehouden.
 
 1. Gebruik
    Je mag de Bar-kassa installeren en gebruiken voor de bar of kantine van
