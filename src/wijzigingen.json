@@ -1,5 +1,14 @@
 [
   {
+    "datum": "2026-10-24",
+    "titel": "Voorwaarden en een duidelijke installatie",
+    "punten": [
+      "Het installatiebestand laat eerst zien wat er waar op de computer komt en hoeveel schijfruimte er vrij is.",
+      "Bij een nieuwe installatie lees je de voorwaarden en typ je ja om akkoord te gaan. Bij bijwerken wordt dat alleen opnieuw gevraagd als de voorwaarden veranderd zijn.",
+      "De voorwaarden staan ook in de app, bij Beheer → Instellingen → Voorwaarden lezen."
+    ]
+  },
+  {
     "datum": "2026-10-23",
     "titel": "Uitgaven registreren en categorie kiezen",
     "punten": [

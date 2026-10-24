@@ -11,6 +11,9 @@
 #   bash kassa-installatie.run --duckdns mijnbar.duckdns.org <token>
 # De kassa ook op het eigen scherm van de server (aanraakscherm aan de bar, alleen Debian):
 #   bash kassa-installatie.run --scherm        (uitzetten: --zonder-scherm)
+# Bij een nieuwe installatie laat het eerst zien wat er waar komt en vraagt het
+# akkoord met de voorwaarden (LICENTIE.txt). Zonder vragen, bijv. vanuit een script:
+#   bash kassa-installatie.run --akkoord
 #
 # Wordt dit script los gestart (zonder installatiebestand), dan haalt het
 # eerst het nieuwste installatiebestand op en voert dat uit.
@@ -40,6 +43,7 @@ while [ $# -gt 0 ]; do
     --zonder-wifi) KASSA_WIFI=0; shift ;;
     --scherm) KASSA_SCHERM=1; shift ;;
     --zonder-scherm) KASSA_SCHERM=0; shift ;;
+    --akkoord) KASSA_AKKOORD=1; shift ;;
     *) fout "Onbekende optie: $1" ;;
   esac
 done
@@ -93,6 +97,68 @@ if [ "${KASSA_WIFI:-0}" = 1 ]; then
   [ "$(printf '%s' "$KASSA_WIFI_NAAM" | wc -c)" -le 32 ] || fout "De wifi-naam mag hoogstens 32 tekens zijn."
 fi
 
+# ───────────────────────── Welkom en voorwaarden ─────────────────────────
+# Vragen kan alleen in een terminal; bij bijwerken vanuit de app is die er niet.
+kan_vragen() { [ -t 1 ] && { : </dev/tty; } 2>/dev/null; }
+BESTAAND=0; [ -f "$ETC/instellingen.env" ] && BESTAAND=1
+NIEUWE_VERSIE=$(cat "$KASSA_BRON/versie")
+VRIJ_MB=$(df -Pm / | awk 'NR == 2 { print $4 }')
+if [ "$BESTAAND" = 1 ]; then NODIG_MB=500; else NODIG_MB=2000; fi
+VW=$(sed -n 's/^Versie \([0-9][0-9]*\).*/\1/p' "$KASSA_BRON/LICENTIE.txt" | head -n 1)
+VW_OUD=$(sed -n 's/^VOORWAARDEN=//p' "$ETC/akkoord" 2>/dev/null || true)
+
+if kan_vragen; then
+  if [ "$BESTAAND" = 1 ]; then
+    printf '\n\033[1mBar-kassa bijwerken\033[0m naar versie %s\n' "$NIEUWE_VERSIE"
+    echo "Nu: versie $(cat "$OPT/versie" 2>/dev/null || echo onbekend). Je gegevens en instellingen blijven staan."
+  else
+    printf '\n\033[1mBar-kassa installeren\033[0m, versie %s\n' "$NIEUWE_VERSIE"
+    if [ "${KASSA_WIFI:-0}" = 1 ]; then WIFI_TEKST="eigen netwerk \"$KASSA_WIFI_NAAM\" voor de telefoons"
+    else WIFI_TEKST="geen eigen wifi (de telefoons gebruiken het netwerk van het gebouw)"; fi
+    PAKKETTEN="PostgreSQL, Caddy (webserver)"; [ "${KASSA_WIFI:-0}" = 1 ] && PAKKETTEN="$PAKKETTEN, hostapd en dnsmasq (wifi)"
+    if [ "${KASSA_SCHERM:-0}" = 1 ]; then SCHERM_TEKST="ja, de kassa ook op het scherm van deze computer"; else SCHERM_TEKST=nee; fi
+    echo "Dit komt er op deze computer:"
+    echo "  Programma      $OPT"
+    echo "  Instellingen   $ETC (alleen leesbaar voor root)"
+    echo "  Gegevens       database \"$DB\" in /var/lib/postgresql"
+    echo "  Back-ups       /var/backups/kassa, en versleuteld op een USB-stick met de naam KASSA-BACKUP"
+    echo "  Pakketten      $PAKKETTEN"
+    echo "  Wifi           $WIFI_TEKST"
+    echo "  Eigen scherm   $SCHERM_TEKST"
+    echo "  Vrije ruimte   $(awk -v m="$VRIJ_MB" 'BEGIN { printf "%.1f", m / 1024 }' | tr . ,) GB (nodig: $((NODIG_MB / 1000)) GB)"
+    echo "De kassa start voortaan vanzelf als de computer aangaat. Gebruik er een computer voor"
+    echo "waar verder niets op hoeft te draaien."
+  fi
+fi
+[ "$VRIJ_MB" -ge "$NODIG_MB" ] || fout "Te weinig vrije schijfruimte: $VRIJ_MB MB vrij, $NODIG_MB MB nodig. Maak ruimte vrij of gebruik een grotere schijf."
+
+if [ "$VW_OUD" != "$VW" ]; then
+  if [ "${KASSA_AKKOORD:-0}" = 1 ]; then
+    :
+  elif kan_vragen; then
+    echo
+    if [ -n "$VW_OUD" ]; then echo "De voorwaarden zijn veranderd. Lees ze opnieuw."; else echo "Lees eerst de voorwaarden."; fi
+    read -r -p "Druk op Enter om ze te tonen (spatie: verder lezen). " _ </dev/tty
+    if command -v more >/dev/null; then more "$KASSA_BRON/LICENTIE.txt" </dev/tty; else cat "$KASSA_BRON/LICENTIE.txt"; fi
+    echo
+    read -r -p "Typ ja om akkoord te gaan en verder te gaan (iets anders stopt): " ANTWOORD </dev/tty
+    case "$ANTWOORD" in ja|Ja|JA) ;; *) echo "Gestopt. Er is niets veranderd."; exit 1 ;; esac
+  elif [ "$BESTAAND" = 0 ]; then
+    fout "Start de installatie in een terminal om de voorwaarden te lezen en te accepteren, of geef --akkoord mee."
+  else
+    # Bijwerken zonder terminal (vanuit de app): niet halverwege stoppen. Het oude akkoord
+    # blijft gelden; bij de volgende keer in een terminal wordt opnieuw gevraagd.
+    VW=$VW_OUD
+    echo "Let op: $([ -n "$VW_OUD" ] && echo "de voorwaarden zijn veranderd" || echo "er zijn nu voorwaarden"), zie $OPT/LICENTIE.txt. Bij de volgende installatie in een terminal word je gevraagd akkoord te gaan."
+  fi
+  if [ "$VW" != "$VW_OUD" ]; then
+    mkdir -p "$ETC" && chmod 700 "$ETC"
+    printf 'VOORWAARDEN=%s\nDATUM=%s\nDOOR=%s\n' "$VW" "$(date '+%F %T')" "${SUDO_USER:-$(id -un)}" > "$ETC/akkoord"
+  fi
+elif kan_vragen && [ "$BESTAAND" = 1 ]; then
+  echo "Stoppen kan nog met Ctrl+C."; sleep 3
+fi
+
 # ───────────────────────── Pakketten ─────────────────────────
 stap "Pakketten installeren (PostgreSQL, Caddy) — dit kan een paar minuten duren"
 export DEBIAN_FRONTEND=noninteractive
@@ -111,6 +177,7 @@ stap "Programma's plaatsen"
 install -m 755 "$KASSA_BRON/bin/postgrest" "$OPT/bin/postgrest"
 rm -rf "$OPT/auth" && cp -r "$KASSA_BRON/auth" "$OPT/auth"
 install -m 755 "$KASSA_BRON"/server/*.sh "$OPT/bin/"
+cp "$KASSA_BRON/LICENTIE.txt" "$KASSA_BRON/ONDERDELEN.txt" "$OPT/"
 rm -rf "$OPT/welkom" && mkdir -p "$OPT/welkom" && cp "$KASSA_BRON/server/welkom.html" "$OPT/welkom/index.html"
 
 umask 077
@@ -479,4 +546,5 @@ if [ "$NIEUW_BACKUP_WW" = 1 ]; then
 fi
 echo "Bijwerken naar een nieuwe versie:    in de app bij Beheer → Instellingen, of $OPT/bin/bijwerken.sh (als root)"
 [ "$WIFI_OK" = 1 ] && echo "Wifi-naam en wachtwoord later nog eens zien: $OPT/bin/wifi.sh status"
+echo "Voorwaarden: $OPT/LICENTIE.txt  ·  Onderdelen van anderen: $OPT/ONDERDELEN.txt"
 exit 0

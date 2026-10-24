@@ -1,0 +1,48 @@
+Bar-kassa: licentie en gebruiksvoorwaarden
+Versie 1, oktober 2026
+
+Copyright (c) 2026 Jelmer Bosgraaf. Alle rechten voorbehouden.
+
+1. Gebruik
+   Je mag de Bar-kassa installeren en gebruiken voor de bar of kantine van
+   je eigen vereniging of organisatie, als je de software van de maker
+   hebt gekregen, of met toestemming van de maker.
+
+2. Niet toegestaan zonder schriftelijke toestemming van de maker
+   - de software of delen ervan kopiëren voor of doorgeven aan anderen;
+   - de software aanpassen, of de broncode gebruiken voor een eigen product;
+   - de software verkopen, verhuren of als dienst aan anderen aanbieden.
+
+3. Zoals hij is
+   De software wordt geleverd zoals hij is, zonder enige garantie. De maker
+   staat er niet voor in dat de software foutloos of zonder onderbreking
+   werkt, of geschikt is voor jouw doel.
+
+4. Eigen verantwoordelijkheid
+   Je bent zelf verantwoordelijk voor:
+   - het geld in de kas, de telling en de afdracht ervan;
+   - je administratie en belastingaangifte, en of de kassa voldoet aan de
+     regels die voor jou gelden (zoals de bewaarplicht van 7 jaar);
+   - het maken, bewaren en controleren van back-ups;
+   - de computer, het netwerk, de wachtwoorden en wie er toegang heeft;
+   - de persoonsgegevens in de kassa (namen van leden en medewerkers),
+     volgens de AVG.
+
+5. Aansprakelijkheid
+   De maker is in geen enkel geval aansprakelijk voor schade die ontstaat
+   door het gebruik van de software, of doordat de software niet gebruikt
+   kan worden. Dat geldt onder meer voor verlies van geld, omzet of
+   gegevens, verkeerde bedragen of berekeningen, storingen, en schade aan
+   apparatuur. Dit geldt voor zover de wet dat toestaat.
+
+6. Onderdelen van anderen
+   De Bar-kassa gebruikt programma's van anderen, elk met een eigen
+   licentie: onder meer PostgreSQL, Caddy, PostgREST, Supabase Auth en
+   React. Die licenties staan in ONDERDELEN.txt; deze voorwaarden gaan
+   niet over die onderdelen.
+
+7. Recht
+   Op deze voorwaarden is Nederlands recht van toepassing.
+
+Door de Bar-kassa te installeren of te gebruiken, ga je akkoord met deze
+voorwaarden.
