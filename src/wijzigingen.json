@@ -1,6 +1,16 @@
 [
   {
     "datum": "2026-10-24",
+    "titel": "Sneller en steviger als het druk is",
+    "punten": [
+      "Getest met drie telefoons die zonder pauze afrekenen (ruim 2.000 bonnen per minuut) en met 30 telefoons tegelijk: alle bedragen, kaartsaldo's, voorraad en de kas klopten tot op de cent.",
+      "Rekenden twee telefoons op precies hetzelfde moment af met dezelfde producten, dan kon er heel soms één mislukken. Dat gebeurt niet meer.",
+      "De lijsten in de app laden sneller als er veel telefoons tegelijk werken.",
+      "Bedragen in meldingen staan nu met een komma (€ 31,00)."
+    ]
+  },
+  {
+    "datum": "2026-10-24",
     "titel": "Voorwaarden voor een kassa op een server",
     "punten": [
       "De voorwaarden (versie 2) hebben een artikel over een kassa op een gehuurde server: wie verantwoordelijk is voor de server, het adres, de beveiliging, het internet en de back-ups.",
