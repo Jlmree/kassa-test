@@ -8,6 +8,7 @@ import { Controle } from './Controle';
 import { Uitnodigen } from './Uitnodigen';
 import { KaartScherm } from './Kaarten';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
+import licentie from '../../LICENTIE.txt?raw';
 
 const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
@@ -628,6 +629,7 @@ function Logboek() {
 
 function Instellingen() {
   const { winkel, methoden, herlaad } = useData();
+  const { open } = useSheet();
   const [naam, setNaam] = useState(winkel);
   const [bezig, run] = useBezig();
   return (
@@ -642,6 +644,27 @@ function Instellingen() {
       <Bijwerken />
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
+      <h3 className="s">Over de Bar-kassa</h3>
+      <p className="mu">© 2026 Jelmer Bosgraaf. Alle rechten voorbehouden.</p>
+      <button className="ghost" onClick={() => open(<Voorwaarden />)}>Voorwaarden lezen</button>
+    </>
+  );
+}
+
+// LICENTIE.txt is opgemaakt voor een terminal (vaste regelbreedte); hier lopen de regels door.
+function Voorwaarden() {
+  const { sluit } = useSheet();
+  const [kop, ...delen] = licentie.trim().split(/\n\s*\n/).map((a) => a.split('\n').map((r) => r.trim()));
+  // Doorlopende tekst; een opsommingsteken begint een nieuwe regel.
+  const tekst = (regels: string[]) => regels.reduce((t, r) => (!t ? r : r.startsWith('-') ? `${t}\n${r}` : `${t} ${r}`), '');
+  return (
+    <>
+      <h2>Voorwaarden</h2>
+      <p className="mu">{kop.slice(1).join(' ')}</p>
+      {delen.map((d, i) => /^\d+\./.test(d[0])
+        ? <p key={i} className="voorwaarden"><b>{d[0]}</b><br />{tekst(d.slice(1))}</p>
+        : <p key={i} className="voorwaarden">{tekst(d)}</p>)}
+      <button className="ghost" onClick={sluit}>Terug</button>
     </>
   );
 }

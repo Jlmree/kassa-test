@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Maakt het installatiebestand kassa-installatie.run: één bestand met de app,
-# de databasebestanden, de serverscripts en de programma's PostgREST en Supabase Auth.
+# de databasebestanden, de serverscripts, de programma's PostgREST en Supabase Auth,
+# de voorwaarden (LICENTIE.txt) en de licenties van die onderdelen (ONDERDELEN.txt).
 #   server/pakket.sh [versie]
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -17,6 +18,9 @@ mkdir -p "$CACHE"
 }
 [ -f "$CACHE/auth-$AUTH_VERSIE.tar.gz" ] || \
   curl -fsSL -o "$CACHE/auth-$AUTH_VERSIE.tar.gz" "https://github.com/supabase/auth/releases/download/$AUTH_VERSIE/auth-$AUTH_VERSIE-x86.tar.gz"
+for p in "PostgREST $POSTGREST_VERSIE|PostgREST/postgrest/$POSTGREST_VERSIE" "Supabase Auth $AUTH_VERSIE|supabase/auth/$AUTH_VERSIE"; do
+  [ -f "$CACHE/${p%%|*}.txt" ] || curl -fsSL -o "$CACHE/${p%%|*}.txt" "https://raw.githubusercontent.com/${p#*|}/LICENSE"
+done
 
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
@@ -27,6 +31,8 @@ cp server/*.sh server/welkom.html "$T/server/"
 install -m 755 "$CACHE/postgrest-$POSTGREST_VERSIE" "$T/bin/postgrest"
 tar xzf "$CACHE/auth-$AUTH_VERSIE.tar.gz" -C "$T/auth"
 echo "$VERSIE" > "$T/versie"
+cp LICENTIE.txt "$T/"
+node server/onderdelen.mjs "$T/ONDERDELEN.txt" "$CACHE/PostgREST $POSTGREST_VERSIE.txt" "$CACHE/Supabase Auth $AUTH_VERSIE.txt"
 
 sed "s/@VERSIE@/$VERSIE/" server/uitpakker.sh > kassa-installatie.run
 tar czf - -C "$T" . >> kassa-installatie.run

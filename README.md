@@ -76,7 +76,9 @@ Met `--wifi` maakt de t620 het netwerk *Kassa* met een bedacht wachtwoord; aan h
 
 (Op Ubuntu: `sudo -i` in plaats van `su -`.) Het bestand kan ook via een USB-stick op de t620 komen; zie de handleiding. De commando's hieronder voer je ook als root uit.
 
-Dit duurt een paar minuten (er is internet nodig voor PostgreSQL en de webserver). Aan het eind staat welk adres je op de telefoons moet openen. Hetzelfde bestand later nog eens starten is veilig: het werkt de kassa bij en je gegevens blijven staan.
+Eerst zie je wat er waar komt (programma in `/opt/kassa`, instellingen in `/etc/kassa`, gegevens in PostgreSQL, back-ups in `/var/backups/kassa`) en hoeveel schijfruimte er vrij is. Daarna lees je de voorwaarden en typ je `ja` om akkoord te gaan. Bij bijwerken wordt dat alleen opnieuw gevraagd als de voorwaarden veranderd zijn; zonder vragen, bijvoorbeeld vanuit een script: `--akkoord`.
+
+De installatie duurt een paar minuten (er is internet nodig voor PostgreSQL en de webserver). Aan het eind staat welk adres je op de telefoons moet openen. Hetzelfde bestand later nog eens starten is veilig: het werkt de kassa bij en je gegevens blijven staan.
 
 ### 4. Telefoons en tablets
 
@@ -146,10 +148,14 @@ Alles draait op de t620 zelf, zonder Docker. De app werkt ook met een Supabase-p
 ## Voor ontwikkelaars
 
 - React + TypeScript + Vite, `@supabase/supabase-js`. `npm install`, `npm run dev`, `npm run build`.
-- `server/`: installatie- en onderhoudsscripts; `server/pakket.sh` maakt het installatiebestand `kassa-installatie.run` (uitpakker + app + databasebestanden + PostgREST + Supabase Auth). Bij elke push naar `main` publiceert GitHub Actions het als release.
+- `server/`: installatie- en onderhoudsscripts; `server/pakket.sh` maakt het installatiebestand `kassa-installatie.run` (uitpakker + app + databasebestanden + PostgREST + Supabase Auth + voorwaarden en licenties). Bij elke push naar `main` publiceert GitHub Actions het als release.
 - `src/wijzigingen.json`: wat er per versie anders is, in gewone taal (nieuwste bovenaan). Zet bij elke wijziging een punt bovenaan; de app toont het na een update en bij *Bijwerken*, en het gaat mee in de GitHub-release.
 - `supabase/migrations/`: het databaseschema met alle functies en rechten. Nieuwe wijzigingen komen in een nieuw bestand; `bijwerken.sh` voert ze één keer uit.
 - `npm run test:proef` controleert dat de proefversie op elke weekdag goed wordt klaargezet (draait ook vóór elke publicatie).
 - `npm run build:proef` maakt de proefversie (`dist-proef/`): dezelfde app, maar met PostgreSQL in de browser ([PGlite](https://pglite.dev)) in plaats van een server. Het schema, de rechten en alle functies uit `supabase/migrations/` draaien daar ongewijzigd; `src/demo/` bootst het inloggen en de database-API na en vult de voorbeeldgegevens. GitHub Actions publiceert hem bij elke push naar `main` op GitHub Pages (Settings → Pages → Source: *GitHub Actions*).
 - Databasetests (verwachten een lege database):
   `SUPABASE_URL=https://<server> SUPABASE_ANON_KEY=<sleutel uit /opt/kassa/app/config.js> NODE_EXTRA_CA_CERTS=<certificaat> npm run test:db`
+
+## Licentie
+
+Copyright (c) 2026 Jelmer Bosgraaf. Alle rechten voorbehouden. Gebruik alleen volgens de voorwaarden in [LICENTIE.txt](LICENTIE.txt); de software wordt geleverd zoals hij is, zonder garantie of aansprakelijkheid. De programma's van anderen die erin zitten, hebben hun eigen licentie: zie `ONDERDELEN.txt` in het installatiebestand (gemaakt door `server/onderdelen.mjs`).
