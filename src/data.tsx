@@ -5,6 +5,15 @@ import { lees, rpc, sb, type Dienst, type Product, type Profiel, type Rekening, 
 export interface Methoden { contant: boolean; pin: boolean; kaart: boolean; rekening: boolean; lat: boolean; gratis: boolean }
 const ALLES_AAN: Methoden = { contant: true, pin: true, kaart: true, rekening: true, lat: true, gratis: true };
 
+/** Thema van de kassa (Beheer → Instellingen), voor alle telefoons. */
+export type Thema = 'licht' | 'kroeg' | 'groot';
+export const THEMA_OPSLAG = 'bar-kassa-thema';
+/** Zet het thema op de pagina en onthoudt het op dit apparaat, zodat het bij de volgende start meteen goed staat. */
+export function themaZetten(t: Thema) {
+  if (t === 'licht') delete document.documentElement.dataset.thema; else document.documentElement.dataset.thema = t;
+  try { localStorage.setItem(THEMA_OPSLAG, t); } catch { /* geen opslag */ }
+}
+
 interface Data {
   profiel: Profiel;
   producten: Product[];
@@ -13,6 +22,7 @@ interface Data {
   dienst: Dienst | null;
   winkel: string;
   methoden: Methoden;
+  thema: Thema;
   geladen: boolean;
   verbonden: boolean;
   herlaad: () => Promise<void>;
@@ -23,7 +33,7 @@ export const useData = () => useContext(Ctx);
 
 export function DataProvider({ profiel, children }: { profiel: Profiel; children: ReactNode }) {
   const [s, setS] = useState<Omit<Data, 'herlaad' | 'profiel'>>({
-    producten: [], rekeningen: [], regels: [], dienst: null, winkel: 'Bar', methoden: ALLES_AAN, geladen: false, verbonden: true,
+    producten: [], rekeningen: [], regels: [], dienst: null, winkel: 'Bar', methoden: ALLES_AAN, thema: 'licht', geladen: false, verbonden: true,
   });
   const bezig = useRef<Promise<void> | null>(null);
   const opnieuw = useRef(false);
@@ -43,12 +53,14 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           lees(sb.from('rekeningen').select('*').eq('open', true).order('naam')),
           lees(sb.from('rekening_regels').select('*, rekeningen!inner(open)').eq('rekeningen.open', true).order('id')),
           rpc<Dienst | null>('dienst_overzicht'),
-          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat,betaal_gratis').maybeSingle()),
+          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat,betaal_gratis,thema').maybeSingle()),
         ]);
-        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean; betaal_gratis?: boolean } | null;
+        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean; betaal_gratis?: boolean; thema?: Thema } | null;
+        const thema: Thema = i?.thema ?? 'licht';
+        themaZetten(thema);
         setS({
           producten: producten as Product[], rekeningen: rekeningen as Rekening[], regels: regels as RekeningRegel[],
-          dienst, winkel: i?.naam ?? 'Bar', geladen: true,
+          dienst, winkel: i?.naam ?? 'Bar', thema, geladen: true,
           methoden: i ? { contant: i.betaal_contant, pin: i.betaal_pin, kaart: i.betaal_kaart, rekening: i.betaal_rekening, lat: i.betaal_lat, gratis: i.betaal_gratis !== false } : ALLES_AAN, verbonden: true,
         });
         versie.current = v;

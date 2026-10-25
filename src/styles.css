@@ -263,3 +263,44 @@ pre.lijst { white-space: pre-wrap; font-family: inherit; color: var(--mu); backg
 .uitg .row { border-bottom: 0; }
 .voorwaarden { white-space: pre-line; }
 a.knop-link { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
+
+/* ─── Thema's (Beheer → Instellingen → Thema) ─── */
+/* Kroeg: donker met amber, voor een schemerige bar. */
+:root[data-thema="kroeg"] {
+  --bg: #16110c; --card: #261d15; --ink: #f3e9dc; --mu: #b9aa94; --line: #3d3024;
+  --acc: #f2a93b; --ai: #1f1406; --sun: #f2a93b; --warn: #ef8a74; --ok: #7bd389;
+  --m-cash: #4caf50; --m-pin: #5c9ce6; color-scheme: dark;
+}
+/* Groot en duidelijk: zwart op wit, grote knoppen en letters. */
+:root[data-thema="groot"] {
+  --bg: #ffffff; --card: #ffffff; --ink: #111111; --mu: #3b3b3b; --line: #111111;
+  --acc: #1b6e2f; --ai: #ffffff; --sun: #f0b429; --warn: #a32a17; --ok: #1b6e2f;
+  --m-cash: #2e7d32; --m-pin: #1565c0; color-scheme: light;
+}
+[data-thema="groot"] body { font-size: 18px; }
+[data-thema="groot"] header b { font-size: 24px; }
+[data-thema="groot"] .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+[data-thema="groot"] .tile { min-height: 116px; padding: 14px; gap: 8px; border-width: 2px; }
+[data-thema="groot"] .tile .nm { font-size: 21px; font-weight: 800; padding-right: 40px; overflow-wrap: anywhere; }
+[data-thema="groot"] .tile .pr { font-size: 18px; color: var(--ink); }
+[data-thema="groot"] .bd { min-width: 38px; height: 38px; border-radius: 19px; font-size: 20px; background: var(--ink); color: var(--bg); }
+[data-thema="groot"] .cat { font-size: 17px; color: var(--ink); }
+[data-thema="groot"] .chips button { padding: 12px 20px; font-size: 18px; border-width: 2px; }
+/* Zes tabbladen moeten naast elkaar passen: niet groter, wel vetter en hoger. */
+[data-thema="groot"] nav button { padding: 17px 1px; font-size: 14px; font-weight: 800; color: var(--ink); }
+[data-thema="groot"] .cart { padding: 18px; }
+[data-thema="groot"] .cart b { font-size: 24px; }
+[data-thema="groot"] .big { padding: 18px; font-size: 20px; }
+[data-thema="groot"] .qty button { width: 48px; height: 48px; font-size: 24px; }
+[data-thema="groot"] .row { font-size: 19px; }
+[data-thema="groot"] .who, [data-thema="groot"] .card, [data-thema="groot"] .f { border-width: 2px; }
+
+.themas { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-top: 8px; }
+.thema-keus { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+.thema-keus.on { border: 2px solid var(--acc); padding: 11px; }
+.thema-keus .mu { font-size: 14px; }
+.thema-staal { display: flex; gap: 4px; margin-bottom: 4px; }
+.thema-staal i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #0003; }
+.thema-staal.licht i:nth-child(1) { background: #f2f4ef; } .thema-staal.licht i:nth-child(2) { background: #1d6b58; } .thema-staal.licht i:nth-child(3) { background: #f0b429; }
+.thema-staal.kroeg i:nth-child(1) { background: #16110c; } .thema-staal.kroeg i:nth-child(2) { background: #f2a93b; } .thema-staal.kroeg i:nth-child(3) { background: #f3e9dc; }
+.thema-staal.groot i:nth-child(1) { background: #ffffff; } .thema-staal.groot i:nth-child(2) { background: #111111; } .thema-staal.groot i:nth-child(3) { background: #1b6e2f; }

@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-25",
+    "titel": "Kies een thema",
+    "punten": [
+      "Bij Beheer → Instellingen → Thema kies je hoe de kassa eruitziet, voor alle telefoons tegelijk.",
+      "Kroeg: donker met amber, rustig voor de ogen in een schemerige bar.",
+      "Groot en duidelijk: grote knoppen en letters, zwart op wit. Fijn voor wie slecht ziet."
+    ]
+  },
+  {
+    "datum": "2026-10-25",
     "titel": "Back-up elke nacht per e-mail",
     "punten": [
       "De server kan de back-up elke nacht versleuteld mailen, bijvoorbeeld naar de penningmeester. Zo is er altijd een kopie buiten de server. Instellen op de server: /opt/kassa/bin/backup-mail.sh instellen.",
