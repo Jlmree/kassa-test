@@ -19,6 +19,8 @@
 #   bash kassa-installatie.run --domein kassa.mijnclub.nl
 # Meer kassa's op dezelfde server, elk met een eigen naam, adres en eigen gegevens:
 #   bash kassa-installatie.run --naam voetbal --domein voetbal.mijnclub.nl
+# Daarnaast een website op een eigen adres (pagina's, proefversie en aanvraagformulier):
+#   bash kassa-installatie.run --website bar-kassa.nl     (later: /opt/kassa/bin/website.sh)
 #
 # Bij een nieuwe installatie laat het eerst zien wat er waar komt en vraagt het
 # akkoord met de voorwaarden (LICENTIE.txt). Zonder vragen, bijv. vanuit een script:
@@ -57,6 +59,7 @@ while [ $# -gt 0 ]; do
     --scherm) C_SCHERM=1; shift ;;
     --zonder-scherm) C_SCHERM=0; shift ;;
     --akkoord) KASSA_AKKOORD=1; shift ;;
+    --website) WEBSITE_ADRES=${2:?adres van de website ontbreekt}; shift 2 ;;
     *) fout "Onbekende optie: $1" ;;
   esac
 done
@@ -228,7 +231,9 @@ chmod 700 "$ETC" /var/backups/kassa
 stap "Programma's plaatsen"
 install -m 755 "$KASSA_BRON/bin/postgrest" "$OPT/bin/postgrest"
 rm -rf "$OPT/auth" && cp -r "$KASSA_BRON/auth" "$OPT/auth"
-install -m 755 "$KASSA_BRON"/server/*.sh "$OPT/bin/"
+install -m 755 "$KASSA_BRON"/server/*.sh "$KASSA_BRON"/server/*.py "$OPT/bin/"
+# De verkoopwebsite (alleen in gebruik met website.sh aan).
+[ -d "$KASSA_BRON/website" ] && { rm -rf "$OPT/website" && cp -r "$KASSA_BRON/website" "$OPT/website"; }
 # De databasebestanden bewaren: terugzetten.sh werkt een oudere back-up ermee bij.
 rm -rf "$OPT/migraties" && cp -r "$KASSA_BRON/supabase/migrations" "$OPT/migraties"
 cp "$KASSA_BRON/LICENTIE.txt" "$KASSA_BRON/ONDERDELEN.txt" "$OPT/"
@@ -538,6 +543,14 @@ if kassa_online; then
   if [ -d /run/systemd/system ]; then "$OPT/bin/firewall.sh" aan; else echo "Geen systemd: firewall overgeslagen."; fi
 elif [ -f /etc/systemd/system/kassa-firewall.service ]; then
   "$OPT/bin/firewall.sh" uit
+fi
+
+# Verkoopwebsite (--website), of na een update het formulier opnieuw starten met de nieuwe versie.
+if [ -n "${WEBSITE_ADRES:-}" ]; then
+  stap "Website $WEBSITE_ADRES instellen"
+  "$OPT/bin/website.sh" aan "$WEBSITE_ADRES"
+elif [ -f "$ETC/website.env" ] && [ -d /run/systemd/system ]; then
+  systemctl restart kassa-website 2>/dev/null || true
 fi
 
 # Eigen wifi-netwerk voor de telefoons (--wifi, alleen de eerste kassa).

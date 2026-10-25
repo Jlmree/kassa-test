@@ -169,6 +169,35 @@ $blok
 "
     fi
   done
+  # De verkoopwebsite (website.sh), met de proefversie onder /proef/. Strenge regels voor
+  # de eigen pagina's; de proefversie draait een database in de browser en krijgt ze niet.
+  if [ -f "$KASSA_ETC/website.env" ]; then
+    domein=$(sed -n 's/^WEBSITE_DOMEIN=//p' "$KASSA_ETC/website.env")
+    [ -n "$domein" ] && sites+="
+# website
+$domein {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		Strict-Transport-Security \"max-age=31536000\"
+		-Server
+	}
+	handle /aanvraag {
+		reverse_proxy 127.0.0.1:8790
+	}
+	handle {
+		@pagina not path /proef/*
+		header @pagina Content-Security-Policy \"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'\"
+		@assets path /proef/assets/*
+		header @assets Cache-Control \"public, max-age=31536000, immutable\"
+		root * $KASSA_OPT/website
+		file_server
+	}
+}
+"
+  fi
   {
     echo "# Gemaakt door de kassa-installatie ($(kassa_namen | tr '\n' ' ' | sed 's/ $//')). Niet met de hand aanpassen."
     if [ "$intern" = 1 ]; then
