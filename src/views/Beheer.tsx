@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useData, type Methoden } from '../data';
+import { useData, type Methoden, type Thema } from '../data';
 import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
 import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
@@ -582,7 +582,7 @@ const actieNaam: Record<string, string> = {
   wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
   betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
   lat_afbetalen: 'Streeplijst afbetaald', uitnodiging_maken: 'Uitnodiging gemaakt', uitnodiging_intrekken: 'Uitnodiging ingetrokken',
-  uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
+  uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', thema: 'Thema gekozen', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
   kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd', gratis: 'Gratis weggegeven',
   uitgave: 'Uitgave geregistreerd', uitgave_terugbetaald: 'Voorschot terugbetaald', uitgave_verwijderen: 'Uitgave verwijderd',
 };
@@ -603,6 +603,7 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'uitgave_terugbetaald': return `${d.aan}: ${e('bedrag_cent')} (${d.hoe === 'kas' ? 'uit de kas' : 'overgemaakt'})`;
     case 'uitgave_verwijderen': return `${d.omschrijving}: ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
+    case 'thema': return `Thema: ${themas.find((t) => t.id === d.thema)?.naam ?? d.thema}`;
     case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat', 'gratis'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;
     case 'gebruiker_bijwerken': return `${d.gebruiker}: ${d.actief ? rolNaam[d.rol as Rol] : 'uitgeschakeld'}`;
@@ -640,6 +641,7 @@ function Instellingen() {
         <button disabled={bezig} onClick={() => run(async () => { await rpc('instellingen_opslaan', { p_naam: naam }); await herlaad(); melding('Opgeslagen'); })}>Opslaan</button>
       </div>
       <Betaalmethoden />
+      <ThemaKiezen />
       {methoden.kaart && <ZuilUitleg />}
       <Bijwerken />
       <BackupDownloaden />
@@ -727,6 +729,38 @@ function Betaalmethoden() {
       {!m.kaart && methoden.kaart && <p className="card warnbox">Staat er nog tegoed op kaarten, dan kan daar niet meer mee betaald worden zolang kaart uit staat.</p>}
       {!m.rekening && methoden.rekening && rekeningen.length > 0 && <p className="card warnbox">Er {rekeningen.length === 1 ? 'staat nog 1 rekening' : `staan nog ${rekeningen.length} rekeningen`} open. Die blijven te zien tot ze zijn afgerekend.</p>}
       <button className="big" disabled={bezig || !veranderd} onClick={opslaan}>Betaalmethoden opslaan</button>
+    </>
+  );
+}
+
+const themas: { id: Thema; naam: string; uitleg: string }[] = [
+  { id: 'licht', naam: 'Licht', uitleg: 'Zoals altijd. Staat de telefoon op donker, dan is de kassa ook donker.' },
+  { id: 'kroeg', naam: 'Kroeg', uitleg: 'Donker met amber. Rustig voor de ogen in een schemerige bar.' },
+  { id: 'groot', naam: 'Groot en duidelijk', uitleg: 'Grote knoppen en letters, zwart op wit. Fijn voor wie slecht ziet.' },
+];
+
+function ThemaKiezen() {
+  const { thema, herlaad } = useData();
+  const [bezig, run] = useBezig();
+  const kies = (t: Thema) => run(async () => {
+    if (t === thema) return;
+    await rpc('thema_opslaan', { p_thema: t });
+    await herlaad();
+    melding('Thema aangepast op alle telefoons');
+  });
+  return (
+    <>
+      <h3 className="s">Thema</h3>
+      <p className="mu">Geldt voor alle telefoons en tablets van deze kassa.</p>
+      <div className="themas">
+        {themas.map((t) => (
+          <button key={t.id} className={'thema-keus' + (t.id === thema ? ' on' : '')} disabled={bezig} aria-pressed={t.id === thema} onClick={() => kies(t.id)}>
+            <span className={'thema-staal ' + t.id} aria-hidden="true"><i /><i /><i /></span>
+            <b>{t.naam}</b>
+            <span className="mu">{t.uitleg}</span>
+          </button>
+        ))}
+      </div>
     </>
   );
 }
