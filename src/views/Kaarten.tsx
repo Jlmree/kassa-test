@@ -197,7 +197,7 @@ function KaartVerwijderen({ k, onKlaar }: { k: Kaart; onKlaar: () => void }) {
   );
 }
 
-const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet (annulering)', overzetting: 'Overgezet', vervallen: 'Vervallen (kaart verwijderd)' };
+const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet (annulering)', overzetting: 'Overgezet', vervallen: 'Vervallen (kaart verwijderd)', prijs: 'Gewonnen (loterij)' };
 
 function KaartHistorie({ k }: { k: Kaart }) {
   const [h, setH] = useState<{ ts: string; bedrag_cent: number; soort: string; methode: string | null; bonnummer: number | null; door_naam: string | null }[] | null>(null);

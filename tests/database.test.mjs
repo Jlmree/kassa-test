@@ -633,3 +633,50 @@ test('uitgaven: uit de kas of voorgeschoten; kas en wisselgeld-voorstel kloppen'
   assert.equal(log.length, 5);
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: 5500 });
 });
+
+test('loterij: loten per avond of per € 10, uitsluiten, prijs als tegoed buiten de kas; recap', async () => {
+  const [a, b, c] = await rpc(baas, 'kaarten_maken', { p_aantal: 3 });
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  const info = (k) => rpc(bar, 'kaart_info', { p_zoek: String(k.nummer) });
+  for (const k of [a, b]) await rpc(bar, 'kaart_opwaarderen', { p_kaart_id: (await info(k)).id, p_bedrag_cent: 2500, p_methode: 'contant' });
+  const koffie = (k) => rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'kaart', kaart: k.code }] });
+  await koffie(a); await koffie(a); await koffie(b);
+
+  // De baravond van nu (loopt tot 06:00), in Nederlandse tijd.
+  const vandaag = new Date(Date.now() - 6 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const args = { p_van: vandaag, p_tot: vandaag, p_manier: 'dagen', p_max: 10 };
+  const nrs = [a, b, c].map((k) => k.nummer);
+  const mijn = (v) => v.lijst.filter((x) => nrs.includes(x.nummer)).map((x) => [x.nummer, x.loten]).sort();
+  await faalt(rpc(bar, 'loterij_voorbeeld', args), 'beheerder');
+  // Twee keer betaald op dezelfde avond = 1 lot; nooit betaald = niet mee.
+  assert.deepEqual(mijn(await rpc(baas, 'loterij_voorbeeld', args)), [[a.nummer, 1], [b.nummer, 1]].sort());
+  // Per € 10 opgewaardeerd: € 25 = 2 loten, met een maximum.
+  assert.deepEqual(mijn(await rpc(baas, 'loterij_voorbeeld', { ...args, p_manier: 'opwaarderen' })), [[a.nummer, 2], [b.nummer, 2]].sort());
+  assert.deepEqual(mijn(await rpc(baas, 'loterij_voorbeeld', { ...args, p_manier: 'opwaarderen', p_max: 1 })), [[a.nummer, 1], [b.nummer, 1]].sort());
+  await faalt(rpc(baas, 'loterij_voorbeeld', { ...args, p_max: 0 }), 'maximum');
+
+  // Alle andere kaarten uitgesloten: alleen a doet mee, dus a wint. De prijs komt als tegoed op de kaart, niet in de kas.
+  const v = await rpc(baas, 'loterij_voorbeeld', args);
+  const anderen = v.lijst.map((x) => x.nummer).filter((n) => n !== a.nummer);
+  const saldo = (await info(a)).saldo_cent;
+  const verwacht = (await rpc(bar, 'dienst_overzicht')).verwacht_cent;
+  await faalt(rpc(bar, 'loterij_trekken', { ...args, p_uitgesloten: anderen }), 'beheerder');
+  const u = await rpc(baas, 'loterij_trekken', { ...args, p_uitgesloten: anderen, p_prijs_cent: 500, p_omschrijving: 'Gratis rondje' });
+  assert.deepEqual([u.nummer, u.loten, u.totaal, u.deelnemers, u.prijs_cent], [a.nummer, 1, 1, 1, 500]);
+  assert.equal((await info(a)).saldo_cent, saldo + 500);
+  assert.equal((await rpc(bar, 'dienst_overzicht')).verwacht_cent, verwacht);
+  const { data: log } = await baas.from('logboek').select('details').eq('actie', 'loterij');
+  assert.equal(log.at(-1).details.kaart, a.nummer);
+  // Een trekking is achteraf niet te veranderen, en medewerkers zien ze niet.
+  const { error } = await baas.from('loterij_trekkingen').update({ prijs_cent: 1 }).gt('id', 0);
+  assert.ok(error);
+  assert.deepEqual((await bar.from('loterij_trekkingen').select('id')).data, []);
+  await faalt(rpc(baas, 'loterij_trekken', { ...args, p_van: '2020-01-01', p_tot: '2020-01-31' }), 'geen kaarten');
+
+  // Recap van vandaag: de koffie staat erin; alleen voor de beheerder.
+  await faalt(rpc(bar, 'recap', { p_van: vandaag, p_tot: vandaag }), 'beheerder');
+  const r = await rpc(baas, 'recap', { p_van: vandaag, p_tot: vandaag });
+  assert.ok(r.bonnen >= 3 && r.top.some((t) => t.naam === 'Koffie'));
+  assert.ok(r.kaarten_gebruikt >= 2 && r.opgewaardeerd_cent >= 5000);
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: verwacht });
+});

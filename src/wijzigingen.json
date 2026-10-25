@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-25",
+    "titel": "Loterij met de barkaarten",
+    "punten": [
+      "Bij Beheer → Loterij trek je een winnende barkaart. Kies een periode en wie meer kans krijgt: Trouwe bezoeker (1 lot per avond dat met de kaart is betaald), Iedereen gelijk, of Opwaarderen (1 lot per € 10).",
+      "Kaarten kun je uitsluiten, bijvoorbeeld die van jeugdleden. Voor de trekking zie je welke kaarten meedoen en hoeveel kans elke kaart heeft.",
+      "De trekking speel je af op het hele scherm. Een prijs kan meteen als tegoed op de winnende kaart; dat staat in het rapport, het logboek en de geschiedenis van de kaart. Een trekking is achteraf niet te veranderen."
+    ]
+  },
+  {
+    "datum": "2026-10-25",
     "titel": "Recap: het seizoen in cijfers",
     "punten": [
       "Bij Beheer → Recap speel je het seizoen af als een reeks schermen: hoeveel bonnen, de populairste producten, hoeveel glazen bier, de drukste avond, het ritme van de week, hoe vaak de kas klopte, barkaarten en omzet.",
