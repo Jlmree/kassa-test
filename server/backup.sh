@@ -6,6 +6,7 @@
 # Elke kassa heeft een eigen back-upwachtwoord. Daarmee versleuteld gaat de nieuwste
 # back-up naar:
 # - een USB-stick met de naam KASSA-BACKUP, als die erin zit;
+# - een e-mailadres, elke nacht (als dat is ingesteld, zie backup-mail.sh);
 # - de downloadmap van de kassa: een beheerder downloadt hem in de app
 #   (Beheer → Instellingen → Back-up downloaden).
 # Wie zo'n bestand heeft, kan er zonder dat wachtwoord niets mee (geen kaartcodes, geen gegevens).
@@ -14,7 +15,6 @@
 #   backup.sh wachtwoord [naam]      het back-upwachtwoord van een kassa laten zien
 set -euo pipefail
 . /opt/kassa/bin/kassa-lib.sh
-versleutel() { openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass "file:$K_WW" -in "$1" -out "$2"; }
 
 if [ "${1:-}" = wachtwoord ]; then
   kassa_paden "${2:-kassa}"
@@ -78,7 +78,7 @@ for n in $NAMEN; do
   if [ -s "$K_WW" ] && [ -f "$K_ETC/download.env" ]; then
     NAAM=$(basename "$BESTAND").enc
     mkdir -p "$K_DOWNLOAD"
-    if [ ! -s "$K_DOWNLOAD/$NAAM" ] && versleutel "$BESTAND" "$K_DOWNLOAD/$NAAM.tmp"; then
+    if [ ! -s "$K_DOWNLOAD/$NAAM" ] && kassa_versleutel "$BESTAND" "$K_DOWNLOAD/$NAAM.tmp"; then
       chmod 644 "$K_DOWNLOAD/$NAAM.tmp" && mv "$K_DOWNLOAD/$NAAM.tmp" "$K_DOWNLOAD/$NAAM"
       find "$K_DOWNLOAD" -maxdepth 1 -type f ! -name "$NAAM" -delete
       runuser -u postgres -- psql -d "$K_DB" -q -v b="$NAAM" <<'SQL' 2>/dev/null || true
@@ -100,7 +100,7 @@ if STICK=$(blkid -L KASSA-BACKUP 2>/dev/null); then
       mkdir -p "$M/$n"
       DOEL="$M/$n/$(basename "$B").enc"
       if [ -s "$DOEL" ]; then :
-      elif versleutel "$B" "$DOEL.tmp"; then
+      elif kassa_versleutel "$B" "$DOEL.tmp"; then
         mv "$DOEL.tmp" "$DOEL"
         # Oude, onversleutelde back-ups van vóór deze versie weghalen: die staan ook op de server zelf.
         find "$M/$n" -name "$n-*.dump" -delete
@@ -113,4 +113,6 @@ if STICK=$(blkid -L KASSA-BACKUP 2>/dev/null); then
   fi
   rmdir "$M"
 fi
+# Elke nacht per e-mail (backup-mail.sh bepaalt zelf of het tijd is).
+if [ "$ELKUUR" = 1 ]; then /opt/kassa/bin/backup-mail.sh || true; fi
 printf '%s\n' "${BESTANDEN[@]}"

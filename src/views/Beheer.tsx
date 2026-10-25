@@ -735,6 +735,7 @@ interface Systeem {
   versie: string | null; nieuwste: string | null; gecontroleerd: string | null; verzoek: string | null;
   status: 'klaar' | 'bezig' | 'mislukt'; melding: string | null; bijgewerkt_ts: string | null; wijzigingen: Wijziging[] | null;
   bijwerken_mag?: boolean; backup_pad?: string | null; backup_bestand?: string | null; backup_ts?: string | null;
+  backup_mail_naar?: string | null; backup_mail_ts?: string | null; backup_mail_fout?: string | null;
 }
 const versieNr = (v: string | null) => parseInt((v ?? '').replace(/\D/g, ''), 10) || 0;
 
@@ -810,13 +811,33 @@ function Bijwerken() {
 // (vooral nodig op een gehuurde server, waar geen USB-stick in kan). backup.sh zet hem klaar.
 function BackupDownloaden() {
   const [s, setS] = useState<Systeem | null>(null);
-  useEffect(() => { void lees(sb.from('systeem').select('backup_pad,backup_bestand,backup_ts').maybeSingle()).then((r) => setS(r as Systeem | null)).catch(() => {}); }, []);
+  useEffect(() => {
+    void lees(sb.from('systeem').select('backup_pad,backup_bestand,backup_ts,backup_mail_naar,backup_mail_ts,backup_mail_fout').maybeSingle())
+      .then((r) => setS(r as Systeem | null)).catch(() => {});
+  }, []);
   if (PROEF || !s?.backup_pad || !s.backup_bestand) return null;
+  // Al meer dan 2 dagen niets gemaild terwijl er wel nieuwe back-ups zijn: dan klopt er iets niet.
+  const dag = 86400000;
+  const achter = s.backup_mail_naar && s.backup_ts && Date.parse(s.backup_ts) - Date.parse(s.backup_mail_ts ?? '1970-01-01') > dag
+    && Date.now() - Date.parse(s.backup_mail_ts ?? '1970-01-01') > 2 * dag;
   return (
     <>
       <h3 className="s">Back-up</h3>
-      <p className="mu">De kassa maakt elk uur een back-up als er iets veranderd is. Download hem af en toe en bewaar hem op een andere plek, bijvoorbeeld op je computer of in de cloud.</p>
+      <p className="mu">De kassa maakt elk uur een back-up als er iets veranderd is. Die staat op de server zelf; zorg dat er ook een kopie op een andere plek is.</p>
       {s.backup_ts && <Rij l="Nieuwste back-up" r={datumTijd(s.backup_ts)} />}
+      {s.backup_mail_naar ? (
+        <>
+          <Rij l="Elke nacht per e-mail naar" r={s.backup_mail_naar} />
+          <Rij l="Laatst gemaild" r={s.backup_mail_ts ? datumTijd(s.backup_mail_ts) : 'nog niet'} />
+          {s.backup_mail_fout && <p className="warnbox card">Mailen lukte niet: {s.backup_mail_fout.replace(/\.$/, '').replace(/^./, (c) => c.toLowerCase())}. De server probeert het elk uur opnieuw. Download de back-up intussen hieronder.</p>}
+          {!s.backup_mail_fout && achter && <p className="warnbox card">Er is al een paar dagen geen back-up gemaild. Download hem hieronder en vraag de beheerder van de server om te kijken.</p>}
+        </>
+      ) : (
+        <p className="warnbox card">
+          Er gaat nog geen back-up per e-mail naar een andere plek. Gaat de server kapot, dan ben je alles kwijt. Laat hem elke nacht mailen
+          (op de server: <b>/opt/kassa/bin/backup-mail.sh instellen</b>, zie de handleiding), of download hem hieronder geregeld.
+        </p>
+      )}
       <a className="big alt knop-link" href={`/back-up/${s.backup_pad}/${s.backup_bestand}`} download={s.backup_bestand}>Back-up downloaden</a>
       <p className="mu">Het bestand is versleuteld: terugzetten kan alleen met het back-upwachtwoord dat je bij de installatie kreeg.</p>
     </>

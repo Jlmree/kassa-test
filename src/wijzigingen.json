@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-25",
+    "titel": "Back-up elke nacht per e-mail",
+    "punten": [
+      "De server kan de back-up elke nacht versleuteld mailen, bijvoorbeeld naar de penningmeester. Zo is er altijd een kopie buiten de server. Instellen op de server: /opt/kassa/bin/backup-mail.sh instellen.",
+      "Bij Beheer → Instellingen → Back-up zie je naar welk adres hij gaat en wanneer hij voor het laatst is gemaild. Lukt het mailen niet, of is het nog niet ingesteld, dan staat daar een waarschuwing."
+    ]
+  },
+  {
+    "datum": "2026-10-25",
     "titel": "Veiliger op internet, en de telefoon trilt",
     "punten": [
       "De telefoon trilt kort als een betaling of opwaardering gelukt is, en drie keer bij een foutmelding. Handig als het druk en lawaaiig is. (iPhones trillen niet vanuit een website.)",
