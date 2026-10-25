@@ -5,15 +5,17 @@ import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
+import { Recap } from './Recap';
 import { Uitnodigen } from './Uitnodigen';
 import { KaartScherm } from './Kaarten';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 import licentie from '../../LICENTIE.txt?raw';
 
-const delen = ['Rapport', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
+const delen = ['Rapport', 'Recap', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
 const uitleg: Record<Deel, string> = {
   Rapport: 'Omzet, betaalmethoden, producten en kasverschillen per periode',
+  Recap: 'Het seizoen in cijfers, om te laten zien op een groot scherm',
   Producten: 'Prijzen, categorieën en voorraad',
   Kaarten: 'Nieuwe tegoedkaarten maken en QR-codes printen',
   Streeplijst: 'Per maand wat ieder lid heeft gestreept, en exporteren voor de incasso',
@@ -56,6 +58,7 @@ export function Beheer() {
         <h2>{deel}</h2>
       </div>
       {deel === 'Rapport' && <Rapport />}
+      {deel === 'Recap' && <Recap />}
       {deel === 'Producten' && <Producten />}
       {deel === 'Kaarten' && <><KaartenMaken /><KaartenOpruimen /></>}
       {deel === 'Streeplijst' && <StreeplijstMaand />}
