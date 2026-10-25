@@ -304,3 +304,40 @@ a.knop-link { display: block; text-align: center; text-decoration: none; box-siz
 .thema-staal.licht i:nth-child(1) { background: #f2f4ef; } .thema-staal.licht i:nth-child(2) { background: #1d6b58; } .thema-staal.licht i:nth-child(3) { background: #f0b429; }
 .thema-staal.kroeg i:nth-child(1) { background: #16110c; } .thema-staal.kroeg i:nth-child(2) { background: #f2a93b; } .thema-staal.kroeg i:nth-child(3) { background: #f3e9dc; }
 .thema-staal.groot i:nth-child(1) { background: #ffffff; } .thema-staal.groot i:nth-child(2) { background: #111111; } .thema-staal.groot i:nth-child(3) { background: #1b6e2f; }
+
+/* ─── Recap (Beheer → Recap): dia's op het hele scherm ─── */
+.recap { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top, 0px) + 10px) max(18px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 10px) max(18px, env(safe-area-inset-left, 0px)); transition: background .4s, color .4s; }
+.recap.groen { background: #1d6b58; color: #fff; }
+.recap.zon { background: #f0b429; color: #2a1f00; }
+.recap.inkt { background: #14201e; color: #f2f4ef; }
+.recap.licht { background: #f2f4ef; color: #1b2927; }
+.recap-balk { display: flex; gap: 4px; }
+.recap-balk i { flex: 1; height: 4px; border-radius: 2px; background: currentColor; opacity: .25; }
+.recap-balk i.af, .recap-balk i.nu { opacity: .9; }
+.recap-knoppen { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.recap-knoppen button { padding: 8px 14px; border-radius: 99px; background: color-mix(in srgb, currentColor 14%, transparent); font-weight: 700; font-size: 14px; }
+.recap-dia { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; max-width: 900px; width: 100%; margin: 0 auto; min-height: 0; overflow: auto; cursor: pointer; user-select: none; animation: rc-in .45s ease-out; }
+@keyframes rc-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .recap-dia { animation: none; } .recap { transition: none; } }
+.recap-voet { display: flex; justify-content: center; align-items: center; gap: 18px; font-weight: 700; }
+.recap-voet button { width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, currentColor 14%, transparent); font-size: 26px; line-height: 1; }
+.rc-klein { margin: 0; font-size: clamp(16px, 2.4vw, 24px); font-weight: 700; opacity: .8; text-transform: uppercase; letter-spacing: .06em; }
+.rc-groot { margin: 0; font-size: clamp(40px, 8vw, 96px); font-weight: 800; line-height: 1.02; letter-spacing: -.02em; text-wrap: balance; }
+.rc-getal { margin: 0; font-size: clamp(72px, 16vw, 200px); font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rc-bedrag { font-size: clamp(56px, 11vw, 150px); white-space: nowrap; overflow-wrap: normal; }
+.rc-tekst { margin: 0; font-size: clamp(20px, 3.2vw, 34px); font-weight: 600; line-height: 1.25; max-width: 28ch; }
+.rc-hint { margin: 24px 0 0; opacity: .7; font-weight: 600; }
+.rc-top { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 10px; }
+.rc-top li { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; gap: 12px; align-items: center; font-size: clamp(17px, 2.6vw, 26px); font-weight: 700; }
+.rc-top li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-top li i { height: 18px; border-radius: 9px; background: #1d6b58; }
+.rc-top li b { font-variant-numeric: tabular-nums; }
+.rc-namen { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 14px; }
+.rc-namen li { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.rc-namen b { font-size: clamp(32px, 6vw, 64px); font-weight: 800; letter-spacing: -.02em; }
+.rc-namen span { font-size: clamp(18px, 2.6vw, 26px); opacity: .8; font-weight: 600; }
+.rc-klok { display: grid; gap: 3px; margin-top: 8px; font-size: 12px; font-weight: 700; max-width: 760px; }
+.rc-rij { display: contents; }
+.rc-rij > span { align-self: center; opacity: .7; }
+.rc-rij > i { height: clamp(14px, 4.2vh, 36px); border-radius: 3px; background: #1d6b58; min-width: 0; }
+.rc-uren > span { text-align: center; opacity: .6; }
