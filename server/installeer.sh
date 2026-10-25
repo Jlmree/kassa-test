@@ -634,6 +634,7 @@ else
   echo "Back-ups: elk uur als er iets veranderd is, in /var/backups/kassa (en versleuteld op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
   echo "Medewerkers maken in de app zelf een account aan; de beheerder keurt ze goed bij Beheer → Medewerkers."
 fi
+echo "Back-up elke nacht per e-mail (een kopie buiten de server): $OPT/bin/backup-mail.sh instellen  (status: $OPT/bin/backup-mail.sh status)"
 echo "Bijwerken naar een nieuwe versie:    in de app bij Beheer → Instellingen, of $OPT/bin/bijwerken.sh (als root)"
 [ "$WIFI_OK" = 1 ] && echo "Wifi-naam en wachtwoord later nog eens zien: $OPT/bin/wifi.sh status"
 [ "$(wc -l <<<"$KASSAS")" -gt 1 ] && echo "Overzicht van de kassa's op deze server: $OPT/bin/kassas.sh"

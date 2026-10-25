@@ -40,6 +40,9 @@ kassa_paden() {
 # Eén instelling van de huidige kassa (na kassa_paden): kassa_lees KASSA_DOMEIN
 kassa_lees() { [ -f "$K_ETC/instellingen.env" ] && sed -n "s/^$1=//p" "$K_ETC/instellingen.env"; return 0; }
 
+# Versleutelt een back-up met het back-upwachtwoord van de kassa (na kassa_paden).
+kassa_versleutel() { openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass "file:$K_WW" -in "$1" -out "$2"; }
+
 kassa_naam_geldig() { [[ "$1" =~ ^[a-z][a-z0-9]{1,19}$ ]] && [ "$1" != kassa ] && [ "$1" != kassas ]; }
 
 # Staat deze server op internet (een kassa met een eigen adres, zonder DuckDNS-token)?
@@ -182,11 +185,11 @@ $blok
 }
 
 # Wat bij deze server hoort in de tabel systeem van de kassa zetten (na kassa_paden):
-# het downloadpad van de back-up, of bijwerken vanuit de app mag (alleen bij de eerste
+# het downloadpad en het mailadres van de back-up, of bijwerken vanuit de app mag (alleen bij de eerste
 # kassa: een update geldt voor alle kassa's op de server) en de wifi voor de wifi-code.
 # Ook na het terugzetten van een back-up, want die kan van een andere server komen.
 kassa_systeem_schrijven() {
-  local pad mag=false wn="" ww=""
+  local pad mag=false wn="" ww="" mail
   pad=$(sed -n 's/^PAD=//p' "$K_ETC/download.env" 2>/dev/null)
   if [ "$K_NAAM" = kassa ]; then
     mag=true
@@ -195,8 +198,9 @@ kassa_systeem_schrijven() {
         if [ "${KASSA_WIFI:-0}" = 1 ]; then printf '%s\n' "${KASSA_WIFI_NAAM:-}" "${KASSA_WIFI_WACHTWOORD:-}"; else printf '\n\n'; fi)
     fi
   fi
-  runuser -u postgres -- psql -d "$K_DB" -q -v ON_ERROR_STOP=1 -v p="$pad" -v m="$mag" -v n="$wn" -v w="$ww" <<'SQL'
+  mail=$(sed -n 's/^NAAR=//p' "$K_ETC/mail.env" 2>/dev/null || true)
+  runuser -u postgres -- psql -d "$K_DB" -q -v ON_ERROR_STOP=1 -v p="$pad" -v m="$mag" -v n="$wn" -v w="$ww" -v mail="$mail" <<'SQL'
 update public.systeem set backup_pad = nullif(:'p', ''), bijwerken_mag = :'m'::boolean,
-  wifi_naam = nullif(:'n', ''), wifi_wachtwoord = nullif(:'w', '') where id = 1;
+  wifi_naam = nullif(:'n', ''), wifi_wachtwoord = nullif(:'w', ''), backup_mail_naar = nullif(:'mail', '') where id = 1;
 SQL
 }
