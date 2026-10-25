@@ -6,16 +6,18 @@ import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
 import { Recap } from './Recap';
+import { Loterij } from './Loterij';
 import { Uitnodigen } from './Uitnodigen';
 import { KaartScherm } from './Kaarten';
 import { nieuwer as nogNietBekend, WijzigingLijst, wijzigingen, type Wijziging } from '../wijzigingen';
 import licentie from '../../LICENTIE.txt?raw';
 
-const delen = ['Rapport', 'Recap', 'Producten', 'Kaarten', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
+const delen = ['Rapport', 'Recap', 'Producten', 'Kaarten', 'Loterij', 'Streeplijst', 'Medewerkers', 'Controle', 'Logboek', 'Instellingen'] as const;
 type Deel = (typeof delen)[number];
 const uitleg: Record<Deel, string> = {
   Rapport: 'Omzet, betaalmethoden, producten en kasverschillen per periode',
   Recap: 'Het seizoen in cijfers, om te laten zien op een groot scherm',
+  Loterij: 'Een winnende barkaart trekken, met de prijs als tegoed',
   Producten: 'Prijzen, categorieën en voorraad',
   Kaarten: 'Nieuwe tegoedkaarten maken en QR-codes printen',
   Streeplijst: 'Per maand wat ieder lid heeft gestreept, en exporteren voor de incasso',
@@ -42,7 +44,7 @@ export function Beheer() {
   if (!deel) {
     return (
       <div className="menu">
-        {delen.filter((d) => (d !== 'Kaarten' || methoden.kaart) && (d !== 'Streeplijst' || methoden.lat)).map((d) => (
+        {delen.filter((d) => (d !== 'Kaarten' && d !== 'Loterij' || methoden.kaart) && (d !== 'Streeplijst' || methoden.lat)).map((d) => (
           <button key={d} className="card wide" onClick={() => setDeel(d)}>
             <div className="hd"><span>{d}</span>{melding_[d] && <span className="pill min">{melding_[d]}</span>}</div>
             <span className="mu">{uitleg[d]}</span>
@@ -61,6 +63,7 @@ export function Beheer() {
       {deel === 'Recap' && <Recap />}
       {deel === 'Producten' && <Producten />}
       {deel === 'Kaarten' && <><KaartenMaken /><KaartenOpruimen /></>}
+      {deel === 'Loterij' && <Loterij />}
       {deel === 'Streeplijst' && <StreeplijstMaand />}
       {deel === 'Medewerkers' && <Medewerkers />}
       {deel === 'Controle' && <Controle />}
@@ -81,7 +84,7 @@ interface RapportData {
   per_uur: { uur: number; bonnen: number; bedrag_cent: number }[];
   opwaarderingen: { methode: string; aantal: number; bedrag_cent: number }[];
   kaarttegoed_cent: number; kaarten_actief: number; open_rekeningen_cent: number; diensten: Dienst[];
-  vervallen_cent?: number; gratis_cent?: number;
+  vervallen_cent?: number; gratis_cent?: number; loterij_cent?: number;
   uitgaven_cent?: number; uitgaven_per_reden?: { reden: string; aantal: number; bedrag_cent: number }[]; voorgeschoten_open_cent?: number; gratis_per_reden?: { reden: string; aantal: number; bedrag_cent: number }[];
 }
 
@@ -121,7 +124,14 @@ function Rapport() {
   const sleutel = `${+van}-${+tot}`;
   useEffect(() => {
     if (isNaN(+van) || isNaN(+tot)) return;
-    void run(async () => setR(await rpc<RapportData>('rapport', { p_van: van.toISOString(), p_tot: tot.toISOString() })));
+    void run(async () => {
+      const [rap, prijzen] = await Promise.all([
+        rpc<RapportData>('rapport', { p_van: van.toISOString(), p_tot: tot.toISOString() }),
+        // Prijzen van de loterij (tegoed op kaarten, geen geld in de kas).
+        lees(sb.from('loterij_trekkingen').select('prijs_cent').gte('ts', van.toISOString()).lt('ts', tot.toISOString())).catch(() => []),
+      ]);
+      setR({ ...rap, loterij_cent: (prijzen as { prijs_cent: number }[]).reduce((a, x) => a + x.prijs_cent, 0) });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sleutel, run]);
 
@@ -194,6 +204,7 @@ function Rapport() {
           <Blok titel="Tegoedkaarten en rekeningen">
             {r.opwaarderingen.map((x) => <Rij key={x.methode} l={`Opgewaardeerd, ${x.methode === 'pin' ? 'pin' : 'contant'} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
             {!!r.vervallen_cent && <Rij l="Tegoed vervallen (kaarten verwijderd)" r={eur(r.vervallen_cent)} />}
+            {!!r.loterij_cent && <Rij l="Gewonnen met de loterij (tegoed)" r={eur(r.loterij_cent)} />}
             <Rij l={`Tegoed nu op ${r.kaarten_actief} kaarten`} r={eur(r.kaarttegoed_cent)} />
             <Rij l="Nu open op rekeningen" r={eur(r.open_rekeningen_cent)} />
           </Blok>
@@ -585,7 +596,7 @@ const actieNaam: Record<string, string> = {
   wachtwoord_instellen: 'Wachtwoord ingesteld', kaart_naam: 'Kaart op naam gezet', levering: 'Levering ingeboekt',
   betaalmethoden: 'Betaalmethoden aangepast', lid_nieuw: 'Lid op de streeplijst gezet', lid_wijzigen: 'Lid gewijzigd',
   lat_afbetalen: 'Streeplijst afbetaald', uitnodiging_maken: 'Uitnodiging gemaakt', uitnodiging_intrekken: 'Uitnodiging ingetrokken',
-  uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', thema: 'Thema gekozen', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
+  uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', thema: 'Thema gekozen', loterij: 'Loterij getrokken', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
   kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd', gratis: 'Gratis weggegeven',
   uitgave: 'Uitgave geregistreerd', uitgave_terugbetaald: 'Voorschot terugbetaald', uitgave_verwijderen: 'Uitgave verwijderd',
 };
@@ -606,6 +617,7 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'uitgave_terugbetaald': return `${d.aan}: ${e('bedrag_cent')} (${d.hoe === 'kas' ? 'uit de kas' : 'overgemaakt'})`;
     case 'uitgave_verwijderen': return `${d.omschrijving}: ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
+    case 'loterij': return `Kaart ${d.kaart} won (${d.loten} van ${d.van_loten} loten)${d.prijs_cent ? `, ${e('prijs_cent')} tegoed` : ''}${d.omschrijving ? `: ${d.omschrijving}` : ''}`;
     case 'thema': return `Thema: ${themas.find((t) => t.id === d.thema)?.naam ?? d.thema}`;
     case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat', 'gratis'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;
