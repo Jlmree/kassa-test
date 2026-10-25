@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bar-kassa</title>
+<meta name="description" content="De kassa voor de kantine van je vereniging: afrekenen op je eigen telefoons, barkaarten met tegoed, streeplijst en kasopmaak in één.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#1d6b58">
+<link rel="icon" href="favicon.png">
+<style>
+/* Opbouw: smalle kolom met brede banden; de prijzen als twee kassabonnen, de overstap als strippenkaart naast barkaart. */
+@font-face { font-family: "Bricolage Grotesque"; src: url(fonts/bricolage-grotesque.woff2) format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url(fonts/ibm-plex-mono-400.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url(fonts/ibm-plex-mono-600.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+:root {
+  --papier: #f2f4ef; --vlak: #ffffff; --inkt: #1b2927; --mu: #56645f; --lijn: #d6ddd5;
+  --groen: #1d6b58; --groen-op: #ffffff; --zon: #f0b429; --zon-op: #2a1f00; --bon: #fffdf6; --streep: #b23a26;
+  --band: #e6ece4;
+  --kop: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --tekst: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+  --breed: 1120px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --papier: #101817; --vlak: #1a2423; --inkt: #e8efec; --mu: #9fb0aa; --lijn: #2d3a38;
+  --groen: #4fb89c; --groen-op: #08201a; --zon: #f0b429; --zon-op: #2a1f00; --bon: #f6f2e6; --streep: #ef8a74; --band: #16201f; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --papier: #101817; --vlak: #1a2423; --inkt: #e8efec; --mu: #9fb0aa; --lijn: #2d3a38;
+  --groen: #4fb89c; --groen-op: #08201a; --zon: #f0b429; --zon-op: #2a1f00; --bon: #f6f2e6; --streep: #ef8a74; --band: #16201f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+body { margin: 0; background: var(--papier); color: var(--inkt); font: 400 18px/1.55 var(--tekst); -webkit-font-smoothing: antialiased; }
+img, svg { max-width: 100%; }
+a { color: var(--groen); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--zon); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--kop); text-wrap: balance; margin: 0; line-height: 1.08; letter-spacing: -.02em; }
+h1 { font-size: clamp(40px, 6.4vw, 76px); font-weight: 800; }
+h2 { font-size: clamp(30px, 4vw, 46px); font-weight: 800; }
+h3 { font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
+p { margin: 0; }
+.wrap { max-width: var(--breed); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.etiket { font: 600 13px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--mu); }
+.knop { display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border-radius: 14px; font: 700 17px/1 var(--tekst); text-decoration: none; border: 0; cursor: pointer; }
+.knop.vol { background: var(--groen); color: var(--groen-op); }
+.knop.rand { background: transparent; color: var(--inkt); box-shadow: inset 0 0 0 2px var(--inkt); }
+.knop:hover { filter: brightness(1.06); }
+
+/* Kop */
+.kop { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--papier) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--lijn); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--papier); }
+.kop .wrap { display: flex; align-items: center; gap: 24px; padding-block: 14px; }
+.merk { display: flex; align-items: center; gap: 10px; font: 800 22px/1 var(--kop); color: var(--inkt); text-decoration: none; letter-spacing: -.02em; }
+.merk i { width: 30px; height: 30px; border-radius: 9px; background: var(--groen); display: grid; place-items: center; }
+.merk i::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--zon); }
+.kop nav { display: flex; gap: 22px; margin-left: auto; }
+.kop nav a { color: var(--inkt); text-decoration: none; font-weight: 600; font-size: 16px; }
+.kop nav a:hover { color: var(--groen); }
+.kop .knop { padding: 11px 16px; font-size: 15px; }
+@media (max-width: 820px) { .kop nav { display: none; } .kop .knop { margin-left: auto; } }
+
+/* Opening */
+.opening .wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 48px; align-items: center; padding-block: 64px 72px; }
+.opening p.lead { font-size: clamp(19px, 2vw, 22px); color: var(--mu); max-width: 34ch; margin-top: 20px; }
+.opening .knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.opening .klein { margin-top: 16px; font-size: 15px; color: var(--mu); }
+@media (max-width: 860px) { .opening .wrap { grid-template-columns: minmax(0, 1fr); padding-block: 40px 56px; } }
+
+/* Telefoon met de kassa, en de barkaart ernaast */
+.toneel { position: relative; min-height: 520px; display: flex; justify-content: center; }
+.tel { width: 270px; height: 520px; border-radius: 38px; background: #0f1615; padding: 10px; box-shadow: 0 30px 60px -30px #0f161599; }
+.tel .scherm { height: 100%; border-radius: 30px; background: #f2f4ef; color: #1b2927; overflow: hidden; display: flex; flex-direction: column; font-size: 12px; }
+.tel .bk { display: flex; align-items: center; gap: 6px; padding: 18px 14px 8px; font-weight: 800; font-size: 15px; }
+.tel .bk span { flex: 1; } .tel .bk i { width: 7px; height: 7px; border-radius: 50%; background: #2e9b5a; } .tel .bk em { font-style: normal; font-weight: 600; font-size: 11px; padding: 4px 8px; border: 1px solid #d9dfd8; border-radius: 99px; background: #fff; }
+.tel .cat { padding: 6px 14px 4px; font-weight: 700; font-size: 10px; color: #62706c; letter-spacing: .06em; text-transform: uppercase; }
+.tel .tegels { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 12px; }
+.tel .tegel { position: relative; background: #fff; border: 1px solid #d9dfd8; border-radius: 11px; padding: 9px 8px; height: 56px; display: flex; flex-direction: column; justify-content: space-between; }
+.tel .tegel b { font-weight: 600; font-size: 12.5px; } .tel .tegel small { color: #62706c; font-size: 11px; }
+.tel .tegel u { position: absolute; top: 6px; right: 6px; text-decoration: none; min-width: 18px; height: 18px; border-radius: 9px; background: #f0b429; font-weight: 800; font-size: 10.5px; display: grid; place-items: center; }
+.tel .vul { flex: 1; }
+.tel .balk { margin: 8px 12px 10px; border-radius: 11px; background: #1d6b58; color: #fff; padding: 11px 12px; display: flex; justify-content: space-between; font-weight: 700; font-size: 12.5px; }
+.tel .tabs { display: flex; border-top: 1px solid #d9dfd8; background: #fff; padding-bottom: 8px; }
+.tel .tabs span { flex: 1; text-align: center; padding: 8px 0 4px; font-size: 9.5px; font-weight: 600; color: #62706c; } .tel .tabs span:first-child { color: #1d6b58; box-shadow: inset 0 2px 0 #1d6b58; }
+.barkaart { position: absolute; right: max(0px, calc(50% - 270px)); bottom: -14px; width: 200px; aspect-ratio: 85.6 / 54; border-radius: 12px; background: #fffdf6; color: #1b2927; box-shadow: 0 18px 40px -18px #0f161588; padding: 12px; display: grid; grid-template-columns: 1fr auto; gap: 6px; transform: rotate(-6deg); border: 1px solid #e6e1d2; }
+.barkaart .t { font-weight: 800; font-size: 14px; line-height: 1.1; } .barkaart .n { font: 600 11px/1.3 var(--mono); color: #56645f; }
+.barkaart svg { width: 66px; height: 66px; fill: #1b2927; align-self: end; } .barkaart .code { align-self: end; font: 600 12px/1 var(--mono); letter-spacing: .06em; }
+@media (max-width: 520px) { .barkaart { right: 0; width: 170px; } .toneel { min-height: 540px; } .strip .vakjes span { font-size: 0; } }
+
+/* Banden */
+.band { padding-block: 80px; }
+.band.licht { background: var(--band); }
+.band .kopje { display: flex; flex-direction: column; gap: 12px; max-width: 62ch; margin-bottom: 40px; }
+.band .kopje p { color: var(--mu); font-size: 19px; }
+
+/* Van strippenkaart naar barkaart */
+.overstap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 28px; align-items: center; }
+.strip { background: #fbf7ea; color: #2b2418; border: 1px solid #e3dac2; border-radius: 10px; padding: 18px; box-shadow: 0 10px 24px -18px #2b241866; transform: rotate(1.2deg); }
+.strip .t { display: flex; justify-content: space-between; font: 600 13px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+.strip .vakjes { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; }
+.strip .vakjes span { aspect-ratio: 1; border: 1.5px solid #8a7e63; border-radius: 3px; display: grid; place-items: center; font: 600 10px/1 var(--mono); color: #6b604a; }
+.strip .vakjes span.x { position: relative; color: transparent; }
+.strip .vakjes span.x::before, .strip .vakjes span.x::after { content: ""; position: absolute; width: 120%; height: 2px; background: var(--streep); transform: rotate(45deg); border-radius: 2px; }
+.strip .vakjes span.x::after { transform: rotate(-45deg); }
+.strip .rest { margin-top: 12px; font: 400 13px/1.4 var(--mono); color: #6b604a; }
+.pijl { width: 56px; height: 56px; border-radius: 50%; background: var(--zon); color: var(--zon-op); display: grid; place-items: center; }
+.pijl svg { width: 26px; height: 26px; }
+.nieuw { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.nieuw .rij { display: flex; justify-content: space-between; gap: 12px; font: 400 15px/1.3 var(--mono); padding-bottom: 10px; border-bottom: 1px dashed var(--lijn); }
+.nieuw .rij:last-child { border: 0; padding: 0; font-weight: 600; font-size: 17px; }
+.verschil { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 44px; }
+.verschil div { display: flex; flex-direction: column; gap: 8px; }
+.verschil p { color: var(--mu); }
+@media (max-width: 860px) { .overstap { grid-template-columns: minmax(0, 1fr); } .pijl { justify-self: center; transform: rotate(90deg); } .verschil { grid-template-columns: minmax(0, 1fr); gap: 22px; } }
+
+/* Wat het kan */
+.kan { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--lijn); border: 1px solid var(--lijn); border-radius: 18px; overflow: hidden; }
+.kan > div { background: var(--vlak); padding: 24px 22px 26px; display: flex; flex-direction: column; gap: 10px; }
+.kan svg { width: 28px; height: 28px; stroke: var(--groen); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.kan p { color: var(--mu); font-size: 16px; }
+@media (max-width: 960px) { .kan { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .kan { grid-template-columns: minmax(0, 1fr); } }
+
+/* Prijzen als kassabonnen */
+.bonnen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; align-items: start; }
+.bon { background: var(--bon); color: #1f1c16; font: 400 15px/1.5 var(--mono); padding: 30px 28px 40px; position: relative;
+  -webkit-mask: radial-gradient(circle 7px at 50% 100%, #0000 98%, #000) 50% 100% / 18px 100% repeat-x;
+          mask: radial-gradient(circle 7px at 50% 100%, #0000 98%, #000) 50% 100% / 18px 100% repeat-x;
+  box-shadow: 0 14px 30px -22px #0008; }
+.bon .naam { font: 800 26px/1.1 var(--kop); letter-spacing: -.01em; text-align: center; }
+.bon .sub { text-align: center; color: #6b655a; margin-top: 6px; }
+.bon hr { border: 0; border-top: 1.5px dashed #b9b2a3; margin: 18px 0; }
+.bon .r { display: flex; gap: 8px; } .bon .r span:first-child { flex: 1; } .bon .r span:last-child { text-align: right; white-space: nowrap; }
+.bon .tot { font-weight: 600; font-size: 19px; }
+.bon .opm { color: #6b655a; font-size: 13.5px; margin-top: 12px; }
+.bon ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.bon li::before { content: "+ "; color: #1d6b58; font-weight: 600; }
+.bon .knop { margin-top: 22px; width: 100%; justify-content: center; font-family: var(--tekst); background: #1d6b58; color: #fff; }
+.prijsnoot { margin-top: 28px; color: var(--mu); font-size: 16px; max-width: 70ch; }
+@media (max-width: 860px) { .bonnen { grid-template-columns: minmax(0, 1fr); } }
+
+/* Stevig */
+.stevig { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.stevig b { display: block; font: 800 44px/1 var(--kop); letter-spacing: -.03em; color: var(--groen); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.stevig p { color: var(--mu); }
+@media (max-width: 860px) { .stevig { grid-template-columns: minmax(0, 1fr); } }
+
+/* Vragen */
+.vragen { display: flex; flex-direction: column; border-top: 1px solid var(--lijn); max-width: 820px; }
+.vragen details { border-bottom: 1px solid var(--lijn); }
+.vragen summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; position: relative; font: 700 19px/1.3 var(--kop); }
+.vragen summary::-webkit-details-marker { display: none; }
+.vragen summary::after { content: "+"; position: absolute; right: 6px; top: 16px; font-size: 26px; color: var(--groen); }
+.vragen details[open] summary::after { content: "−"; }
+.vragen details p { padding: 0 0 22px; color: var(--mu); max-width: 66ch; }
+
+/* Aanvragen */
+.aanvraag { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 48px; align-items: start; }
+.aanvraag .uitleg { display: flex; flex-direction: column; gap: 16px; }
+.aanvraag .uitleg p { color: var(--mu); }
+form { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 18px; padding: 26px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+form .heel { grid-column: 1 / -1; }
+form label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 15px; }
+form label small { font-weight: 400; color: var(--mu); }
+input, select, textarea { font: 400 17px/1.4 var(--tekst); color: var(--inkt); background: var(--papier); border: 1.5px solid var(--lijn); border-radius: 11px; padding: 12px 13px; width: 100%; min-width: 0; }
+textarea { min-height: 120px; resize: vertical; }
+.keuzes { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0; }
+.keuzes legend { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.keuzes label { flex-direction: row; align-items: center; gap: 8px; padding: 10px 14px; border: 1.5px solid var(--lijn); border-radius: 11px; font-weight: 600; cursor: pointer; }
+.keuzes input { width: 18px; height: 18px; accent-color: var(--groen); }
+.verstopt { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+form .knop { justify-self: start; }
+.melding { font-weight: 600; padding: 14px 16px; border-radius: 12px; }
+.melding.goed { background: color-mix(in srgb, var(--groen) 14%, var(--vlak)); }
+.melding.fout { background: color-mix(in srgb, var(--streep) 16%, var(--vlak)); }
+form .privacy { font-size: 14px; color: var(--mu); }
+@media (max-width: 860px) { .aanvraag { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { form { grid-template-columns: minmax(0, 1fr); padding: 20px; } }
+
+/* Voet */
+.voet { border-top: 1px solid var(--lijn); }
+.voet .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; padding-block: 28px 36px; color: var(--mu); font-size: 15px; }
+.voet .wrap span:first-child { color: var(--inkt); font-weight: 700; margin-right: auto; }
+</style>
+</head>
+<body>
+
+<header class="kop">
+  <div class="wrap">
+    <a class="merk" href="#top"><i aria-hidden="true"></i>Bar-kassa</a>
+    <nav aria-label="Hoofdmenu">
+      <a href="#overstap">Barkaarten</a>
+      <a href="#kan">Wat het kan</a>
+      <a href="#prijzen">Prijzen</a>
+      <a href="#vragen">Vragen</a>
+    </nav>
+    <a class="knop vol" href="#aanvragen">Aanvragen</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="opening">
+    <div class="wrap">
+      <div>
+        <p class="etiket">Voor de kantine van je vereniging</p>
+        <h1 style="margin-top: 16px">De kassa op de telefoons die je al hebt.</h1>
+        <p class="lead">Afrekenen, barkaarten met tegoed, de streeplijst en de kasopmaak. Iedereen achter de bar werkt op zijn eigen telefoon, en alles klopt tot op de cent.</p>
+        <div class="knoppen">
+          <a class="knop vol" href="proef/">Probeer de proefversie</a>
+          <a class="knop rand" href="#prijzen">Bekijk de prijzen</a>
+        </div>
+        <p class="klein">De proefversie werkt meteen in je browser, met voorbeeldgegevens. Inloggen als Demo, wachtwoord proef1234.</p>
+      </div>
+      <div class="toneel" aria-hidden="true">
+        <div class="tel">
+          <div class="scherm">
+            <div class="bk"><span>Kantine</span><i></i><em>Anna</em></div>
+            <div class="cat">Drinken</div>
+            <div class="tegels">
+              <div class="tegel"><b>Bier</b><small>€ 2,80</small><u>2</u></div>
+              <div class="tegel"><b>Frisdrank</b><small>€ 2,20</small></div>
+              <div class="tegel"><b>Koffie</b><small>€ 1,80</small></div>
+              <div class="tegel"><b>Thee</b><small>€ 1,50</small></div>
+            </div>
+            <div class="cat">Eten</div>
+            <div class="tegels">
+              <div class="tegel"><b>Tosti</b><small>€ 3,00</small><u>1</u></div>
+              <div class="tegel"><b>Bitterballen</b><small>€ 5,00</small></div>
+            </div>
+            <div class="vul"></div>
+            <div class="balk"><span>Bestelling · 3</span><span>€ 8,60</span></div>
+            <div class="tabs"><span>Kassa</span><span>Kaarten</span><span>Streeplijst</span><span>Dienst</span></div>
+          </div>
+        </div>
+        <div class="barkaart">
+          <div><div class="t">Barkaart</div><div class="n">nr. 0042</div></div>
+          <div></div>
+          <div class="code">K7MQ-3XRP</div>
+          <svg viewBox="-1 -1 23 23" aria-hidden="true" shape-rendering="crispEdges"><path d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM8 0h1v1h-1zM11 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM16 0h1v1h-1zM17 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM14 1h1v1h-1zM20 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM9 2h1v1h-1zM12 2h1v1h-1zM14 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM17 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM16 4h1v1h-1zM17 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM14 5h1v1h-1zM20 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM15 6h1v1h-1zM16 6h1v1h-1zM17 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM12 7h1v1h-1zM0 8h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM11 8h1v1h-1zM13 8h1v1h-1zM14 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM20 8h1v1h-1zM0 9h1v1h-1zM5 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM17 9h1v1h-1zM18 9h1v1h-1zM0 10h1v1h-1zM1 10h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM11 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM0 11h1v1h-1zM1 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1zM10 11h1v1h-1zM13 11h1v1h-1zM15 11h1v1h-1zM16 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM1 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM6 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM12 12h1v1h-1zM14 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM8 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM17 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM0 14h1v1h-1zM1 14h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM12 14h1v1h-1zM16 14h1v1h-1zM19 14h1v1h-1zM0 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM19 15h1v1h-1zM0 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM0 17h1v1h-1zM2 17h1v1h-1zM3 17h1v1h-1zM4 17h1v1h-1zM6 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM15 17h1v1h-1zM16 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM0 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM6 18h1v1h-1zM9 18h1v1h-1zM11 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM9 19h1v1h-1zM13 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM0 20h1v1h-1zM1 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM20 20h1v1h-1z"/></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band licht" id="overstap">
+    <div class="wrap">
+      <div class="kopje">
+        <p class="etiket">Van strippenkaart naar barkaart</p>
+        <h2>Geen vakjes meer tellen achter de bar.</h2>
+        <p>Een kaart van € 10 met vakjes van 50 cent werkt, tot iemand € 3,40 moet afstrepen. De barkaart rekent zelf: scannen, afschrijven, klaar. Is het tegoed op, dan betaalt de klant de rest met contant, pin of op de streeplijst.</p>
+      </div>
+      <div class="overstap">
+        <div class="strip" aria-label="Papieren strippenkaart van 10 euro, 13 vakjes afgestreept">
+          <div class="t"><span>Strippenkaart</span><span>€ 10,-</span></div>
+          <div class="vakjes">
+            <span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span>
+            <span class="x">0,50</span><span class="x">0,50</span><span class="x">0,50</span><span>0,50</span><span>0,50</span><span>0,50</span><span>0,50</span><span>0,50</span><span>0,50</span><span>0,50</span>
+          </div>
+          <p class="rest">Nog over: zelf tellen. Kwijt is kwijt.</p>
+        </div>
+        <div class="pijl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="nieuw" aria-label="Kassabon van een barkaartbetaling">
+          <div class="rij"><span>Barkaart 0042</span><span>saldo € 3,50</span></div>
+          <div class="rij"><span>2× bier</span><span>€ 5,60</span></div>
+          <div class="rij"><span>Van de kaart</span><span>− € 3,50</span></div>
+          <div class="rij"><span>Rest contant</span><span>€ 2,10</span></div>
+        </div>
+      </div>
+      <div class="verschil">
+        <div><h3>Kwijt is niet weg</h3><p>Een verloren kaart blokkeer je met één tik. Het tegoed zet je over op een nieuwe kaart.</p></div>
+        <div><h3>Niet na te maken</h3><p>Elke kaart heeft een code die je niet kunt raden. Elke betaling staat geregistreerd, met tijd en medewerker.</p></div>
+        <div><h3>Saldo op de eigen telefoon</h3><p>Leden scannen hun kaart met de camera en zien wat er nog op staat. Er hoeft niemand voor in te loggen.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="kan">
+    <div class="wrap">
+      <div class="kopje">
+        <p class="etiket">Wat het kan</p>
+        <h2>Alles van de bar op één plek.</h2>
+      </div>
+      <div class="kan">
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><h3>Afrekenen</h3><p>Contant met wisselgeld, pin, barkaart of een combinatie. Ook gratis weggeven, met een reden.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M15 9h2v2h-2z"/></svg><h3>Barkaarten</h3><p>Kaarten met QR-code printen, opwaarderen en scannen met de camera van de telefoon.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 4v16M17 4v16M3 15l18-6"/></svg><h3>Streeplijst</h3><p>Leden zetten een streep en betalen later. Per maand een overzicht voor de incasso.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><h3>Rekeningen</h3><p>Een tafel of team op rekening, bijbestellen vanaf elke telefoon, aan het eind afrekenen.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="11" rx="2"/><path d="M7 8V5h10v3M3 12h18"/></svg><h3>Kasopmaak</h3><p>Openen met wisselgeld, aan het eind tellen per munt en biljet. De kassa weet wat er in de la hoort.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg><h3>Voorraad</h3><p>Leveringen inboeken, een waarschuwing als iets bijna op is, en een boodschappenlijst in één tik.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><h3>Overzichten</h3><p>Omzet per dag, product, medewerker en uur. Te exporteren naar Excel.</p></div>
+        <div><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.8-3.4 3.2-5 6-5s5.2 1.6 6 5M17 6.5a3 3 0 0 1 0 5.5M19 15c1.3.7 2.1 2.3 2.5 4"/></svg><h3>Medewerkers</h3><p>Iedereen een eigen inlog via een QR-code. In het logboek zie je wie wat deed.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band licht" id="prijzen">
+    <div class="wrap">
+      <div class="kopje">
+        <p class="etiket">Prijzen</p>
+        <h2>Twee manieren, dezelfde kassa.</h2>
+        <p>Op onze server, waarbij de telefoons via internet werken. Of een kastje in de kantine met een eigen wifi-netwerk, dat ook zonder internet werkt.</p>
+      </div>
+      <div class="bonnen">
+        <div class="bon">
+          <div class="naam">Op onze server</div>
+          <div class="sub">Geen apparatuur in de kantine</div>
+          <hr>
+          <div class="r tot"><span>Per kantine per maand</span><span>€ [__]</span></div>
+          <div class="r"><span>Eenmalig instellen</span><span>€ [__]</span></div>
+          <hr>
+          <ul>
+            <li>Eigen adres, beveiligd met https</li>
+            <li>Elke nacht een versleutelde back-up naar jullie mail</li>
+            <li>Updates en beveiliging door ons</li>
+            <li>Gescheiden van andere kantines: eigen gegevens, eigen kaarten</li>
+            <li>Hulp bij het inrichten</li>
+          </ul>
+          <p class="opm">De telefoons hebben internet nodig: de wifi van de kantine of mobiel internet.</p>
+          <a class="knop" href="#aanvragen" data-keus="server">Aanvragen</a>
+        </div>
+        <div class="bon">
+          <div class="naam">Kastje in de kantine</div>
+          <div class="sub">Werkt ook zonder internet</div>
+          <hr>
+          <div class="r tot"><span>Kastje, ingericht</span><span>€ [__]</span></div>
+          <div class="r"><span>Onderhoud per maand (optioneel)</span><span>€ [__]</span></div>
+          <hr>
+          <ul>
+            <li>Klein en zuinig kassakastje, klaar voor gebruik</li>
+            <li>Eigen wifi-netwerk voor de telefoons</li>
+            <li>Elk uur een back-up, ook op een USB-stick</li>
+            <li>Bijwerken met één knop in de app</li>
+            <li>Eventueel een eigen scherm aan de bar</li>
+          </ul>
+          <p class="opm">Stroom en een plekje achter de bar is genoeg.</p>
+          <a class="knop" href="#aanvragen" data-keus="kastje">Aanvragen</a>
+        </div>
+      </div>
+      <p class="prijsnoot">Pinnen doe je met je eigen pinapparaat, de kassa houdt bij wat er gepind is. Alle prijzen [inclusief/exclusief] btw.</p>
+    </div>
+  </section>
+
+  <section class="band" id="stevig">
+    <div class="wrap">
+      <div class="kopje">
+        <p class="etiket">Getest onder druk</p>
+        <h2>Gebouwd voor de drukste avond van het seizoen.</h2>
+      </div>
+      <div class="stevig">
+        <div><b>2.000+</b><p>bonnen per minuut met drie telefoons tegelijk in een stresstest, zonder één cent verschil.</p></div>
+        <div><b>0,03 s</b><p>om een afrekening op de server te verwerken. Wachten doe je op het pinapparaat, niet op de kassa.</p></div>
+        <div><b>Nooit dubbel</b><p>Valt de verbinding weg en tik je opnieuw, dan boekt de kassa de bestelling niet nog een keer.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band licht" id="vragen">
+    <div class="wrap">
+      <div class="kopje">
+        <p class="etiket">Vragen</p>
+        <h2>Wat clubs vaak vragen.</h2>
+      </div>
+      <div class="vragen">
+        <details><summary>Moeten we een app installeren?</summary><p>Nee. De kassa werkt in de browser van elke telefoon of tablet, Android en iPhone. Je kunt hem op het beginscherm zetten, dan opent hij als een app.</p></details>
+        <details><summary>Wat als het internet uitvalt?</summary><p>Met het kastje in de kantine heb je geen internet nodig: de telefoons werken via de eigen wifi van het kastje. Op onze server hebben de telefoons internet nodig, maar mobiel internet is genoeg. Een bestelling die door een haperende verbinding opnieuw wordt verstuurd, wordt nooit dubbel geboekt.</p></details>
+        <details><summary>Kunnen we onze strippenkaarten blijven gebruiken?</summary><p>Ja, tijdens de overstap. Nieuw tegoed gaat op de barkaart, en de oude kaarten lopen vanzelf leeg. Daarna werk je alleen nog met barkaarten.</p></details>
+        <details><summary>Waar staan onze gegevens?</summary><p>Op onze server bij netcup, in de EU, of in jullie eigen kastje. Elke kantine heeft een eigen database. Een andere kantine kan jullie gegevens en kaarten niet zien.</p></details>
+        <details><summary>Kunnen we het eerst proberen?</summary><p>Ja. De <a href="proef/">proefversie</a> werkt meteen in je browser, met twee weken voorbeeldgegevens. Wat je daar doet, blijft op je eigen apparaat.</p></details>
+        <details><summary>Hoe zit het met het pinnen?</summary><p>Pinnen doe je met je eigen pinapparaat. In de kassa tik je op Pin, en de kassa telt het mee in de omzet en de kasopmaak.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="aanvragen">
+    <div class="wrap aanvraag">
+      <div class="uitleg">
+        <p class="etiket">Aanvragen</p>
+        <h2>Zullen we het voor jullie kantine regelen?</h2>
+        <p>Laat je gegevens achter. We nemen binnen [twee werkdagen] contact op, en we kunnen vrijblijvend langskomen voor een demonstratie aan de bar.</p>
+        <p>Liever mailen? <b>[E-MAILADRES]</b></p>
+      </div>
+      <form id="formulier" novalidate>
+        <label>Je naam<input id="f-naam" name="naam" autocomplete="name" required maxlength="80"></label>
+        <label>Vereniging of kantine<input id="f-club" name="club" autocomplete="organization" required maxlength="120"></label>
+        <label>E-mailadres<input id="f-email" name="email" type="email" autocomplete="email" required maxlength="120"></label>
+        <label>Telefoon <small>(mag leeg)</small><input id="f-tel" name="telefoon" type="tel" autocomplete="tel" maxlength="30"></label>
+        <fieldset class="keuzes heel">
+          <legend>Waar denk je aan?</legend>
+          <label><input type="radio" name="keus" value="server" id="f-server">Op jullie server</label>
+          <label><input type="radio" name="keus" value="kastje" id="f-kastje">Kastje in de kantine</label>
+          <label><input type="radio" name="keus" value="weet niet" id="f-weetniet" checked>Weet ik nog niet</label>
+        </fieldset>
+        <label class="heel">Vertel iets over jullie bar <small>(mag leeg)</small><textarea id="f-bericht" name="bericht" maxlength="2000" placeholder="Bijvoorbeeld: hoeveel kantines, hoe jullie nu afrekenen, of je barkaarten wilt gebruiken."></textarea></label>
+        <label class="verstopt" aria-hidden="true">Laat dit leeg<input id="f-website" name="website" tabindex="-1" autocomplete="off"></label>
+        <p class="privacy heel">We gebruiken je gegevens alleen om contact met je op te nemen. Zie de <a href="privacy.html">privacyverklaring</a>.</p>
+        <button class="knop vol" type="submit" id="f-verstuur">Aanvraag versturen</button>
+        <div id="f-melding" class="heel" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="voet">
+  <div class="wrap">
+    <span>Bar-kassa · © 2026 BSGRF</span>
+    <span>KvK [__]</span>
+    <a href="privacy.html">Privacy</a>
+    <a href="proef/">Proefversie</a>
+  </div>
+</footer>
+<script src="site.js"></script>
+</body>
+</html>

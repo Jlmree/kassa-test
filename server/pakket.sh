@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Maakt het installatiebestand kassa-installatie.run: één bestand met de app,
 # de databasebestanden, de serverscripts, de programma's PostgREST en Supabase Auth,
-# de voorwaarden (LICENTIE.txt) en de licenties van die onderdelen (ONDERDELEN.txt).
+# de voorwaarden (LICENTIE.txt), de licenties van die onderdelen (ONDERDELEN.txt) en de
+# verkoopwebsite met de proefversie (site/, dist-proef/).
 #   server/pakket.sh [versie]
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -27,7 +28,10 @@ trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/bin" "$T/auth" "$T/supabase" "$T/server"
 cp -r dist "$T/dist" && rm -f "$T/dist/config.js"
 cp -r supabase/migrations "$T/supabase/"
-cp server/*.sh server/welkom.html "$T/server/"
+cp server/*.sh server/*.py server/welkom.html "$T/server/"
+# De verkoopwebsite (website.sh), met de proefversie onder /proef/.
+npm run build:proef >/dev/null
+cp -r site "$T/website" && cp -r dist-proef "$T/website/proef"
 install -m 755 "$CACHE/postgrest-$POSTGREST_VERSIE" "$T/bin/postgrest"
 tar xzf "$CACHE/auth-$AUTH_VERSIE.tar.gz" -C "$T/auth"
 echo "$VERSIE" > "$T/versie"
