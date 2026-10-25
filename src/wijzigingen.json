@@ -1,5 +1,15 @@
 [
   {
+    "datum": "2026-10-25",
+    "titel": "Veiliger op internet, en de telefoon trilt",
+    "punten": [
+      "De telefoon trilt kort als een betaling of opwaardering gelukt is, en drie keer bij een foutmelding. Handig als het druk en lawaaiig is. (iPhones trillen niet vanuit een website.)",
+      "Een nieuwe kassa op een server op internet laat alleen medewerkers met een uitnodiging toe. Zelf aanmelden kan de beheerder aanzetten bij Beheer → Medewerkers.",
+      "De webserver stuurt extra beveiligingsregels mee, zoals dat de browser de kassa altijd via https opent.",
+      "De installatie waarschuwt als je op de server met een wachtwoord kunt inloggen, en legt uit hoe het veiliger kan met een sleutel."
+    ]
+  },
+  {
     "datum": "2026-10-24",
     "titel": "Sneller en steviger als het druk is",
     "punten": [

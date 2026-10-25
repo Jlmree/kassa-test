@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
-import { bonTekst, eur, methodeNaam, datumTijd, saldoLink, type Bon } from './lib';
+import { bonTekst, eur, methodeNaam, datumTijd, saldoLink, tril, type Bon } from './lib';
 import logo from './logo.webp';
 
 // ─── Melding onderin ───
@@ -28,6 +28,7 @@ export function useBezig(): [boolean, <T>(f: () => Promise<T>) => Promise<T | un
     try {
       return await f();
     } catch (e) {
+      tril(false);
       melding(e instanceof Error ? e.message : String(e));
       return undefined;
     } finally {

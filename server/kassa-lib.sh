@@ -48,22 +48,41 @@ kassa_online() {
   local n
   for n in $(kassa_namen); do
     kassa_paden "$n"
-    [ -n "$(kassa_lees KASSA_DOMEIN)" ] && [ -z "$(kassa_lees KASSA_DUCKDNS_TOKEN)" ] && return 0
+    deze_kassa_online && return 0
   done
   return 1
+}
+# Staat de huidige kassa (na kassa_paden) op internet?
+deze_kassa_online() { [ -n "$(kassa_lees KASSA_DOMEIN)" ] && [ -z "$(kassa_lees KASSA_DUCKDNS_TOKEN)" ]; }
+
+# Mag iemand met een wachtwoord inloggen op deze server (SSH)? Op internet proberen
+# robots dat de hele dag; met een sleutel kan dat niet.
+ssh_wachtwoord_aan() {
+  command -v sshd >/dev/null || return 1
+  sshd -T 2>/dev/null | grep -qi '^passwordauthentication yes'
 }
 
 # Schrijft /etc/caddy/Caddyfile voor alle kassa's op deze server.
 caddy_schrijven() {
-  local n domein token auth rest pad blok sites="" intern=0 http_blok=""
+  local n domein token auth rest pad hsts blok sites="" intern=0 http_blok=""
   for n in $(kassa_namen); do
     kassa_paden "$n"
     domein=$(kassa_lees KASSA_DOMEIN); token=$(kassa_lees KASSA_DUCKDNS_TOKEN)
     auth=$(kassa_lees KASSA_AUTH_POORT); auth=${auth:-9999}
     rest=$(kassa_lees KASSA_REST_POORT); rest=${rest:-3000}
     pad=$(sed -n 's/^PAD=//p' "$K_ETC/download.env" 2>/dev/null)
+    # Met een eigen adres: de browser gebruikt daarna altijd https (op een IP-adres negeert de browser dit).
+    hsts=""
+    [ -n "$domein" ] && hsts="
+		Strict-Transport-Security \"max-age=31536000\""
     blok="
 	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		-Server$hsts
+	}
 	handle_path /auth/v1/* {
 		reverse_proxy 127.0.0.1:$auth
 	}

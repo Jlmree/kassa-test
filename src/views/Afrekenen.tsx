@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../data';
-import { centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, type Bon, type KaartInfo, type Regel } from '../lib';
+import { centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, tril, type Bon, type KaartInfo, type Regel } from '../lib';
 import { KiesLid, type Lid } from './Streeplijst';
 import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useSheet } from '../ui';
 
@@ -33,6 +33,7 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       p_verwacht_cent: totaal,
       p_sleutel: sleutel,
     });
+    tril(true);
     onKlaar();
     void herlaad();
     open(<BonScherm bon={bon} nieuw />);

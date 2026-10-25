@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useData } from '../data';
-import { centTekst, datumTijd, eur, lees, naarCent, nieuweSleutel, rpc, sb, type KaartInfo } from '../lib';
+import { centTekst, datumTijd, eur, lees, naarCent, nieuweSleutel, rpc, sb, tril, type KaartInfo } from '../lib';
 import { Bedrag, melding, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { KaartKiezen } from './Afrekenen';
 
@@ -97,6 +97,7 @@ export function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () =
     if (!(bedrag > 0)) throw new Error('Kies of vul een bedrag in');
     const saldo = await rpc<number>('kaart_opwaarderen', { p_kaart_id: k.id, p_bedrag_cent: bedrag, p_methode: methode, p_sleutel: sleutel.current });
     sleutel.current = nieuweSleutel();
+    tril(true);
     setV('');
     await laad();
     onWijziging();

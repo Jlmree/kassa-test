@@ -38,6 +38,11 @@ function vertaal(m: string) {
   return m.replace(/€ (\d+)\.(\d{2})\b/g, '€ $1,$2');
 }
 
+/** Kort trillen bij een geslaagde betaling, drie keer bij een fout (in een drukke kantine hoor je de telefoon niet). iPhones trillen niet vanuit een website. */
+export function tril(goed: boolean) {
+  try { navigator.vibrate?.(goed ? 40 : [70, 60, 70, 60, 70]); } catch { /* geen trilfunctie */ }
+}
+
 // Uniek kenmerk voor één afrekening of opwaardering. Valt de verbinding weg en
 // tikt de medewerker opnieuw, dan stuurt de app hetzelfde kenmerk mee en boekt
 // de server niet nog een keer.
