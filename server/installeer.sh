@@ -562,6 +562,9 @@ for n in $KASSAS; do
   kassa_paden "$n"
   if [ "$(su postgres -c "psql -d $K_DB -Atc \"select count(*) from public.profielen where rol = 'beheerder' and actief\"")" = 0 ]; then
     su postgres -c "psql -d $K_DB -qc 'update public.instellingen set eerste_account_wordt_beheerder = false'"
+    # Nieuwe kassa op internet: medewerkers komen er alleen met een uitnodiging in, anders
+    # kan iedereen die het adres vindt een account aanmaken (de beheerder kan het later aanzetten).
+    deze_kassa_online && su postgres -c "psql -d $K_DB -qc 'update public.instellingen set zelf_aanmelden = false'"
     if [ "$n" = "$NAAM" ] && [ -t 0 ]; then
       stap "Beheerder aanmaken$([ "$n" = kassa ] || echo " voor kassa \"$n\"")"
       "$OPT/bin/beheerder.sh" "$n" || GEEN_BEHEERDER+=" $n"
@@ -612,12 +615,24 @@ for n in $KASSAS; do
   echo
 done
 [ -f /etc/systemd/system/kassa-scherm.service ] && echo "Eigen scherm: de kassa staat ook op het scherm van deze server (onderhoud: Ctrl+Alt+F2)."
-echo "Medewerkers maken in de app zelf een account aan; de beheerder keurt ze goed bij Beheer → Medewerkers."
 if kassa_online; then
+  echo "Medewerkers van een kassa op internet voeg je toe met een uitnodiging: Beheer → Medewerkers → Uitnodigen."
   echo "Back-ups: elk uur als er iets veranderd is, in /var/backups/kassa. Download ze ook geregeld in de app (Beheer → Instellingen → Back-up downloaden)."
   [ -f /etc/systemd/system/kassa-firewall.service ] && echo "Beveiliging: firewall aan ($OPT/bin/firewall.sh status), veiligheidsupdates gaan vanzelf."
+  if ssh_wachtwoord_aan; then
+    # 00-: sshd neemt de eerste waarde die het leest, dus vóór bijvoorbeeld 50-cloud-init.conf.
+    printf '\n\033[1;33mLet op: op deze server kun je met een wachtwoord inloggen (SSH).\033[0m\n'
+    echo "Robots op internet proberen de hele dag wachtwoorden. Veiliger is inloggen met een sleutel:"
+    echo "  1. Op je eigen computer:  ssh-keygen      (eenmalig; Enter, Enter)"
+    echo "  2. Op je eigen computer:  ssh-copy-id root@$IP"
+    echo "  3. Lukt inloggen nu zonder wachtwoord? Zet dan op deze server wachtwoorden uit:"
+    echo "     echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/00-kassa.conf && systemctl reload ssh"
+    echo "  Doe stap 3 pas als stap 2 werkt, anders kom je zelf niet meer binnen. Lukt het niet,"
+    echo "  dan kun je bij de verhuurder (bijvoorbeeld netcup) altijd via de webconsole inloggen."
+  fi
 else
   echo "Back-ups: elk uur als er iets veranderd is, in /var/backups/kassa (en versleuteld op een USB-stick met de naam KASSA-BACKUP als die erin zit)."
+  echo "Medewerkers maken in de app zelf een account aan; de beheerder keurt ze goed bij Beheer → Medewerkers."
 fi
 echo "Bijwerken naar een nieuwe versie:    in de app bij Beheer → Instellingen, of $OPT/bin/bijwerken.sh (als root)"
 [ "$WIFI_OK" = 1 ] && echo "Wifi-naam en wachtwoord later nog eens zien: $OPT/bin/wifi.sh status"
