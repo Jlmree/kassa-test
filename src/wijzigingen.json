@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Boekhouding downloaden op de telefoon",
+    "punten": [
+      "Op een telefoon gaf het downloaden van de boekhouding (Excel) soms een fout. Nu maakt de kassa eerst het bestand en toont daarna een knop Downloaden; op een telefoon ook Opslaan of delen (bijv. naar Bestanden, mail of WhatsApp).",
+      "Ook de CSV-bestanden blijven langer beschikbaar, zodat een iPhone ze na de vraag \"Downloaden?\" nog kan opslaan."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Kaarten printen vanuit Kaarten",
     "punten": [
       "Op een kaart staat nu de knop Kaart printen: op creditcardformaat, met de achterkant erbij als je dat wilt. Handig als een kaart kapot of kwijt is.",

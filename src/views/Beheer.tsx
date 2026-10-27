@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
-import { bestandOpslaan, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
-import { KaartenPrinten, melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
+import { BestandKlaar, KaartenPrinten, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
@@ -118,6 +118,7 @@ function Rapport() {
   const [eigen, setEigen] = useState<[string, string]>([isoDag(dagStart(new Date())), isoDag(dagStart(new Date()))]);
   const [r, setR] = useState<RapportData | null>(null);
   const [bezig, run] = useBezig();
+  const { open } = useSheet();
   const [van, tot] = keuze === 'Zelf kiezen'
     ? [new Date(eigen[0] + 'T06:00'), plusDagen(new Date(eigen[1] + 'T06:00'), 1)]
     : periode(keuze);
@@ -150,7 +151,7 @@ function Rapport() {
   const boekhouding = () => run(async () => {
     const { boekhoudingMaken } = await import('../boekhouding');
     const { naam, blob } = await boekhoudingMaken(isoDag(van), isoDag(plusDagen(tot, -1)));
-    bestandOpslaan(naam, blob);
+    open(<BestandKlaar naam={naam} blob={blob} uitleg="Open het in Excel, Numbers of Google Spreadsheets. Elk onderdeel staat op een eigen tabblad." />);
   });
   const exporteerProducten = () => {
     if (!r) return;

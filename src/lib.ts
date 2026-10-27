@@ -204,15 +204,7 @@ export function downloaden(naam: string, inhoud: string, type = 'text/csv;charse
   document.body.append(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-/** Een bestand (bijv. Excel) laten opslaan. */
-export function bestandOpslaan(naam: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement('a'), { href: url, download: naam });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // Ruim de tijd: een iPhone vraagt eerst of je wilt downloaden, en leest het bestand pas daarna.
+  setTimeout(() => URL.revokeObjectURL(url), 120_000);
 }
 export const csvRij = (v: unknown[]) => v.map((x) => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';');
