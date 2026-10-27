@@ -201,6 +201,66 @@ export function QrKaart({ nummer, code, winkel }: { nummer: number; code: string
   );
 }
 
+/** Achterkant van een tegoedkaart: het logo groot in het midden, met de naam van de bar. */
+export function KaartAchter({ winkel, naam }: { winkel: string; naam: boolean }) {
+  return (
+    <div className="kk kk-achter">
+      <img src={logo} alt="" />
+      {naam && <b>{winkel}</b>}
+    </div>
+  );
+}
+
+/**
+ * Tegoedkaarten om te printen: per A4 tien (2 naast elkaar, 5 onder elkaar). Met achterkant
+ * komt na elk vel een vel achterkanten, per rij links en rechts verwisseld: dubbelzijdig
+ * printen en omslaan langs de lange kant, dan valt elke achterkant achter zijn eigen kaart.
+ */
+export function KaartenVellen({ lijst, winkel }: { lijst: { nummer: number; code: string }[]; winkel: string }) {
+  const lees = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+  const [achter, setAchter] = useState(() => lees('kaart-achterkant', '1') === '1');
+  const [naam, setNaam] = useState(() => lees('kaart-achter-naam', '1') === '1');
+  const [dx, setDx] = useState(() => lees('kaart-achter-dx', '0'));
+  const [dy, setDy] = useState(() => lees('kaart-achter-dy', '0'));
+  const bewaar = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* geen opslag */ } };
+  const mm = (v: string) => Math.max(-10, Math.min(10, parseFloat(v.replace(',', '.')) || 0));
+  const vellen: { nummer: number; code: string }[][] = [];
+  for (let i = 0; i < lijst.length; i += 10) vellen.push(lijst.slice(i, i + 10));
+  return (
+    <>
+      <label className="check"><input type="checkbox" checked={achter} onChange={(e) => { setAchter(e.target.checked); bewaar('kaart-achterkant', e.target.checked ? '1' : '0'); }} />
+        <span>Achterkant meeprinten (logo{naam ? ' en naam' : ''})<br /><span className="mu">Print dubbelzijdig en kies "omslaan langs de lange kant", op 100%.</span></span></label>
+      {achter && <>
+        <label className="check"><input type="checkbox" checked={naam} onChange={(e) => { setNaam(e.target.checked); bewaar('kaart-achter-naam', e.target.checked ? '1' : '0'); }} /><span>Naam van de bar op de achterkant</span></label>
+        <details>
+          <summary>Valt de achterkant net niet goed? Schuif hem op</summary>
+          <p className="mu">Print eerst één vel en houd het tegen het licht. Positief is naar rechts of naar beneden, in millimeters.</p>
+          <div className="inl">
+            <label style={{ flex: 1, margin: 0 }}>Opzij (mm)<input className="f" inputMode="decimal" value={dx} onChange={(e) => { setDx(e.target.value); bewaar('kaart-achter-dx', e.target.value); }} /></label>
+            <label style={{ flex: 1, margin: 0 }}>Omhoog/omlaag (mm)<input className="f" inputMode="decimal" value={dy} onChange={(e) => { setDy(e.target.value); bewaar('kaart-achter-dy', e.target.value); }} /></label>
+          </div>
+        </details>
+      </>}
+      <div className="print">
+        {vellen.map((vel, v) => (
+          <div key={v}>
+            <div className="kaarten vel">{vel.map((k) => <QrKaart key={k.nummer} nummer={k.nummer} code={k.code} winkel={winkel} />)}</div>
+            {achter && (
+              <div className="kaarten vel achter" style={{ transform: `translate(${mm(dx)}mm, ${mm(dy)}mm)` }}>
+                {Array.from({ length: Math.ceil(vel.length / 2) * 2 }, (_, i) => {
+                  // Per rij omgedraaid: de achterkant van de linkerkaart staat rechts.
+                  const k = vel[i % 2 === 0 ? i + 1 : i - 1];
+                  return k ? <KaartAchter key={i} winkel={winkel} naam={naam} /> : <div key={i} className="kk-leeg" />;
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function Qr({ tekst }: { tekst: string }) {
   const q = qrcode(0, 'M');
   q.addData(tekst);

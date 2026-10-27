@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
 import { bestandOpslaan, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
-import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
+import { KaartenVellen, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
@@ -448,9 +448,7 @@ function KaartenMaken() {
       <h2>{lijst.length} kaarten</h2>
       <div className="btns"><button className="big" onClick={() => window.print()}>Printen of PDF</button></div>
       <p className="mu">Op creditcardformaat, tien per A4. Print op 100% (niet "passend maken") en knip langs de stippellijnen.</p>
-      <div className="print kaarten">
-        {lijst.map((k) => <QrKaart key={k.nummer} nummer={k.nummer} code={k.code} winkel={winkel} />)}
-      </div>
+      <KaartenVellen lijst={lijst} winkel={winkel} />
     </>,
   );
   const maken = () => run(async () => toon(await rpc('kaarten_maken', { p_aantal: parseInt(n) || 0 })));
