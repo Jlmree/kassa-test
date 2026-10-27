@@ -508,6 +508,7 @@ test('na te veel verkeerde codes is de saldo-pagina even dicht', async () => {
   for (let i = 0; i < 10; i++) await rpc(anon, 'kaart_saldo', { p_code: `ZZZZ-ZZ${String(i).padStart(2, '2')}` });
   assert.match((await rpc(anon, 'kaart_saldo', { p_code: kaart.code })).fout, /Te veel verkeerde codes/);
   assert.match((await rpc(anon, 'lid_overzicht', { p_code: kaart.code })).fout, /Te veel verkeerde codes/);
+  assert.match((await rpc(anon, 'bon_bekijken', { p_code: 'f'.repeat(24) })).fout, /Te veel verkeerde codes/);
 });
 
 test('te weinig wisselgeld: de rest als tegoed op een barkaart', async () => {
@@ -738,5 +739,21 @@ test('btw: standaard uit; aan = tarief per product, vastgelegd op de bon, per ta
   assert.deepEqual(d.regels.filter((r) => r.bon === bon.bonnummer).map((r) => r.btw), [21, 9]);
   await faalt(rpc(bar, 'btw_overzicht', uur), 'beheerder');
   await rpc(baas, 'btw_instellen', { p_aan: false, p_nummer: null });
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
+});
+
+test('bon via QR-code: alleen met de geheime code, zonder inloggen', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  const bon = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 2 }], p_betalingen: [{ methode: 'pin', bedrag_cent: 200 }] });
+  assert.match(bon.deel_code, /^[0-9a-f]{24}$/);
+  // Een andere telefoon dan die bij de saldo-test geblokkeerd is.
+  const anon = createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { 'x-forwarded-for': '10.1.2.3' } } });
+  const b = await rpc(anon, 'bon_bekijken', { p_code: bon.deel_code });
+  assert.deepEqual([b.bonnummer, b.totaal_cent, b.regels.map((r) => r.naam), b.id, b.deel_code], [bon.bonnummer, 200, ['Koffie'], undefined, undefined]);
+  assert.match((await rpc(anon, 'bon_bekijken', { p_code: 'f'.repeat(24) })).fout, /niet gevonden/);
+  assert.match((await rpc(anon, 'bon_bekijken', { p_code: '1234' })).fout, /klopt niet/);
+  // Twee bonnen, twee verschillende codes.
+  const bon2 = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Koffie').id, aantal: 1 }], p_betalingen: [{ methode: 'pin', bedrag_cent: 100 }] });
+  assert.notEqual(bon2.deel_code, bon.deel_code);
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
 });

@@ -99,6 +99,10 @@ export function uitnodigingLink(code: string) {
 export const lidLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?lid=' + encodeURIComponent(code);
 export const lidGevraagd = () => new URLSearchParams(location.search).get('lid');
 
+/** Link voor de klant: opent deze bon, zonder inloggen. */
+export const bonLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?bon=' + encodeURIComponent(code);
+export const bonGevraagd = () => new URLSearchParams(location.search).get('bon');
+
 /** Link voor op de kaart: opent de saldo-pagina van deze kassa. */
 export const saldoLink = (code: string) => location.origin + location.pathname.replace(/[^/]*$/, '') + '?saldo=' + encodeURIComponent(code);
 
@@ -154,6 +158,8 @@ export interface Bon {
   totaal_cent: number; geannuleerd: boolean; winkel: string;
   regels: { naam: string; prijs_cent: number; aantal: number; btw_pct?: number }[]; betalingen: Betaling[];
   btw_aan?: boolean; btw_nummer?: string | null;
+  /** Geheime code voor de bon-link (QR-code voor de klant). */
+  deel_code?: string;
 }
 export interface Dienst {
   id: number; geopend_ts: string; gesloten_ts: string | null; geopend_door: string | null; gesloten_door: string | null;
