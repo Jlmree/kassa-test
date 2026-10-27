@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
-import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
+import { bestandOpslaan, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
 import { melding, Qr, QrKaart, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
@@ -147,6 +147,11 @@ function Rapport() {
         m(b, 'contant'), m(b, 'pin'), m(b, 'kaart'), m(b, 'lat'), m(b, 'gratis'), b.geannuleerd ? 'ja' : '', b.verkoop_regels.map((l) => `${l.aantal}x ${l.naam}`).join(', ')])));
     downloaden(`verkopen-${isoDag(van)}-tot-${isoDag(plusDagen(tot, -1))}.csv`, csv.join('\n'));
   });
+  const boekhouding = () => run(async () => {
+    const { boekhoudingMaken } = await import('../boekhouding');
+    const { naam, blob } = await boekhoudingMaken(isoDag(van), isoDag(plusDagen(tot, -1)));
+    bestandOpslaan(naam, blob);
+  });
   const exporteerProducten = () => {
     if (!r) return;
     downloaden(`producten-${isoDag(van)}-tot-${isoDag(plusDagen(tot, -1))}.csv`,
@@ -212,6 +217,8 @@ function Rapport() {
             <Ingeklapt lijst={r.diensten} n={5} rij={(d) => <DienstRij key={d.id} d={d} />} />
             {!r.diensten.length && <p className="mu">Geen diensten in deze periode.</p>}
           </Blok>
+          <button className="big" disabled={bezig} onClick={boekhouding}>Boekhouding (Excel)</button>
+          <p className="mu">Alles van deze periode in één Excel-bestand, per kalenderdag ({datum(isoDag(van))} t/m {datum(isoDag(plusDagen(tot, -1)))}): samenvatting, per dag, bonnen, bonregels, producten, kasopmaak, barkaarten, streeplijst en uitgaven.</p>
           <div className="btns" style={{ marginTop: 16 }}>
             <button disabled={bezig} onClick={exporteer}>Bonnen als CSV</button>
             <button onClick={exporteerProducten}>Producten als CSV</button>
