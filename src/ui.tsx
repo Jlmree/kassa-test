@@ -5,16 +5,23 @@ import logo from './logo.webp';
 
 // ─── Melding onderin ───
 
-let zetMelding: (t: string) => void = () => {};
-export const melding = (t: string) => zetMelding(t);
+let zetMelding: (t: string, goed?: boolean) => void = () => {};
+/** Melding onderin die vanzelf verdwijnt. goed: groen met een vinkje, bijv. "Afrekenen gelukt". */
+export const melding = (t: string, goed = false) => zetMelding(t, goed);
 
 export function Melding() {
-  const [t, setT] = useState('');
+  const [m, setM] = useState<{ t: string; goed: boolean; n: number } | null>(null);
   useEffect(() => {
-    let h: number;
-    zetMelding = (x) => { setT(x); clearTimeout(h); h = window.setTimeout(() => setT(''), 2600); };
+    let h: number, n = 0;
+    zetMelding = (t, goed = false) => { setM({ t, goed, n: ++n }); clearTimeout(h); h = window.setTimeout(() => setM(null), 2600); };
   }, []);
-  return t ? <div className="toast" role="status">{t}</div> : null;
+  if (!m) return null;
+  return (
+    <div key={m.n} className={'toast' + (m.goed ? ' goed' : '')} role="status">
+      {m.goed && <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
+      {m.t}
+    </div>
+  );
 }
 
 /** Voert een actie uit, blokkeert dubbel tikken en toont fouten als melding. */
@@ -28,7 +35,7 @@ export function useBezig(): [boolean, <T>(f: () => Promise<T>) => Promise<T | un
     try {
       return await f();
     } catch (e) {
-      tril(false);
+      tril('fout');
       melding(e instanceof Error ? e.message : String(e));
       return undefined;
     } finally {
@@ -242,7 +249,7 @@ export function Scanner({ onCode, voorkant = false, zonderCamera = 'Camera niet 
               val = jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height)?.data ?? '';
             }
           } catch { /* volgende frame */ }
-          if (val && val !== laatst) { laatst = val; setTimeout(() => (laatst = ''), 2500); cb.current(val); }
+          if (val && val !== laatst) { laatst = val; setTimeout(() => (laatst = ''), 2500); tril('scan'); cb.current(val); }
         }
         // Vijf keer per seconde kijken is genoeg en houdt de telefoon koel.
         t = window.setTimeout(tik, 200);

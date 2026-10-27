@@ -33,7 +33,8 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       p_verwacht_cent: totaal,
       p_sleutel: sleutel,
     });
-    tril(true);
+    tril('goed');
+    melding(`Afrekenen gelukt · ${eur(bon.totaal_cent)}`, true);
     onKlaar();
     void herlaad();
     open(<BonScherm bon={bon} nieuw />);

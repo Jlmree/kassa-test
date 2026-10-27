@@ -147,7 +147,14 @@ textarea.f { height: 120px; font: 12px monospace; }
 .stamp { color: #b23a26; text-align: center; font-weight: 800; border: 2px solid #b23a26; padding: 2px; margin: 6px 0; }
 .qr svg { width: 100%; height: auto; display: block; }
 
-.toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 16px; z-index: 30; font-weight: 600; max-width: calc(100% - 32px); text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 16px; z-index: 30; font-weight: 600; max-width: calc(100% - 32px); text-align: center; display: flex; align-items: center; gap: 8px; animation: toast 2.6s ease-out forwards; pointer-events: none; }
+.toast.goed { top: calc(env(safe-area-inset-top, 0px) + 14px); bottom: auto; background: #1f8a4c; color: #fff; padding: 12px 18px; font-size: 17px; white-space: nowrap; box-shadow: 0 10px 30px -12px #0008; animation-name: toast-boven; }
+@keyframes toast-boven { 0% { opacity: 0; transform: translate(-50%, -10px); } 8% { opacity: 1; transform: translate(-50%, 0); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+/* Erin schuiven, even blijven staan, dan vanzelf vervagen. */
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, 10px); } 8% { opacity: 1; transform: translate(-50%, 0); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+/* Onzichtbare schakelaar voor het tikje op een iPhone (zie tril in lib.ts). */
+.tik { position: fixed; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; left: -100px; top: 0; }
 .login { max-width: 420px; margin: 0 auto; padding: 40px 16px; }
 /* Logo van de club: doorschijnend op de achtergrond, op de bon en op de kaarten. */
 body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
