@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { DataProvider, useData } from './data';
-import { ingesteld, inlogEmail, lees, PROEF, rpc, lidGevraagd, saldoGevraagd, sb, uitnodigingGevraagd, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
+import { bonGevraagd, ingesteld, inlogEmail, lees, PROEF, rpc, lidGevraagd, saldoGevraagd, sb, uitnodigingGevraagd, zuilGevraagd, toonInlognaam, type Profiel } from './lib';
 import { proefLaden, proefOpnieuw } from '@proef';
 import { melding, Melding, SheetProvider, useBezig, useSheet } from './ui';
 import { Bestelling, Kassa, MandBalk, MandContext, useMand, type Mand } from './views/Kassa';
@@ -9,6 +9,7 @@ import { Rekeningen } from './views/Rekeningen';
 import { Kaarten } from './views/Kaarten';
 import { Dienst } from './views/Dienst';
 import { LidOverzicht, Saldo, SaldoZuil } from './views/Saldo';
+import { BonKlant } from './views/BonKlant';
 import { Streeplijst } from './views/Streeplijst';
 import { UitnodigingAannemen } from './views/Uitnodigen';
 import { Beheer } from './views/Beheer';
@@ -22,6 +23,8 @@ export function App() {
   if (uitn) return <>{PROEF && <ProefBalk />}<UitnodigingAannemen code={uitn} /><Melding /></>;
   const lid = lidGevraagd();
   if (lid != null) return <>{PROEF && <ProefBalk />}<LidOverzicht code={lid} /><Melding /></>;
+  const bon = bonGevraagd();
+  if (bon) return <>{PROEF && <ProefBalk />}<BonKlant code={bon} /><Melding /></>;
   const saldo = saldoGevraagd();
   if (saldo != null) return <>{PROEF && <ProefBalk />}<Saldo start={saldo} /><Melding /></>;
   return <>{PROEF && <ProefBalk />}<Inlog /><Melding /></>;

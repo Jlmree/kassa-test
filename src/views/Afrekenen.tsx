@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useData } from '../data';
-import { centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, tril, type Bon, type KaartInfo, type Regel } from '../lib';
+import { bonLink, centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, tril, type Bon, type KaartInfo, type Regel } from '../lib';
 import { KiesLid, type Lid } from './Streeplijst';
-import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useBonBeeld, useSheet } from '../ui';
+import { Bedrag, BonPapier, deelBon, melding, Qr, Rij, Scanner, useBezig, useBonBeeld, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
 type Methode = 'contant' | 'pin' | 'kaart' | 'lat' | 'gratis';
@@ -196,6 +196,7 @@ export function BonScherm({ bon: start, nieuw }: { bon: Bon; nieuw?: boolean }) 
   const [bezig, run] = useBezig();
   const [zeker, setZeker] = useState(false);
   const beeld = useBonBeeld(bon);
+  const [qr, setQr] = useState(false);
   const annuleren = () => run(async () => {
     const b = await rpc<Bon>('verkoop_annuleren', { p_verkoop_id: bon.id });
     setBon(b);
@@ -208,8 +209,15 @@ export function BonScherm({ bon: start, nieuw }: { bon: Bon; nieuw?: boolean }) 
       <BonPapier bon={bon} />
       <div className="btns">
         <button onClick={() => void deelBon(bon, beeld)}>Delen</button>
+        {bon.deel_code && <button className={qr ? 'on' : ''} aria-pressed={qr} onClick={() => setQr(!qr)}>QR voor de klant</button>}
         <button onClick={() => window.print()}>Printen of PDF</button>
       </div>
+      {qr && bon.deel_code && (
+        <div className="card c qr-bon">
+          <Qr tekst={bonLink(bon.deel_code)} />
+          <p>Laat de klant deze code scannen met de camera van de eigen telefoon. Dan opent de bon, zonder app of inloggen.</p>
+        </div>
+      )}
       {nieuw && <button className="big" onClick={sluit}>Nieuwe bestelling</button>}
       {magAnnuleren && !zeker && <button className="ghost" onClick={() => setZeker(true)}>Bon annuleren</button>}
       {magAnnuleren && zeker && (
