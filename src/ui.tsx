@@ -190,6 +190,30 @@ export async function deelBon(bon: Bon) {
 // ─── QR ───
 
 /** Tegoedkaart op creditcardformaat (85,6 × 54 mm), om te printen en uit te knippen. */
+/**
+ * Een gemaakt bestand (bijv. Excel) opslaan. Het maken duurt even; daarna moet je zelf nog
+ * een keer tikken, anders weigert een telefoon het downloaden of delen.
+ */
+export function BestandKlaar({ naam, blob, uitleg }: { naam: string; blob: Blob; uitleg?: string }) {
+  const [url] = useState(() => URL.createObjectURL(blob));
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  const bestand = new File([blob], naam, { type: blob.type });
+  const delen = typeof navigator.canShare === 'function' && navigator.canShare({ files: [bestand] }) && matchMedia('(pointer: coarse)').matches;
+  const deel = () => navigator.share({ files: [bestand], title: naam }).catch((e: Error) => {
+    if (e.name !== 'AbortError') melding('Delen lukte niet. Probeer Downloaden.');
+  });
+  return (
+    <>
+      <h2>Bestand is klaar</h2>
+      <p className="mu">{naam} · {Math.max(1, Math.round(blob.size / 1024))} kB</p>
+      {uitleg && <p>{uitleg}</p>}
+      {delen && <button className="big" onClick={() => void deel()}>Opslaan of delen</button>}
+      <a className={'big knop-link' + (delen ? ' alt' : '')} href={url} download={naam}>Downloaden</a>
+      {delen && <p className="mu">Op een telefoon kun je het bestand met Opslaan of delen direct in Bestanden zetten, mailen of naar de penningmeester sturen.</p>}
+    </>
+  );
+}
+
 export function QrKaart({ nummer, code, winkel }: { nummer: number; code: string; winkel: string }) {
   return (
     <div className="kk">
