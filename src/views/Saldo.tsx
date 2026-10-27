@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { datumTijd, eur, kaartCode, lidCode, methodeNaam, rpc } from '../lib';
+import { datumTijd, eur, kaartCode, lidCode, methodeNaam, rpc, vertaal } from '../lib';
 import { Rij, Scanner, useBezig } from '../ui';
 
 interface KaartSaldo {
@@ -9,7 +9,7 @@ interface KaartSaldo {
 // De server geeft een fout terug als {"fout": "..."} (zodat mislukte pogingen geteld blijven).
 async function zonderFout<T>(p: Promise<T | { fout: string }>): Promise<T> {
   const r = await p;
-  if (r && typeof r === 'object' && 'fout' in r) throw new Error(r.fout);
+  if (r && typeof r === 'object' && 'fout' in r) throw new Error(vertaal(r.fout));
   return r as T;
 }
 const saldoVan = (code: string) => zonderFout(rpc<KaartSaldo | { fout: string }>('kaart_saldo', { p_code: code }));

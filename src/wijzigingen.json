@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Proefversie: geprinte voorbeeldkaarten werken overal",
+    "punten": [
+      "De voorbeeldkaarten 1 tot en met 20 in de proefversie hebben nu vaste codes. Een geprinte proefkaart werkt daardoor op elke telefoon en ook na Wissen.",
+      "Wordt een kaart in de proefversie niet gevonden, dan legt de melding uit waarom: elke telefoon of browser heeft daar zijn eigen kaarten."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Boekhouding in één Excel-bestand",
     "punten": [
       "Bij Beheer → Rapport maakt de knop Boekhouding (Excel) één bestand met alles van de gekozen periode, per kalenderdag.",
