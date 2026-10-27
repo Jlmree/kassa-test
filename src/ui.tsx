@@ -221,6 +221,18 @@ export function KaartAchter({ winkel, naam }: { winkel: string; naam: boolean })
  * komt na elk vel een vel achterkanten, per rij links en rechts verwisseld: dubbelzijdig
  * printen en omslaan langs de lange kant, dan valt elke achterkant achter zijn eigen kaart.
  */
+/** Printblad voor barkaarten: kop, printknop, uitleg en de vellen. Eén kaart of honderd. */
+export function KaartenPrinten({ lijst, winkel }: { lijst: { nummer: number; code: string }[]; winkel: string }) {
+  return (
+    <>
+      <h2>{lijst.length === 1 ? `Kaart ${lijst[0].nummer} printen` : `${lijst.length} kaarten`}</h2>
+      <div className="btns"><button className="big" onClick={() => window.print()}>Printen of PDF</button></div>
+      <p className="mu">Op creditcardformaat, tien per A4. Print op 100% (niet "passend maken") en knip langs de stippellijnen.</p>
+      <KaartenVellen lijst={lijst} winkel={winkel} />
+    </>
+  );
+}
+
 export function KaartenVellen({ lijst, winkel }: { lijst: { nummer: number; code: string }[]; winkel: string }) {
   const lees = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const [achter, setAchter] = useState(() => lees('kaart-achterkant', '1') === '1');
