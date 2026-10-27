@@ -26,7 +26,8 @@ export async function lees<T>(q: PromiseLike<{ data: T | null; error: { message:
   return data as T;
 }
 
-function vertaal(m: string) {
+/** Foutmelding van de server in gewone taal. */
+export function vertaal(m: string) {
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Geen verbinding met de server. Controleer het internet en probeer opnieuw.';
   if (/Invalid login credentials/i.test(m)) return 'E-mailadres of wachtwoord klopt niet';
   if (/User already registered/i.test(m)) return 'Er bestaat al een account met dit e-mailadres';
@@ -34,6 +35,7 @@ function vertaal(m: string) {
   if (/rate limit/i.test(m)) return 'Te veel pogingen, wacht even en probeer opnieuw';
   if (/JWT expired/i.test(m)) return 'Je sessie is verlopen, log opnieuw in';
   if (/deadlock detected|could not serialize/i.test(m)) return 'Het was even heel druk op de kassa. Probeer het nog een keer.';
+  if (PROEF && /kaart.*niet gevonden/i.test(m)) return m.replace(/([^.?!])$/, '$1.') + ' In de proefversie heeft elke telefoon of browser zijn eigen kaarten. Alleen de voorbeeldkaarten 1 tot en met 20 werken overal; print die opnieuw bij Beheer → Kaarten.';
   // Bedragen uit de database staan met een punt (€ 31.00); in de app met een komma.
   return m.replace(/€ (\d+)\.(\d{2})\b/g, '€ $1,$2');
 }

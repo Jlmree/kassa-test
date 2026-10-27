@@ -32,6 +32,9 @@ begin
   perform set_config('request.jwt.claim.sub', demo::text, true);
   -- Eerst de kaarten, los van welke dagen de bar open was.
   perform public.kaarten_maken(20);
+  -- Vaste codes voor de voorbeeldkaarten 1 t/m 20: zo werken geprinte proefkaarten op elk
+  -- apparaat en ook na Wissen (de database van de proefversie staat per browser).
+  update public.kaarten k set code = (array['KDJN-N4GQ', 'BB94-4CF5', 'Q9PS-2MN9', 'W4JS-ZWFA', 'HPTV-NTFV', 'K2WZ-G22W', 'Y5UK-CR2X', 'VNDD-QB8J', 'JRVN-TQ7F', 'WX23-3XH3', 'YU9A-EHQ7', 'Y8CL-UDXJ', 'QERQ-P7UJ', '2YNC-SJX4', 'LQAP-WZFM', '48AK-HY3G', 'AWJT-LRM7', 'LZDS-UM9M', 'K2JL-K3LM', 'F26V-GBHW'])[k.nummer] where k.nummer between 1 and 20;
   -- Leden voor de streeplijst.
   perform public.lid_opslaan(null, x) from unnest(array['Bram', 'Daan', 'Eva', 'Fatima', 'Henk', 'Iris', 'Joost', 'Lotte', 'Mark', 'Noor', 'Sander', 'Yara']) x;
   for i in reverse 14..0 loop
