@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
-import { bonTekst, eur, methodeNaam, datumTijd, saldoLink, tril, type Bon } from './lib';
+import { bonBtw, bonTekst, eur, methodeNaam, datumTijd, saldoLink, tril, type Bon } from './lib';
 import logo from './logo.webp';
 
 // ─── Melding onderin ───
@@ -171,13 +171,52 @@ export function BonPapier({ bon }: { bon: Bon }) {
           {p.kaart_saldo_na != null && <div className="bl"><span>Saldo kaart</span><span>{eur(p.kaart_saldo_na)}</span></div>}
         </div>
       ))}
+      {bonBtw(bon).length > 0 && (
+        <div className="bon-btw">
+          {bonBtw(bon).map((x) => <div className="bl" key={x.pct}><span>Btw {x.pct}% over {eur(x.bruto)}</span><span>{eur(x.btw)}</span></div>)}
+          {bon.btw_nummer && <p className="c">Btw-nummer {bon.btw_nummer}</p>}
+        </div>
+      )}
       {bon.door_naam && <p className="c">Bediend door {bon.door_naam}</p>}
       <p className="c">Bedankt!</p>
     </div>
   );
 }
 
-export async function deelBon(bon: Bon) {
+/**
+ * De bon als afbeelding, alvast klaargemaakt zodra de bon in beeld is: een telefoon
+ * deelt alleen direct na het tikken, dan is er geen tijd meer om hem te tekenen.
+ */
+export function useBonBeeld(bon: Bon) {
+  const [beeld, setBeeld] = useState<File | null>(null);
+  useEffect(() => {
+    let weg = false;
+    setBeeld(null);
+    void import('./bonbeeld').then(({ bonAfbeelding }) => bonAfbeelding(bon))
+      .then((b) => { if (!weg) setBeeld(new File([b], `bon-${bon.bonnummer}.png`, { type: 'image/png' })); })
+      .catch(() => { /* dan als tekst */ });
+    return () => { weg = true; };
+  }, [bon]);
+  return beeld;
+}
+
+/** Bon delen: als afbeelding als dat kan, anders opslaan als afbeelding, anders als tekst. */
+export async function deelBon(bon: Bon, beeld?: File | null) {
+  if (beeld) {
+    try {
+      if (navigator.canShare?.({ files: [beeld] })) { await navigator.share({ files: [beeld] }); return; }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+    }
+    // Geen delen met bestanden (bijv. op een computer): de afbeelding downloaden.
+    if (!matchMedia('(pointer: coarse)').matches) {
+      const url = URL.createObjectURL(beeld);
+      Object.assign(document.createElement('a'), { href: url, download: beeld.name }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      melding('Bon opgeslagen als afbeelding');
+      return;
+    }
+  }
   const t = bonTekst(bon);
   try {
     if (navigator.share) { await navigator.share({ title: `Bon ${bon.bonnummer}`, text: t }); return; }

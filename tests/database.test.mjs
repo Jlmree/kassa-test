@@ -702,3 +702,41 @@ test('boekhouding: alles van een periode, sluitend; alleen voor de beheerder', a
   assert.equal(d.kaart_eind, kaarten.reduce((a, k) => a + k.saldo_cent, 0));
   assert.ok(d.diensten.length > 0 && d.uitgaven.length > 0);
 });
+
+test('btw: standaard uit; aan = tarief per product, vastgelegd op de bon, per tarief in het rapport', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  const bier = product('Bier'), fris = product('Frisdrank');
+  const bestel = [{ product_id: bier.id, aantal: 1 }, { product_id: fris.id, aantal: 2 }];
+  const contant = [{ methode: 'contant', bedrag_cent: 500, gegeven_cent: 500 }];
+  // Uit: geen btw op de bon, niets vastgelegd.
+  let bon = await rpc(bar, 'afrekenen', { p_regels: bestel, p_betalingen: contant });
+  assert.equal(bon.btw_aan, false);
+  const { data: oud } = await baas.from('verkoop_regels').select('btw_pct').eq('verkoop_id', bon.id);
+  assert.deepEqual(oud.map((r) => r.btw_pct), [null, null]);
+  // Alleen de beheerder zet hem aan en kiest tarieven.
+  await faalt(rpc(bar, 'btw_instellen', { p_aan: true, p_nummer: null }), 'beheerder');
+  await rpc(baas, 'btw_instellen', { p_aan: true, p_nummer: ' NL001234567B01 ' });
+  await faalt(rpc(baas, 'btw_tarief', { p_pct: 15, p_id: fris.id }), '21, 9 of 0');
+  assert.ok(await rpc(baas, 'btw_tarief', { p_pct: 21, p_categorie: 'Drinken' }) >= 2);
+  assert.equal(await rpc(baas, 'btw_tarief', { p_pct: 9, p_id: fris.id }), 1);
+  const uur = { p_van: new Date(Date.now() - 3600e3).toISOString(), p_tot: new Date(Date.now() + 3600e3).toISOString() };
+  const bruto = (o, pct) => o.find((x) => x.pct === pct)?.bruto_cent ?? 0;
+  const voor = await rpc(baas, 'btw_overzicht', uur);
+  bon = await rpc(bar, 'afrekenen', { p_regels: bestel, p_betalingen: contant });
+  assert.deepEqual([bon.btw_aan, bon.btw_nummer, bon.regels.map((r) => r.btw_pct)], [true, 'NL001234567B01', [21, 9]]);
+  // Gratis weggegeven telt niet mee voor de btw.
+  await rpc(bar, 'afrekenen', { p_regels: [{ product_id: bier.id, aantal: 1 }], p_betalingen: [{ methode: 'gratis', reden: 'Bardienst' }] });
+  const na = await rpc(baas, 'btw_overzicht', uur);
+  assert.deepEqual([bruto(na, 21) - bruto(voor, 21), bruto(na, 9) - bruto(voor, 9)], [200, 300]);
+  for (const x of na) assert.equal(x.btw_cent, Math.round((x.bruto_cent * x.pct) / (100 + x.pct)));
+  // Tarief later anders: de bon houdt het tarief van het moment van verkopen.
+  await rpc(baas, 'btw_tarief', { p_pct: 21, p_id: fris.id });
+  assert.deepEqual((await rpc(bar, 'bon', { p_verkoop_id: bon.id })).regels.map((r) => r.btw_pct), [21, 9]);
+  const vandaag = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const d = await rpc(baas, 'boekhouding', { p_van: vandaag, p_tot: vandaag });
+  assert.equal(d.btw_aan, true);
+  assert.deepEqual(d.regels.filter((r) => r.bon === bon.bonnummer).map((r) => r.btw), [21, 9]);
+  await faalt(rpc(bar, 'btw_overzicht', uur), 'beheerder');
+  await rpc(baas, 'btw_instellen', { p_aan: false, p_nummer: null });
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
+});

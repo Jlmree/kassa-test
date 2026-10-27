@@ -153,6 +153,8 @@ textarea.f { height: 120px; font: 16px/1.35 monospace; }
 .bon h3 { margin: 0; text-align: center; font-size: 20px; }
 .bon p { margin: 4px 0; }
 .bl { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.bon-btw { margin-top: 8px; font-size: 13px; }
+.bon-btw p { margin: 2px 0; }
 .bl.tt { border-top: 1px dashed #555; margin-top: 6px; padding-top: 6px; font-size: 16px; }
 .stamp { color: #b23a26; text-align: center; font-weight: 800; border: 2px solid #b23a26; padding: 2px; margin: 6px 0; }
 .qr svg { width: 100%; height: auto; display: block; }

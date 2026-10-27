@@ -1,4 +1,4 @@
-import { rpc } from './lib';
+import { btwIn, rpc } from './lib';
 import { maakXlsx, type Blad, type Cel } from './xlsx';
 
 // Boekhouding als Excel-bestand (Beheer → Rapport → Boekhouding): alles van een periode,
@@ -10,7 +10,7 @@ interface Bon {
   kaarten: string | null; lid: string | null; reden: string | null;
   geannuleerd: boolean; geannuleerd_ts: string | null; geannuleerd_door: string | null;
 }
-interface Regel { bon: number; ts: string; product: string; categorie: string; aantal: number; prijs: number; geannuleerd: boolean }
+interface Regel { bon: number; ts: string; product: string; categorie: string; aantal: number; prijs: number; geannuleerd: boolean; btw?: number }
 interface DienstCijfers {
   id: number; geopend_ts: string; gesloten_ts: string | null; geopend_door: string | null; gesloten_door: string | null;
   beginsaldo_cent: number; omzet_cent: number; bonnen: number; contant_cent: number; pin_cent: number; kaart_cent: number;
@@ -23,7 +23,7 @@ interface Afbetaling { ts: string; lid: string; methode: string; bedrag: number;
 interface Uitgave { ts: string; omschrijving: string; bedrag: number; voorgeschoten_door: string | null; door_naam: string | null; terugbetaald_ts: string | null; terugbetaald_hoe: string | null; terug_door_naam: string | null }
 interface Terug { ts: string; omschrijving: string; bedrag: number; voorgeschoten_door: string | null; terugbetaald_hoe: string }
 interface Data {
-  kassa: string; van: string; tot: string; gemaakt: string;
+  kassa: string; van: string; tot: string; gemaakt: string; btw_aan?: boolean;
   bonnen: Bon[]; regels: Regel[]; diensten: DienstCijfers[]; kaart: KaartMutatie[]; kaart_begin: number; kaart_eind: number;
   streeplijst: Lid[]; afbetalingen: Afbetaling[]; uitgaven: Uitgave[]; terugbetaald: Terug[]; voorgeschoten_open: number;
 }
@@ -48,6 +48,21 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
   const gesloten = d.diensten.filter((x) => x.gesloten_ts && x.geteld_cent !== null);
   const verkocht = som(ok, (b) => b.totaal), gratis = som(ok, (b) => b.gratis);
   const streepBegin = som(d.streeplijst, (x) => x.begin), gestreept = som(d.streeplijst, (x) => x.gestreept);
+
+  // Btw (alleen als die aan staat): per dag en tarief over wat betaald is. Het gratis
+  // weggegeven deel van een bon telt niet mee.
+  const btwAan = !!d.btw_aan;
+  const betaaldDeel = new Map(ok.map((b) => [b.bon, b.totaal > 0 ? (b.totaal - b.gratis) / b.totaal : 0]));
+  const btwDag = new Map<string, { dag: string; pct: number; bruto: number }>();
+  for (const r of okRegels) {
+    const pct = r.btw ?? 21, k = `${dag(r.ts)} ${pct}`;
+    const x = btwDag.get(k) ?? { dag: dag(r.ts), pct, bruto: 0 };
+    x.bruto += r.prijs * r.aantal * (betaaldDeel.get(r.bon) ?? 0); btwDag.set(k, x);
+  }
+  const btwRijen = [...btwDag.values()].sort((a, b) => a.dag.localeCompare(b.dag) || b.pct - a.pct)
+    .map((x) => { const bruto = Math.round(x.bruto); return { ...x, bruto, btw: btwIn(bruto, x.pct) }; });
+  const tarieven = [...new Set(btwRijen.map((x) => x.pct))].sort((a, b) => b - a);
+  const perTarief = tarieven.map((pct) => { const l = btwRijen.filter((x) => x.pct === pct); return { pct, bruto: som(l, (x) => x.bruto), btw: som(l, (x) => x.btw) }; });
 
   // ── Samenvatting ──
   const s: Cel[][] = [
@@ -82,6 +97,12 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
     ['Pin: streeplijst afbetaald', g(af('pin'))],
     ['Pin totaal (vergelijk met het pinapparaat)', { v: som(ok, (b) => b.pin) + km('opwaardering', 'pin') + af('pin'), soort: 'geld', vet: true }],
     ['Overboeking: streeplijst afbetaald', g(af('overboeking'))],
+    ...(btwAan ? [
+      [],
+      kop('Btw (omzet zonder gratis weggegeven)'),
+      ...perTarief.flatMap((x): Cel[][] => [[`${x.pct}%: omzet inclusief btw`, g(x.bruto)], [`${x.pct}%: btw`, g(x.btw)], [`${x.pct}%: omzet zonder btw`, g(x.bruto - x.btw)]]),
+      ['Btw totaal', { v: som(perTarief, (x) => x.btw), soort: 'geld', vet: true } as Cel],
+    ] : []),
     [],
     kop('Kas'),
     ['Uitgaven betaald uit de kas', g(kasUit)],
@@ -111,6 +132,14 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
     ['Voorgeschoten, aan het eind nog terug te betalen', g(d.voorgeschoten_open)],
   ];
   const bladen: Blad[] = [{ naam: 'Samenvatting', kolommen: [{ kop: 'Onderdeel', breedte: 52 }, { kop: 'Bedrag', breedte: 22 }], rijen: s, filter: false }];
+
+  if (btwAan) bladen.push({
+    naam: 'Btw',
+    rijen: btwRijen.map((x) => [{ v: x.dag, soort: 'datum' } as Cel, weekdag(x.dag), `${x.pct}%`, g(x.bruto), g(x.btw), g(x.bruto - x.btw)]),
+    kolommen: [{ kop: 'Datum', soort: 'datum', breedte: 12 }, { kop: 'Dag', breedte: 11 }, { kop: 'Tarief', breedte: 8 },
+      { kop: 'Omzet incl. btw', soort: 'geld', breedte: 15 }, { kop: 'Btw', soort: 'geld', breedte: 12 }, { kop: 'Omzet excl. btw', soort: 'geld', breedte: 15 }],
+    totaal: ['Totaal', null, null, g(som(btwRijen, (x) => x.bruto)), g(som(btwRijen, (x) => x.btw)), g(som(btwRijen, (x) => x.bruto - x.btw))],
+  });
 
   // ── Per dag ──
   const dagen = [...new Set([...d.bonnen.map((b) => dag(b.ts)), ...d.kaart.map((k) => dag(k.ts)), ...d.afbetalingen.map((a) => dag(a.ts)), ...d.uitgaven.map((u) => dag(u.ts))])].sort();
@@ -152,11 +181,15 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
   });
 
   // ── Bonregels ──
+  // Btw per regel is ter informatie; de totalen staan op het tabblad Btw (per dag en tarief afgerond).
+  const regelBtw = (r: Regel) => btwIn(Math.round(r.prijs * r.aantal * (betaaldDeel.get(r.bon) ?? 0)), r.btw ?? 21);
   bladen.push({
     naam: 'Bonregels',
-    rijen: d.regels.map((r) => [n(r.bon), { v: r.ts, soort: 'datum' }, { v: r.ts, soort: 'tijd' }, r.product, r.categorie, n(r.aantal), g(r.prijs), g(r.prijs * r.aantal), r.geannuleerd ? 'ja' : '']),
+    rijen: d.regels.map((r) => [n(r.bon), { v: r.ts, soort: 'datum' }, { v: r.ts, soort: 'tijd' }, r.product, r.categorie, n(r.aantal), g(r.prijs), g(r.prijs * r.aantal), r.geannuleerd ? 'ja' : '',
+      ...(btwAan ? [`${r.btw ?? 21}%`, r.geannuleerd ? null : g(regelBtw(r))] : [])]),
     kolommen: [{ kop: 'Bon', soort: 'getal', breedte: 8 }, { kop: 'Datum', soort: 'datum', breedte: 12 }, { kop: 'Tijd', soort: 'tijd', breedte: 7 }, { kop: 'Product', breedte: 24 },
-      { kop: 'Categorie', breedte: 14 }, { kop: 'Aantal', soort: 'getal', breedte: 8 }, { kop: 'Prijs', soort: 'geld', breedte: 11 }, { kop: 'Bedrag', soort: 'geld', breedte: 12 }, { kop: 'Geannuleerd', breedte: 11 }],
+      { kop: 'Categorie', breedte: 14 }, { kop: 'Aantal', soort: 'getal', breedte: 8 }, { kop: 'Prijs', soort: 'geld', breedte: 11 }, { kop: 'Bedrag', soort: 'geld', breedte: 12 }, { kop: 'Geannuleerd', breedte: 11 },
+      ...(btwAan ? [{ kop: 'Btw-tarief', breedte: 10 }, { kop: 'Btw (zonder gratis)', soort: 'geld' as const, breedte: 16 }] : [])],
     totaal: ['Totaal (zonder geannuleerd)', null, null, null, null, n(som(okRegels, (r) => r.aantal)), null, g(som(okRegels, (r) => r.prijs * r.aantal))],
   });
 

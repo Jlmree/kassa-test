@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useData } from '../data';
 import { centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, tril, type Bon, type KaartInfo, type Regel } from '../lib';
 import { KiesLid, type Lid } from './Streeplijst';
-import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useSheet } from '../ui';
+import { Bedrag, BonPapier, deelBon, melding, Rij, Scanner, useBezig, useBonBeeld, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
 type Methode = 'contant' | 'pin' | 'kaart' | 'lat' | 'gratis';
@@ -195,6 +195,7 @@ export function BonScherm({ bon: start, nieuw }: { bon: Bon; nieuw?: boolean }) 
   const [bon, setBon] = useState(start);
   const [bezig, run] = useBezig();
   const [zeker, setZeker] = useState(false);
+  const beeld = useBonBeeld(bon);
   const annuleren = () => run(async () => {
     const b = await rpc<Bon>('verkoop_annuleren', { p_verkoop_id: bon.id });
     setBon(b);
@@ -206,7 +207,7 @@ export function BonScherm({ bon: start, nieuw }: { bon: Bon; nieuw?: boolean }) 
     <>
       <BonPapier bon={bon} />
       <div className="btns">
-        <button onClick={() => deelBon(bon)}>Delen</button>
+        <button onClick={() => void deelBon(bon, beeld)}>Delen</button>
         <button onClick={() => window.print()}>Printen of PDF</button>
       </div>
       {nieuw && <button className="big" onClick={sluit}>Nieuwe bestelling</button>}
