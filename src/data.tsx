@@ -23,6 +23,8 @@ interface Data {
   winkel: string;
   methoden: Methoden;
   thema: Thema;
+  /** Btw aan (Beheer → Instellingen → Btw); standaard uit. */
+  btw: { aan: boolean; nummer: string };
   geladen: boolean;
   verbonden: boolean;
   herlaad: () => Promise<void>;
@@ -33,7 +35,7 @@ export const useData = () => useContext(Ctx);
 
 export function DataProvider({ profiel, children }: { profiel: Profiel; children: ReactNode }) {
   const [s, setS] = useState<Omit<Data, 'herlaad' | 'profiel'>>({
-    producten: [], rekeningen: [], regels: [], dienst: null, winkel: 'Bar', methoden: ALLES_AAN, thema: 'licht', geladen: false, verbonden: true,
+    producten: [], rekeningen: [], regels: [], dienst: null, winkel: 'Bar', methoden: ALLES_AAN, thema: 'licht', btw: { aan: false, nummer: '' }, geladen: false, verbonden: true,
   });
   const bezig = useRef<Promise<void> | null>(null);
   const opnieuw = useRef(false);
@@ -53,14 +55,14 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           lees(sb.from('rekeningen').select('*').eq('open', true).order('naam')),
           lees(sb.from('rekening_regels').select('*, rekeningen!inner(open)').eq('rekeningen.open', true).order('id')),
           rpc<Dienst | null>('dienst_overzicht'),
-          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat,betaal_gratis,thema').maybeSingle()),
+          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat,betaal_gratis,thema,btw_aan,btw_nummer').maybeSingle()),
         ]);
-        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean; betaal_gratis?: boolean; thema?: Thema } | null;
+        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean; betaal_gratis?: boolean; thema?: Thema; btw_aan?: boolean; btw_nummer?: string | null } | null;
         const thema: Thema = i?.thema ?? 'licht';
         themaZetten(thema);
         setS({
           producten: producten as Product[], rekeningen: rekeningen as Rekening[], regels: regels as RekeningRegel[],
-          dienst, winkel: i?.naam ?? 'Bar', thema, geladen: true,
+          dienst, winkel: i?.naam ?? 'Bar', thema, btw: { aan: !!i?.btw_aan, nummer: i?.btw_nummer ?? '' }, geladen: true,
           methoden: i ? { contant: i.betaal_contant, pin: i.betaal_pin, kaart: i.betaal_kaart, rekening: i.betaal_rekening, lat: i.betaal_lat, gratis: i.betaal_gratis !== false } : ALLES_AAN, verbonden: true,
         });
         versie.current = v;

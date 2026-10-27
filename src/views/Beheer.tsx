@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
-import { centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
+import { BTW_TARIEVEN, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
 import { BestandKlaar, KaartenPrinten, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
@@ -76,6 +76,7 @@ export function Beheer() {
 // ───────────── Rapport ─────────────
 
 interface RapportData {
+  btw?: { pct: number; bruto_cent: number; btw_cent: number }[];
   omzet_cent: number; bonnen: number; geannuleerd: number; geannuleerd_cent: number;
   per_methode: { methode: string; bedrag_cent: number }[];
   per_product: { naam: string; aantal: number; bedrag_cent: number }[];
@@ -119,6 +120,7 @@ function Rapport() {
   const [r, setR] = useState<RapportData | null>(null);
   const [bezig, run] = useBezig();
   const { open } = useSheet();
+  const { btw } = useData();
   const [van, tot] = keuze === 'Zelf kiezen'
     ? [new Date(eigen[0] + 'T06:00'), plusDagen(new Date(eigen[1] + 'T06:00'), 1)]
     : periode(keuze);
@@ -126,15 +128,16 @@ function Rapport() {
   useEffect(() => {
     if (isNaN(+van) || isNaN(+tot)) return;
     void run(async () => {
-      const [rap, prijzen] = await Promise.all([
+      const [rap, prijzen, btwLijst] = await Promise.all([
         rpc<RapportData>('rapport', { p_van: van.toISOString(), p_tot: tot.toISOString() }),
         // Prijzen van de loterij (tegoed op kaarten, geen geld in de kas).
         lees(sb.from('loterij_trekkingen').select('prijs_cent').gte('ts', van.toISOString()).lt('ts', tot.toISOString())).catch(() => []),
+        btw.aan ? rpc<RapportData['btw']>('btw_overzicht', { p_van: van.toISOString(), p_tot: tot.toISOString() }) : undefined,
       ]);
-      setR({ ...rap, loterij_cent: (prijzen as { prijs_cent: number }[]).reduce((a, x) => a + x.prijs_cent, 0) });
+      setR({ ...rap, btw: btwLijst, loterij_cent: (prijzen as { prijs_cent: number }[]).reduce((a, x) => a + x.prijs_cent, 0) });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sleutel, run]);
+  }, [sleutel, run, btw.aan]);
 
   const exporteer = () => run(async () => {
     const rows = await lees(sb.from('verkopen').select('bonnummer,ts,door_naam,rekening_naam,totaal_cent,geannuleerd,verkoop_regels(naam,aantal,prijs_cent),betalingen(methode,bedrag_cent)')
@@ -186,6 +189,20 @@ function Rapport() {
           <Blok titel="Betaalmethoden">
             <Verdeling delen={['contant', 'pin', 'kaart', 'lat', 'gratis'].map((m) => ({ methode: m, bedrag_cent: r.per_methode.find((x) => x.methode === m)?.bedrag_cent ?? 0 }))} />
           </Blok>
+          {r.btw && (
+            <Blok titel="Btw" rechts={<span>{eur(r.btw.reduce((a, x) => a + x.btw_cent, 0))}</span>}>
+              {r.btw.map((x) => (
+                <div key={x.pct}>
+                  <Rij l={<b>{x.pct}%</b>} r={null} />
+                  <Rij l="Omzet inclusief btw" r={eur(x.bruto_cent)} />
+                  <Rij l="waarvan btw" r={eur(x.btw_cent)} />
+                  <Rij l="Omzet zonder btw" r={eur(x.bruto_cent - x.btw_cent)} />
+                </div>
+              ))}
+              {!r.btw.length && <p className="mu">Geen verkopen in deze periode.</p>}
+              <p className="mu">Gratis weggegeven telt niet mee; geannuleerde bonnen ook niet. Bespreek met de boekhouder of dit zo klopt voor de aangifte.</p>
+            </Blok>
+          )}
           {!!r.gratis_per_reden?.length && (
             <Blok titel="Gratis weggegeven" rechts={<span>{eur(r.gratis_cent ?? 0)}</span>}>
               {r.gratis_per_reden.map((x) => <Rij key={x.reden} l={`${x.reden} (${x.aantal}×)`} r={eur(x.bedrag_cent)} />)}
@@ -316,6 +333,7 @@ function Boodschappen() {
 function Producten() {
   const { producten } = useData();
   const { open } = useSheet();
+  const { btw } = useData();
   const laag = producten.filter((p) => p.actief && p.voorraad <= p.voorraad_min);
   const cats = [...new Set(producten.map((p) => p.categorie))];
   return (
@@ -333,7 +351,7 @@ function Producten() {
           <h3 className="s">{c}</h3>
           {producten.filter((p) => p.categorie === c).map((p) => (
             <Rij key={p.id} className={p.actief ? '' : 'vd'} onClick={() => open(<ProductScherm id={p.id} />)}
-              l={<>{p.naam}<span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span></>}
+              l={<>{p.naam}<span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span>{btw.aan && <span className="mu"> · {p.btw_pct ?? 21}% btw</span>}</>}
               r={eur(p.prijs_cent)} />
           ))}
         </div>
@@ -345,7 +363,7 @@ function Producten() {
 }
 
 function ProductScherm({ id }: { id: number | null }) {
-  const { producten, herlaad } = useData();
+  const { producten, herlaad, btw } = useData();
   const { sluit } = useSheet();
   const p: Partial<Product> = (id != null && producten.find((x) => x.id === id)) || { categorie: producten[0]?.categorie ?? 'Drinken', actief: true };
   const [f, setF] = useState({
@@ -353,6 +371,7 @@ function ProductScherm({ id }: { id: number | null }) {
     volgorde: String(p.volgorde ?? 0), actief: p.actief ?? true, voorraad: '', voorraad_min: String(p.voorraad_min ?? 0),
   });
   const [aantal, setAantal] = useState('');
+  const [tarief, setTarief] = useState(p.btw_pct ?? 21);
   const [bezig, run] = useBezig();
   const opslaan = () => run(async () => {
     const prijs = naarCent(f.prijs);
@@ -361,7 +380,8 @@ function ProductScherm({ id }: { id: number | null }) {
     // Elk product heeft een voorraad; bij een nieuw product meteen de beginvoorraad.
     const voorraad = /^\d+$/.test(f.voorraad.trim()) ? parseInt(f.voorraad) : NaN;
     if (id == null && isNaN(voorraad)) throw new Error('Vul de voorraad in (hoeveel er nu is, ook als dat 0 is)');
-    await rpc('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, actief: f.actief, volgorde: parseInt(f.volgorde) || 0, voorraad: id == null ? voorraad : undefined, voorraad_min: parseInt(f.voorraad_min) || 0 } });
+    const nieuwId = await rpc<number>('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, actief: f.actief, volgorde: parseInt(f.volgorde) || 0, voorraad: id == null ? voorraad : undefined, voorraad_min: parseInt(f.voorraad_min) || 0 } });
+    if (btw.aan && tarief !== (p.btw_pct ?? 21)) await rpc('btw_tarief', { p_pct: tarief, p_id: nieuwId });
     await herlaad();
     sluit();
     melding('Opgeslagen');
@@ -383,6 +403,12 @@ function ProductScherm({ id }: { id: number | null }) {
       <label htmlFor="pp">Prijs in euro</label><input className="f" id="pp" inputMode="decimal" value={f.prijs} onChange={zet('prijs')} />
       <label htmlFor="pc">Categorie</label>
       <KiesCategorie id="pc" waarde={f.categorie} opties={[...new Set(producten.map((x) => x.categorie))]} onChange={(c) => setF({ ...f, categorie: c })} />
+      {btw.aan && (
+        <>
+          <label>Btw</label>
+          <div className="quick">{BTW_TARIEVEN.map((t) => <button key={t} className={t === tarief ? 'on' : ''} aria-pressed={t === tarief} onClick={() => setTarief(t)}>{t}%</button>)}</div>
+        </>
+      )}
       <label htmlFor="pv">Volgorde (lager = eerder)</label><input className="f" id="pv" inputMode="numeric" value={f.volgorde} onChange={zet('volgorde')} />
       <label className="check"><input type="checkbox" checked={f.actief} onChange={zet('actief')} /> Tonen in de kassa</label>
       {id == null && (<><label htmlFor="pvr">Voorraad nu</label><input className="f" id="pvr" inputMode="numeric" placeholder="Hoeveel is er nu?" value={f.voorraad} onChange={zet('voorraad')} /></>)}
@@ -656,6 +682,7 @@ function Instellingen() {
       </div>
       <Betaalmethoden />
       <ThemaKiezen />
+      <BtwInstellen />
       {methoden.kaart && <ZuilUitleg />}
       <Bijwerken />
       <BackupDownloaden />
@@ -752,6 +779,52 @@ const themas: { id: Thema; naam: string; uitleg: string }[] = [
   { id: 'kroeg', naam: 'Kroeg', uitleg: 'Donker met amber. Rustig voor de ogen in een schemerige bar.' },
   { id: 'groot', naam: 'Groot en duidelijk', uitleg: 'Grote knoppen en letters, zwart op wit. Fijn voor wie slecht ziet.' },
 ];
+
+/** Btw: standaard uit. Aan = tarief per product, btw op de bon, in het rapport en in de boekhouding. */
+function BtwInstellen() {
+  const { btw, producten, herlaad } = useData();
+  const [nummer, setNummer] = useState(btw.nummer);
+  const [bezig, run] = useBezig();
+  const zet = (aan: boolean, nr = nummer) => run(async () => {
+    await rpc('btw_instellen', { p_aan: aan, p_nummer: nr });
+    await herlaad();
+    melding(aan ? 'Btw staat aan' : 'Btw staat uit');
+  });
+  const cats = [...new Set(producten.map((p) => p.categorie))];
+  const tarief = (c: string, t: number) => run(async () => {
+    const n = await rpc<number>('btw_tarief', { p_pct: t, p_categorie: c });
+    await herlaad();
+    melding(`${c}: ${n} ${n === 1 ? 'product' : 'producten'} op ${t}%`);
+  });
+  return (
+    <>
+      <h3 className="s">Btw</h3>
+      <label className="check"><input type="checkbox" checked={btw.aan} disabled={bezig} onChange={(e) => zet(e.target.checked)} />
+        <span>Btw berekenen en tonen<br /><span className="mu">Standaard uit. Zet hem aan als de vereniging btw moet afdragen (vraag het de penningmeester of de boekhouder). Prijzen blijven inclusief btw.</span></span></label>
+      {btw.aan && (
+        <div className="card">
+          <p className="mu">De btw staat nu op de bon, in het rapport en in de boekhouding (Excel). Elk product heeft een tarief; dat kan per product (Beheer → Producten) of hieronder voor een hele categorie tegelijk.</p>
+          <p className="mu">Meestal: bier, wijn en andere drank met alcohol 21%; frisdrank, koffie, thee en eten 9%.</p>
+          {cats.map((c) => {
+            const in_ = producten.filter((p) => p.categorie === c);
+            const alle = (t: number) => in_.every((p) => (p.btw_pct ?? 21) === t);
+            return (
+              <div key={c} className="row">
+                <span>{c}<span className="mu"> · {in_.length}{BTW_TARIEVEN.some(alle) ? '' : ', verschillende tarieven'}</span></span>
+                <div className="quick" style={{ margin: 0 }}>{BTW_TARIEVEN.map((t) => <button key={t} className={alle(t) ? 'on' : ''} disabled={bezig} onClick={() => tarief(c, t)}>{t}%</button>)}</div>
+              </div>
+            );
+          })}
+          <label htmlFor="btwnr">Btw-nummer op de bon (optioneel)</label>
+          <div className="inl">
+            <input className="f" id="btwnr" placeholder="NL001234567B01" maxLength={30} value={nummer} onChange={(e) => setNummer(e.target.value)} />
+            <button disabled={bezig} onClick={() => zet(true)}>Opslaan</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 function ThemaKiezen() {
   const { thema, herlaad } = useData();

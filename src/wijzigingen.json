@@ -1,6 +1,16 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Btw (standaard uit) en de bon als afbeelding",
+    "punten": [
+      "Nieuw bij Beheer → Instellingen: Btw. Standaard staat die uit en verandert er niets. Zet een beheerder hem aan, dan krijgt elk product een tarief (21%, 9% of 0%), per product of voor een hele categorie tegelijk.",
+      "Met de btw aan staat die op de bon (per tarief, met het btw-nummer als je dat invult), in het rapport en in de boekhouding (eigen tabblad Btw, en per bonregel). Prijzen blijven inclusief btw.",
+      "Het tarief wordt bij elke verkoop vastgelegd: een later gewijzigd tarief verandert oude bonnen niet. Gratis weggegeven telt niet mee.",
+      "Delen van een bon stuurt nu een afbeelding van de bon (met logo), bijvoorbeeld via WhatsApp of mail, in plaats van alleen tekst. Op een computer wordt de afbeelding opgeslagen."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Boekhouding downloaden op de telefoon",
     "punten": [
       "Op een telefoon gaf het downloaden van de boekhouding (Excel) soms een fout. Nu maakt de kassa eerst het bestand en toont daarna een knop Downloaden; op een telefoon ook Opslaan of delen (bijv. naar Bestanden, mail of WhatsApp).",

@@ -139,6 +139,7 @@ export interface Profiel { id: string; naam: string; rol: Rol; actief: boolean; 
 export interface Product {
   id: number; naam: string; prijs_cent: number; categorie: string; actief: boolean; verwijderd: boolean;
   volgorde: number; voorraad_bijhouden: boolean; voorraad: number; voorraad_min: number;
+  btw_pct?: number;
 }
 export interface Rekening { id: number; naam: string; open: boolean; aangemaakt: string }
 export interface RekeningRegel { id: number; rekening_id: number; product_id: number; naam: string; prijs_cent: number; aantal: number; ts: string }
@@ -151,7 +152,8 @@ export interface Betaling {
 export interface Bon {
   id: number; bonnummer: number; ts: string; door_naam: string | null; rekening_naam: string | null;
   totaal_cent: number; geannuleerd: boolean; winkel: string;
-  regels: { naam: string; prijs_cent: number; aantal: number }[]; betalingen: Betaling[];
+  regels: { naam: string; prijs_cent: number; aantal: number; btw_pct?: number }[]; betalingen: Betaling[];
+  btw_aan?: boolean; btw_nummer?: string | null;
 }
 export interface Dienst {
   id: number; geopend_ts: string; gesloten_ts: string | null; geopend_door: string | null; gesloten_door: string | null;
@@ -186,6 +188,27 @@ export const datum = (ts: string | Date) => new Date(ts).toLocaleDateString('nl-
 export const datumTijd = (ts: string) => `${datum(ts)} ${tijd(ts)}`;
 export const methodeNaam: Record<string, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', lat: 'Streeplijst', overboeking: 'Overboeking', gratis: 'Gratis' };
 
+// ─── Btw ───
+
+export const BTW_TARIEVEN = [21, 9, 0] as const;
+/** De btw die in een bedrag inclusief btw zit. */
+export const btwIn = (bruto: number, pct: number) => Math.round((bruto * pct) / (100 + pct));
+/**
+ * Per tarief: wat er (inclusief btw) betaald is en hoeveel btw daarin zit. Wat gratis is
+ * weggegeven, is niet verkocht en telt niet mee (factor = betaald deel van de bon).
+ */
+export function btwPerTarief(regels: { prijs_cent: number; aantal: number; btw_pct?: number }[], factor = 1) {
+  const per = new Map<number, number>();
+  for (const r of regels) per.set(r.btw_pct ?? 21, (per.get(r.btw_pct ?? 21) ?? 0) + r.prijs_cent * r.aantal);
+  return [...per].sort(([a], [b]) => b - a).map(([pct, som]) => { const bruto = Math.round(som * factor); return { pct, bruto, btw: btwIn(bruto, pct) }; });
+}
+/** Btw-regels van een bon (leeg als de btw uit staat). */
+export function bonBtw(b: Bon) {
+  if (!b.btw_aan) return [];
+  const gratis = b.betalingen.filter((p) => p.methode === 'gratis').reduce((a, p) => a + p.bedrag_cent, 0);
+  return btwPerTarief(b.regels, b.totaal_cent > 0 ? (b.totaal_cent - gratis) / b.totaal_cent : 0);
+}
+
 export function bonTekst(b: Bon) {
   const r = [b.winkel, datumTijd(b.ts), `Bon ${b.bonnummer}`];
   if (b.rekening_naam) r.push(`Rekening van ${b.rekening_naam}`);
@@ -194,6 +217,12 @@ export function bonTekst(b: Bon) {
   for (const p of b.betalingen) {
     r.push(`${methodeNaam[p.methode]}${p.kaart_nummer ? ' ' + p.kaart_nummer : ''}${p.lid_naam ? ' ' + p.lid_naam : ''}${p.reden ? ' (' + p.reden + ')' : ''}: ${eur(p.bedrag_cent)}`);
     if (p.op_kaart_cent) r.push(`Op kaart ${p.op_kaart_nummer}: ${eur(p.op_kaart_cent)}`);
+  }
+  const btw = bonBtw(b);
+  if (btw.length) {
+    r.push('');
+    for (const x of btw) r.push(`Btw ${x.pct}% over ${eur(x.bruto)}: ${eur(x.btw)}`);
+    if (b.btw_nummer) r.push(`Btw-nummer ${b.btw_nummer}`);
   }
   return r.join('\n');
 }
