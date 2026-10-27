@@ -40,9 +40,32 @@ export function vertaal(m: string) {
   return m.replace(/€ (\d+)\.(\d{2})\b/g, '€ $1,$2');
 }
 
-/** Kort trillen bij een geslaagde betaling, drie keer bij een fout (in een drukke kantine hoor je de telefoon niet). iPhones trillen niet vanuit een website. */
-export function tril(goed: boolean) {
-  try { navigator.vibrate?.(goed ? 40 : [70, 60, 70, 60, 70]); } catch { /* geen trilfunctie */ }
+/**
+ * Voelbaar signaal: 'goed' (betaling gelukt), 'scan' (kaart gescand, heel kort) of 'fout' (drie keer).
+ * In een drukke kantine hoor je de telefoon niet. Android trilt via de browser. Een iPhone kan
+ * dat vanuit een website niet; daar geeft een onzichtbare schakelaar een tikje (iOS 18 en nieuwer).
+ */
+export function tril(soort: 'goed' | 'scan' | 'fout' | boolean) {
+  const s = soort === true ? 'goed' : soort === false ? 'fout' : soort;
+  try {
+    if (typeof navigator.vibrate === 'function') { navigator.vibrate(s === 'goed' ? 40 : s === 'scan' ? 20 : [70, 60, 70, 60, 70]); return; }
+    iosTik();
+    if (s === 'fout') { setTimeout(iosTik, 140); setTimeout(iosTik, 280); }
+  } catch { /* geen trilfunctie */ }
+}
+let tikLabel: HTMLLabelElement | null = null;
+function iosTik() {
+  if (!tikLabel) {
+    const i = Object.assign(document.createElement('input'), { type: 'checkbox', id: 'kassa-tik', tabIndex: -1 });
+    i.setAttribute('switch', '');
+    i.setAttribute('aria-hidden', 'true');
+    tikLabel = Object.assign(document.createElement('label'), { htmlFor: 'kassa-tik' });
+    tikLabel.setAttribute('aria-hidden', 'true');
+    const w = Object.assign(document.createElement('div'), { className: 'tik' });
+    w.append(i, tikLabel);
+    document.body.append(w);
+  }
+  tikLabel.click();
 }
 
 // Uniek kenmerk voor één afrekening of opwaardering. Valt de verbinding weg en

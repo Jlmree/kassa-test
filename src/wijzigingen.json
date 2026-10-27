@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Voelen dat het gelukt is",
+    "punten": [
+      "Na het afrekenen verschijnt bovenaan een groene melding \"Afrekenen gelukt\" met het bedrag, die na een paar seconden vanzelf vervaagt. Ook bij opwaarderen.",
+      "De telefoon trilt heel kort als een kaart gescand is, kort bij een gelukte betaling, en drie keer bij een foutmelding.",
+      "Android-telefoons trillen. Een iPhone (iOS 18 of nieuwer) geeft een klein tikje waar dat kan."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Proefversie: geprinte voorbeeldkaarten werken overal",
     "punten": [
       "De voorbeeldkaarten 1 tot en met 20 in de proefversie hebben nu vaste codes. Een geprinte proefkaart werkt daardoor op elke telefoon en ook na Wissen.",
