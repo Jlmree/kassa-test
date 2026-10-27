@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Barkaarten met een achterkant",
+    "punten": [
+      "Bij het printen van barkaarten kun je de achterkant meeprinten: het logo groot in het midden, met de naam van de bar eronder (de naam kan ook uit).",
+      "Na elk vel voorkanten komt een vel achterkanten, per rij gespiegeld. Print dubbelzijdig, omslaan langs de lange kant, op 100%: dan valt elke achterkant precies achter zijn kaart.",
+      "Schuift jouw printer een paar millimeter? Dan kun je de achterkant opzij of omhoog/omlaag schuiven; dat wordt onthouden op dit apparaat."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Voelen dat het gelukt is",
     "punten": [
       "Na het afrekenen verschijnt bovenaan een groene melding \"Afrekenen gelukt\" met het bedrag, die na een paar seconden vanzelf vervaagt. Ook bij opwaarderen.",

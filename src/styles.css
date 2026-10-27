@@ -170,6 +170,13 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .kk { position: relative; overflow: hidden; width: 85.6mm; height: 54mm; box-sizing: border-box; padding: 4mm; display: flex; gap: 3mm; align-items: center;
   background: #fff; color: #111; border: 1px dashed #999; border-radius: 3mm; break-inside: avoid; }
 .kk > .watermerk { right: 3mm; top: 50%; transform: translateY(-50%); width: 30mm; opacity: .1; }
+/* Per vel 2 × 5 kaarten op vaste plekken, zodat de achterkanten er precies achter vallen. */
+.kaarten.vel { grid-template-columns: repeat(2, 85.6mm); grid-auto-rows: 54mm; }
+.kaarten.vel.achter { margin-top: 6mm; }
+.kk-achter { flex-direction: column; justify-content: center; gap: 2.5mm; text-align: center; }
+.kk-achter img { max-width: 60mm; max-height: 34mm; object-fit: contain; }
+.kk-achter b { font-size: 4.2mm; font-weight: 800; line-height: 1.15; max-width: 76mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kk-leeg { width: 85.6mm; height: 54mm; }
 .kk .qr { width: 44mm; flex: none; position: relative; }
 .kk-t { display: flex; flex-direction: column; gap: 1mm; min-width: 0; position: relative; font-size: 3.2mm; }
 .kk-t .kk-w { font-weight: 800; font-size: 3.6mm; line-height: 1.15; }
@@ -188,6 +195,9 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
   body::before { display: none; }
   @page { size: A4; margin: 8mm; }
   .kk { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  /* Elk vel (voorkanten, achterkanten) op een eigen blad, steeds bovenaan. */
+  .kaarten.vel, .kaarten.vel.achter { margin: 0; break-after: page; }
+  .print > div:last-child > .vel:last-child { break-after: auto; }
 }
 
 /* Wat is er nieuw */
