@@ -1,5 +1,14 @@
 [
   {
+    "datum": "2026-10-27",
+    "titel": "Boekhouding in één Excel-bestand",
+    "punten": [
+      "Bij Beheer → Rapport maakt de knop Boekhouding (Excel) één bestand met alles van de gekozen periode, per kalenderdag.",
+      "Tabbladen: Samenvatting, Per dag, Bonnen, Bonregels, Producten, Kasopmaak (per dienst, ook als die na middernacht doorloopt), Barkaarten, Streeplijst, Streeplijst afbetaald en Uitgaven.",
+      "De samenvatting sluit: geld ontvangen per betaalmethode (met het pintotaal om te vergelijken met het pinapparaat), het tegoed op barkaarten en de streeplijst van begin tot eind, en de kasverschillen."
+    ]
+  },
+  {
     "datum": "2026-10-25",
     "titel": "Loterij met de barkaarten",
     "punten": [

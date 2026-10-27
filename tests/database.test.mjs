@@ -680,3 +680,25 @@ test('loterij: loten per avond of per € 10, uitsluiten, prijs als tegoed buite
   assert.ok(r.kaarten_gebruikt >= 2 && r.opgewaardeerd_cent >= 5000);
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: verwacht });
 });
+
+test('boekhouding: alles van een periode, sluitend; alleen voor de beheerder', async () => {
+  const vandaag = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  await faalt(rpc(bar, 'boekhouding', { p_van: vandaag, p_tot: vandaag }), 'beheerder');
+  await faalt(rpc(baas, 'boekhouding', { p_van: vandaag, p_tot: '2020-01-01' }), 'periode');
+  const jaarGeleden = new Date(Date.now() - 365 * 86400e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  await faalt(rpc(baas, 'boekhouding', { p_van: '2020-01-01', p_tot: vandaag }), 'twee jaar');
+  const d = await rpc(baas, 'boekhouding', { p_van: jaarGeleden, p_tot: vandaag });
+  const { count } = await baas.from('verkopen').select('*', { count: 'exact', head: true });
+  assert.equal(d.bonnen.length, count);
+  // Elke bon: betalingen = totaal, regels = totaal.
+  for (const b of d.bonnen) {
+    assert.equal(b.contant + b.pin + b.kaart + b.lat + b.gratis, b.totaal, `bon ${b.bon}`);
+    const r = d.regels.filter((x) => x.bon === b.bon).reduce((a, x) => a + x.prijs * x.aantal, 0);
+    assert.equal(r, b.totaal, `regels bon ${b.bon}`);
+  }
+  // Kaarttegoed: begin + alle mutaties = eind = wat er nu op de kaarten staat.
+  assert.equal(d.kaart_begin + d.kaart.reduce((a, x) => a + x.bedrag, 0), d.kaart_eind);
+  const { data: kaarten } = await baas.from('kaarten').select('saldo_cent');
+  assert.equal(d.kaart_eind, kaarten.reduce((a, k) => a + k.saldo_cent, 0));
+  assert.ok(d.diensten.length > 0 && d.uitgaven.length > 0);
+});
