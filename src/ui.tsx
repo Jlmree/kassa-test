@@ -129,6 +129,11 @@ function Blad({ children, sluit }: { children: ReactNode; sluit: () => void }) {
       el.removeEventListener('touchcancel', eind);
     };
   }, [sluit]);
+  // Schermlezers noemen het blad naar zijn eerste kop.
+  useEffect(() => {
+    const kop = ref.current?.querySelector('h2, h3');
+    if (kop) { kop.id ||= 'blad-kop'; ref.current!.setAttribute('aria-labelledby', kop.id); }
+  });
   return (
     <div className="sh" role="dialog" aria-modal="true" ref={ref}>
       <div className="grab" />

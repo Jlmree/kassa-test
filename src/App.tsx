@@ -107,7 +107,7 @@ function Scherm({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   return (
     <div className="app">
       <header>
-        <b>{winkel}</b>
+        <h1>{winkel}</h1>
         <span className={'dot ' + (dienst ? 'on' : '')} title={dienst ? 'Kassa open' : 'Kassa dicht'} />
         <button className="who" onClick={() => open(<Account />)}>{profiel.naam}</button>
       </header>
