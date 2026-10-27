@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
 import { bestandOpslaan, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
-import { KaartenVellen, melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { KaartenPrinten, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
@@ -443,14 +443,7 @@ function KaartenMaken() {
   const [van, setVan] = useState('');
   const [tot, setTot] = useState('');
   const [bezig, run] = useBezig();
-  const toon = (lijst: { nummer: number; code: string }[]) => open(
-    <>
-      <h2>{lijst.length} kaarten</h2>
-      <div className="btns"><button className="big" onClick={() => window.print()}>Printen of PDF</button></div>
-      <p className="mu">Op creditcardformaat, tien per A4. Print op 100% (niet "passend maken") en knip langs de stippellijnen.</p>
-      <KaartenVellen lijst={lijst} winkel={winkel} />
-    </>,
-  );
+  const toon = (lijst: { nummer: number; code: string }[]) => open(<KaartenPrinten lijst={lijst} winkel={winkel} />);
   const maken = () => run(async () => toon(await rpc('kaarten_maken', { p_aantal: parseInt(n) || 0 })));
   const herprint = () => run(async () => {
     const a = parseInt(van), b = parseInt(tot || van);

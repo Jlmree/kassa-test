@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Kaarten printen vanuit Kaarten",
+    "punten": [
+      "Op een kaart staat nu de knop Kaart printen: op creditcardformaat, met de achterkant erbij als je dat wilt. Handig als een kaart kapot of kwijt is.",
+      "Onder de lijst bij Kaarten staat Deze kaarten printen. Die print precies wat je ziet: zoek of kies eerst een filter (bijvoorbeeld een naam of Met tegoed). Hoogstens 300 kaarten tegelijk.",
+      "Alleen beheerders zien deze knoppen, omdat op de print de geheime code van de kaart staat."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Knoppen en schermen nog eens nagelopen",
     "punten": [
       "Een paar knoppen waren onzichtbaar (bijvoorbeeld Goedkeuren, Ja, trekken en Printen of PDF). Die zijn weer gewoon groen.",

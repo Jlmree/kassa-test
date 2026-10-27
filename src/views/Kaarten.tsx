@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useData } from '../data';
 import { centTekst, datumTijd, eur, lees, naarCent, nieuweSleutel, rpc, sb, tril, type KaartInfo } from '../lib';
-import { Bedrag, melding, QrKaart, Rij, useBezig, useSheet } from '../ui';
+import { Bedrag, KaartenPrinten, melding, Rij, useBezig, useSheet } from '../ui';
 import { KaartKiezen } from './Afrekenen';
 
 type Kaart = Omit<KaartInfo, 'betaalcode'> & { laatst_gebruikt: string };
@@ -20,6 +20,8 @@ type Filter = keyof typeof filters;
 
 export function Kaarten() {
   const { open } = useSheet();
+  const { profiel, winkel } = useData();
+  const [bezig, run] = useBezig();
   const [kaarten, setKaarten] = useState<Kaart[]>([]);
   const [filter, setFilter] = useState<Filter>('Alle');
   const [zoek, setZoek] = useState('');
@@ -54,6 +56,12 @@ export function Kaarten() {
         ))}
         {!lijst.length && <p className="mu">{kaarten.length ? 'Geen kaarten gevonden.' : 'Nog geen kaarten. Nieuwe kaarten maakt een beheerder bij Beheer → Kaarten.'}</p>}
       </div>
+      {profiel.rol === 'beheerder' && lijst.length > 0 && (
+        <button className="big alt" disabled={bezig} onClick={() => run(async () => {
+          if (lijst.length > 300) throw new Error('Te veel kaarten in één keer; zoek of filter eerst (hoogstens 300)');
+          open(<KaartenPrinten lijst={await rpc('kaart_codes', { p_nummers: lijst.map((k) => k.nummer) })} winkel={winkel} />);
+        })}>{lijst.length === 1 ? 'Deze kaart printen' : `Deze ${lijst.length} kaarten printen`}</button>
+      )}
     </>
   );
 }
@@ -134,6 +142,7 @@ export function KaartScherm({ id, onWijziging }: { id: number; onWijziging: () =
 
 function KaartBeheer({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> }) {
   const { winkel } = useData();
+  const { open } = useSheet();
   const [code, setCode] = useState<string | null>(null);
   const [naar, setNaar] = useState('');
   const [bezig, run] = useBezig();
@@ -149,12 +158,7 @@ function KaartBeheer({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> })
   });
   return (
     <>
-      {code && (
-        <div className="print kaarten een">
-          <QrKaart nummer={k.nummer} code={code} winkel={winkel} />
-        </div>
-      )}
-      {code && <button className="ghost" onClick={() => window.print()}>QR-code printen</button>}
+      {code && <button className="big alt" onClick={() => open(<KaartenPrinten lijst={[{ nummer: k.nummer, code }]} winkel={winkel} />)}>Kaart printen</button>}
       {k.saldo_cent > 0 && (
         <>
           <label htmlFor="naar">Tegoed overzetten naar andere kaart (deze wordt geblokkeerd)</label>
