@@ -24,6 +24,9 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
 button:disabled { opacity: .5; cursor: default; }
+/* Duidelijke rand om wat je met het toetsenbord kiest. */
+:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+.f:focus-visible { outline-offset: 0; }
 code { background: var(--card); padding: 1px 5px; border-radius: 4px; }
 
 .app { display: flex; flex-direction: column; height: 100%; padding-top: env(safe-area-inset-top, 0px); }
@@ -33,29 +36,35 @@ code { background: var(--card); padding: 1px 5px; border-radius: 4px; }
 .proef { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 14px; padding-top: max(6px, env(safe-area-inset-top, 0px));
   background: var(--sun); color: #2a1f00; font-size: 14px; }
 .proef span { flex: 1; min-width: 0; }
-.proef button { padding: 3px 10px; border-radius: 99px; border: 1px solid #2a1f0055; font-weight: 600; font-size: 13px; }
+.proef button { padding: 8px 14px; min-height: 36px; border-radius: 99px; border: 1px solid #2a1f0055; font-weight: 600; font-size: 13px; }
 .proef + .app { padding-top: 0; }
 .kaartje { margin-top: 18px; padding: 4px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 header { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-header b { font-size: 20px; font-weight: 800; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+header h1 { margin: 0; font-size: 20px; line-height: 1.35; min-width: 0; font-weight: 800; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who { padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); font-weight: 600; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
 .dot.on { background: #2e9b5a; }
 .offline { background: var(--warn); color: #fff; padding: 8px 14px; font-weight: 600; }
 main { flex: 1; overflow: auto; padding: 12px 14px 18px; }
 nav { display: flex; border-top: 1px solid var(--line); background: var(--card); padding-bottom: env(safe-area-inset-bottom, 0px); }
-nav button { flex: 1; padding: 13px 2px; font-size: 14px; font-weight: 600; color: var(--mu); }
+nav button { flex: 1; min-height: 50px; padding: 13px 2px; font-size: 14px; font-weight: 600; color: var(--mu); }
 nav button.on { color: var(--acc); box-shadow: inset 0 3px 0 var(--acc); }
 
-.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
-.chips button { padding: 8px 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); font-weight: 600; white-space: nowrap; }
-.chips.small button { padding: 6px 12px; font-size: 14px; }
+/* Vervaagt rechts, zodat je ziet dat er meer is; de lege ruimte achteraan valt precies in die vervaging. */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; padding-right: 28px; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to left, transparent, #000 28px); mask-image: linear-gradient(to left, transparent, #000 28px); }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { min-height: 44px; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); font-weight: 600; white-space: nowrap; }
+.chips.small button { min-height: 40px; padding: 6px 13px; font-size: 14px; }
 .chips button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips button.on .mu { color: inherit; opacity: .75; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .tile { position: relative; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 12px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; }
 .tile:active { transform: scale(.97); }
-.tile.op { opacity: .45; }
+/* Uitverkocht: vlak en gestreept, maar wel leesbaar. */
+.tile.op { background: transparent; border-style: dashed; }
+.tile.op .nm, .tile.op .pr { color: var(--mu); }
 .tile .nm { font-weight: 600; font-size: 17px; padding-right: 26px; }
 .tile .pr { color: var(--mu); }
 .cat { margin: 14px 0 8px; font-size: 15px; font-weight: 700; color: var(--mu); text-transform: uppercase; letter-spacing: .04em; }
@@ -87,10 +96,10 @@ h3.s { margin: 18px 0 4px; font-size: 16px; }
 .row > span:first-child { flex: 1; }
 .rt { min-width: 70px; text-align: right; }
 .row.tot { font-size: 19px; border-bottom: 0; }
-.row .x { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); font-size: 20px; color: var(--warn); }
+.row .x { flex: none; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); font-size: 20px; color: var(--warn); }
 .qty { display: flex; align-items: center; gap: 10px; }
-.qty button { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 20px; }
-.vd { opacity: .5; }
+.qty button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 20px; }
+.vd { color: var(--mu); }
 .vd > span:first-child { text-decoration: line-through; }
 
 .big { width: 100%; padding: 15px; border-radius: 14px; background: var(--acc); color: var(--ai); font-weight: 800; font-size: 18px; margin-top: 10px; }
@@ -103,21 +112,22 @@ h3.s { margin: 18px 0 4px; font-size: 16px; }
 .big.m-lat { background: #8d5a2b; color: #fff; }
 .ghost { width: 100%; padding: 12px; margin-top: 6px; color: var(--mu); font-weight: 600; }
 .btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
-.btns button { padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-weight: 600; }
+.btns button:not(.big) { padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-weight: 600; }
 .btns .big { margin: 0; border: 0; }
 
 .card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
 .card.wide { width: 100%; text-align: left; }
 .card .hd { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 18px; margin-bottom: 8px; }
 .warnbox { border-color: var(--sun); box-shadow: inset 4px 0 0 var(--sun); }
-details summary { cursor: pointer; font-weight: 600; }
-details[open] summary { margin-bottom: 8px; }
+details summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
+details[open] summary { margin-bottom: 2px; }
 
 label { display: block; margin: 12px 0 4px; font-weight: 600; }
-label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; min-height: 44px; }
 label.check input { width: 22px; height: 22px; flex: none; }
 .f { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); min-width: 0; }
-textarea.f { height: 120px; font: 12px monospace; }
+/* 16px: kleiner laat een iPhone inzoomen. */
+textarea.f { height: 120px; font: 16px/1.35 monospace; }
 .inl { display: flex; gap: 8px; }
 .inl > button { padding: 0 16px; border-radius: 12px; background: var(--ink); color: var(--bg); font-weight: 600; white-space: nowrap; }
 .kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
@@ -148,7 +158,7 @@ textarea.f { height: 120px; font: 12px monospace; }
 .qr svg { width: 100%; height: auto; display: block; }
 
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 16px; z-index: 30; font-weight: 600; max-width: calc(100% - 32px); text-align: center; display: flex; align-items: center; gap: 8px; animation: toast 2.6s ease-out forwards; pointer-events: none; }
-.toast.goed { top: calc(env(safe-area-inset-top, 0px) + 14px); bottom: auto; background: #1f8a4c; color: #fff; padding: 12px 18px; font-size: 17px; white-space: nowrap; box-shadow: 0 10px 30px -12px #0008; animation-name: toast-boven; }
+.toast.goed { top: calc(env(safe-area-inset-top, 0px) + 14px); bottom: auto; background: #17703d; color: #fff; padding: 12px 18px; font-size: 17px; white-space: nowrap; box-shadow: 0 10px 30px -12px #0008; animation-name: toast-boven; }
 @keyframes toast-boven { 0% { opacity: 0; transform: translate(-50%, -10px); } 8% { opacity: 1; transform: translate(-50%, 0); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
 /* Erin schuiven, even blijven staan, dan vanzelf vervagen. */
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, 10px); } 8% { opacity: 1; transform: translate(-50%, 0); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
@@ -177,6 +187,14 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .kk-achter img { max-width: 60mm; max-height: 34mm; object-fit: contain; }
 .kk-achter b { font-size: 4.2mm; font-weight: 800; line-height: 1.15; max-width: 76mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kk-leeg { width: 85.6mm; height: 54mm; }
+/* Op het scherm kleiner, zodat een heel vel (2 kaarten breed) past; printen blijft op ware grootte. */
+@media screen {
+  .kaarten.vel { zoom: .9; }
+  @media (max-width: 640px) { .kaarten.vel { zoom: .75; } }
+  @media (max-width: 522px) { .kaarten.vel { zoom: .6; } }
+  @media (max-width: 424px) { .kaarten.vel { zoom: .5; } }
+  @media (max-width: 358px) { .kaarten.vel { zoom: .45; } }
+}
 .kk .qr { width: 44mm; flex: none; position: relative; }
 .kk-t { display: flex; flex-direction: column; gap: 1mm; min-width: 0; position: relative; font-size: 3.2mm; }
 .kk-t .kk-w { font-weight: 800; font-size: 3.6mm; line-height: 1.15; }
@@ -218,7 +236,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
 .pct { font-size: 13px; display: inline-block; min-width: 36px; text-align: right; }
 .pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-weight: 700; font-size: 15px; white-space: nowrap; }
-.pill.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.pill.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: color-mix(in srgb, var(--ok) 75%, var(--ink)); }
 .pill.min { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
 .pill.plus { background: color-mix(in srgb, var(--sun) 25%, transparent); color: var(--ink); }
 .card .row:last-child { border-bottom: 0; }
@@ -244,6 +262,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 /* Saldo-pagina voor klanten */
 .saldo .card { margin-top: 12px; }
 .saldo a { color: var(--acc); font-weight: 600; }
+.saldo p.c > a { display: inline-block; padding: 12px 4px; }
 
 /* Saldo-zuil (telefoon of tablet aan de muur) */
 .zuil { max-width: 560px; margin: 0 auto; padding: 24px 16px; text-align: center; }
@@ -265,7 +284,7 @@ nav.veel button { font-size: 12.5px; }
 .lid .mu { font-weight: 500; font-size: 14px; }
 .maand { justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .maand b { text-transform: capitalize; font-size: 18px; }
-.maand button { min-width: 48px; }
+.maand button { min-width: 48px; min-height: 44px; font-size: 24px; line-height: 1; }
 .kpi:has(> :nth-child(3)) { grid-template-columns: 1fr 1fr 1fr; }
 .kpi:has(> :nth-child(3)) b { font-size: 19px; }
 
@@ -295,10 +314,11 @@ a.knop-link { display: block; text-align: center; text-decoration: none; box-siz
   --m-cash: #2e7d32; --m-pin: #1565c0; color-scheme: light;
 }
 [data-thema="groot"] body { font-size: 18px; }
-[data-thema="groot"] header b { font-size: 24px; }
+[data-thema="groot"] header h1 { font-size: 24px; }
 [data-thema="groot"] .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 [data-thema="groot"] .tile { min-height: 116px; padding: 14px; gap: 8px; border-width: 2px; }
-[data-thema="groot"] .tile .nm { font-size: 21px; font-weight: 800; padding-right: 40px; overflow-wrap: anywhere; }
+[data-thema="groot"] .tile .nm { font-size: 21px; font-weight: 800; padding-right: 40px; overflow-wrap: break-word; hyphens: auto; }
+@media (max-width: 400px) { [data-thema="groot"] .tile .nm { font-size: 18px; padding-right: 34px; } }
 [data-thema="groot"] .tile .pr { font-size: 18px; color: var(--ink); }
 [data-thema="groot"] .bd { min-width: 38px; height: 38px; border-radius: 19px; font-size: 20px; background: var(--ink); color: var(--bg); }
 [data-thema="groot"] .cat { font-size: 17px; color: var(--ink); }
@@ -343,7 +363,7 @@ a.knop-link { display: block; text-align: center; text-decoration: none; box-siz
 .rc-getal { margin: 0; font-size: clamp(72px, 16vw, 200px); font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .rc-bedrag { font-size: clamp(56px, 11vw, 150px); white-space: nowrap; overflow-wrap: normal; }
 .rc-tekst { margin: 0; font-size: clamp(20px, 3.2vw, 34px); font-weight: 600; line-height: 1.25; max-width: 28ch; }
-.rc-hint { margin: 24px 0 0; opacity: .7; font-weight: 600; }
+.rc-hint { margin: 24px 0 0; opacity: .88; font-weight: 600; }
 .rc-top { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 10px; }
 .rc-top li { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; gap: 12px; align-items: center; font-size: clamp(17px, 2.6vw, 26px); font-weight: 700; }
 .rc-top li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

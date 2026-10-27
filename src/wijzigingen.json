@@ -1,6 +1,17 @@
 [
   {
     "datum": "2026-10-27",
+    "titel": "Knoppen en schermen nog eens nagelopen",
+    "punten": [
+      "Een paar knoppen waren onzichtbaar (bijvoorbeeld Goedkeuren, Ja, trekken en Printen of PDF). Die zijn weer gewoon groen.",
+      "Het voorbeeld van het kaartenvel past nu ook op een telefoon. Printen gebeurt nog steeds op ware grootte.",
+      "Grotere tikvlakken voor + en −, het kruisje, de tabbladen onderaan, de filterknoppen en de maandpijltjes.",
+      "Beter leesbaar: uitverkochte producten, tellers op een gekozen filter, geannuleerde regels en de groene melding.",
+      "Filterknoppen die niet op het scherm passen, vervagen rechts, zodat je ziet dat je kunt schuiven. In het thema Groot breken productnamen niet meer midden in een woord."
+    ]
+  },
+  {
+    "datum": "2026-10-27",
     "titel": "Barkaarten met een achterkant",
     "punten": [
       "Bij het printen van barkaarten kun je de achterkant meeprinten: het logo groot in het midden, met de naam van de bar eronder (de naam kan ook uit).",
