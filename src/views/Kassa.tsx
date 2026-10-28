@@ -162,9 +162,10 @@ export function Bestelling() {
   );
 }
 
-function KiesRekening({ onKies }: { onKies: (id: number, naam: string) => void }) {
+/** Rekening kiezen of een nieuwe maken. voorstel: naam die alvast is ingevuld (bijv. de naam op de kaart). */
+export function KiesRekening({ onKies, voorstel = '' }: { onKies: (id: number, naam: string) => void; voorstel?: string }) {
   const { rekeningen, regels } = useData();
-  const [naam, setNaam] = useState('');
+  const [naam, setNaam] = useState(voorstel);
   const [bezig, run] = useBezig();
   const nieuw = () => run(async () => {
     const n = naam.trim();
