@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useData } from '../data';
 import { bonLink, centTekst, eur, kaartCode, naarCent, nieuweSleutel, rpc, tril, type Bon, type KaartInfo, type Regel } from '../lib';
 import { KiesLid, type Lid } from './Streeplijst';
+import { KiesRekening } from './Kassa';
 import { Bedrag, BonPapier, deelBon, melding, Qr, Rij, Scanner, useBezig, useBonBeeld, useSheet } from '../ui';
 
 export type Bron = { soort: 'bestelling'; regels: Regel[] } | { soort: 'rekening'; id: number };
@@ -10,7 +11,7 @@ type Methode = 'contant' | 'pin' | 'kaart' | 'lat' | 'gratis';
 /** Betaalscherm voor een bestelling of een rekening. */
 export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; totaal: number; methode: Methode; onKlaar: () => void }) {
   const { herlaad, methoden } = useData();
-  const { open } = useSheet();
+  const { open, sluit } = useSheet();
   const [stap, setStap] = useState<Methode>(methode);
   const [kaart, setKaart] = useState<{ code: string; info: KaartInfo } | null>(null);
   const [lid, setLid] = useState<Lid | null>(null);
@@ -40,6 +41,20 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
     open(<BonScherm bon={bon} nieuw />);
   });
 
+  // Te weinig tegoed: de hele bestelling op een rekening. De kaart wordt dan pas gebruikt
+  // bij het afrekenen van de rekening (eerst de kaart, de rest contant of pin).
+  const kanOpRekening = bron.soort === 'bestelling' && methoden.rekening;
+  const opRekening = () => bron.soort === 'bestelling' && open(
+    <KiesRekening voorstel={kaart?.info.naam ?? ''} onKies={(id, naam) => {
+      rpc('rekening_toevoegen', { p_rekening_id: id, p_regels: bron.regels }).then(() => {
+        onKlaar();
+        sluit();
+        void herlaad();
+        melding(`Op rekening van ${naam}`, true);
+      }, (e: Error) => melding(e.message));
+    }} />,
+  );
+
   if (stap === 'kaart' && !kaart) return <KaartKiezen totaal={totaal} onKaart={(code, info) => setKaart({ code, info })} />;
   if (stap === 'lat' && !lid) return <KiesLid onKies={setLid} />;
 
@@ -56,12 +71,14 @@ export function Afrekenen({ bron, totaal, methode, onKlaar }: { bron: Bron; tota
       )}
       {stap === 'kaart' && kaart && (rest === 0
         ? <button className="big m-card" disabled={bezig} onClick={() => betaal()}>Afschrijven</button>
-        : methoden.contant || methoden.pin || methoden.lat
-          ? <div className="btns">
+        : methoden.contant || methoden.pin || methoden.lat || kanOpRekening
+          ? <><div className="btns">
               {methoden.contant && <button className="big m-cash" onClick={() => setStap('contant')}>Rest contant</button>}
               {methoden.pin && <button className="big m-pin" disabled={bezig} onClick={() => setStap('pin')}>Rest pin</button>}
               {methoden.lat && <button className="big m-lat" onClick={() => setStap('lat')}>Rest op de streeplijst</button>}
+              {kanOpRekening && <button className="big m-tab" disabled={bezig} onClick={opRekening}>Alles op rekening</button>}
             </div>
+            {kanOpRekening && <p className="mu">Alles op rekening: de kaart wordt nog niet gebruikt. Scan hem als de rekening wordt afgerekend, en betaal de rest dan contant of met pin.</p>}</>
           : <p className="card warnbox">Er staat te weinig tegoed op de kaart. Waardeer de kaart eerst op, of haal iets van de bestelling af.</p>)}
       {stap === 'contant' && <Contant bedrag={rest} bezig={bezig} onBetaal={(g, restKaart) => betaal({ methode: 'contant', gegeven_cent: g, rest_kaart: restKaart })} />}
       {stap === 'lat' && lid && (
