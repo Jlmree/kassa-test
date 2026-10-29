@@ -209,7 +209,11 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
   @media (max-width: 358px) { .kaarten.vel { zoom: .45; } }
 }
 .kk .qr { width: 44mm; flex: none; position: relative; }
-.kk-t { display: flex; flex-direction: column; gap: 1mm; min-width: 0; position: relative; font-size: 3.2mm; }
+.kk-t { flex: 1; display: flex; flex-direction: column; gap: 1mm; min-width: 0; position: relative; font-size: 3.2mm; }
+/* Naamvak rechtsonder: een lijn om op te schrijven, of de naam als de kaart al op naam staat. */
+.kk-naam { display: flex; flex-direction: column; gap: .4mm; margin-top: 2mm; }
+.kk-naam i { font-style: normal; font-size: 2.2mm; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .25mm; }
+.kk-lijn { display: block; height: 6mm; line-height: 6.4mm; border-bottom: .3mm solid #777; font-size: 3.2mm; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kk-t .kk-w { font-weight: 800; font-size: 3.6mm; line-height: 1.15; }
 .kk-t b { font-size: 5mm; margin-top: 2mm; }
 .kk-t .kk-s { font-size: 2.6mm; color: #555; margin-top: 1mm; }

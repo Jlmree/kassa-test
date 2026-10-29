@@ -59,7 +59,8 @@ export function Kaarten() {
       {profiel.rol === 'beheerder' && lijst.length > 0 && (
         <button className="big alt" disabled={bezig} onClick={() => run(async () => {
           if (lijst.length > 300) throw new Error('Te veel kaarten in één keer; zoek of filter eerst (hoogstens 300)');
-          open(<KaartenPrinten lijst={await rpc('kaart_codes', { p_nummers: lijst.map((k) => k.nummer) })} winkel={winkel} />);
+          const codes = await rpc<{ nummer: number; code: string }[]>('kaart_codes', { p_nummers: lijst.map((k) => k.nummer) });
+          open(<KaartenPrinten lijst={codes.map((c) => ({ ...c, naam: lijst.find((k) => k.nummer === c.nummer)?.naam }))} winkel={winkel} />);
         })}>{lijst.length === 1 ? 'Deze kaart printen' : `Deze ${lijst.length} kaarten printen`}</button>
       )}
     </>
@@ -158,7 +159,7 @@ function KaartBeheer({ k, onKlaar }: { k: Kaart; onKlaar: () => Promise<void> })
   });
   return (
     <>
-      {code && <button className="big alt" onClick={() => open(<KaartenPrinten lijst={[{ nummer: k.nummer, code }]} winkel={winkel} />)}>Kaart printen</button>}
+      {code && <button className="big alt" onClick={() => open(<KaartenPrinten lijst={[{ nummer: k.nummer, code, naam: k.naam }]} winkel={winkel} />)}>Kaart printen</button>}
       {k.saldo_cent > 0 && (
         <>
           <label htmlFor="naar">Tegoed overzetten naar andere kaart (deze wordt geblokkeerd)</label>

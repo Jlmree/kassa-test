@@ -305,7 +305,8 @@ export function BestandKlaar({ naam, blob, uitleg }: { naam: string; blob: Blob;
   );
 }
 
-export function QrKaart({ nummer, code, winkel }: { nummer: number; code: string; winkel: string }) {
+/** naamvak: een lijn rechtsonder waar de eigenaar zijn naam op schrijft (staat de kaart al op naam, dan staat die er). */
+export function QrKaart({ nummer, code, winkel, naam, naamvak = false }: { nummer: number; code: string; winkel: string; naam?: string | null; naamvak?: boolean }) {
   return (
     <div className="kk">
       <img className="watermerk" src={logo} alt="" />
@@ -316,6 +317,7 @@ export function QrKaart({ nummer, code, winkel }: { nummer: number; code: string
         <b>Kaart {nummer}</b>
         <small>{code}</small>
         <span className="kk-s">Scan voor je saldo</span>
+        {naamvak && <span className="kk-naam"><i>Naam</i><span className="kk-lijn">{naam ?? ''}</span></span>}
       </div>
     </div>
   );
@@ -337,7 +339,8 @@ export function KaartAchter({ winkel, naam }: { winkel: string; naam: boolean })
  * printen en omslaan langs de lange kant, dan valt elke achterkant achter zijn eigen kaart.
  */
 /** Printblad voor barkaarten: kop, printknop, uitleg en de vellen. Eén kaart of honderd. */
-export function KaartenPrinten({ lijst, winkel }: { lijst: { nummer: number; code: string }[]; winkel: string }) {
+type TePrinten = { nummer: number; code: string; naam?: string | null };
+export function KaartenPrinten({ lijst, winkel }: { lijst: TePrinten[]; winkel: string }) {
   return (
     <>
       <h2>{lijst.length === 1 ? `Kaart ${lijst[0].nummer} printen` : `${lijst.length} kaarten`}</h2>
@@ -348,18 +351,21 @@ export function KaartenPrinten({ lijst, winkel }: { lijst: { nummer: number; cod
   );
 }
 
-export function KaartenVellen({ lijst, winkel }: { lijst: { nummer: number; code: string }[]; winkel: string }) {
+export function KaartenVellen({ lijst, winkel }: { lijst: TePrinten[]; winkel: string }) {
   const lees = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const [achter, setAchter] = useState(() => lees('kaart-achterkant', '1') === '1');
   const [naam, setNaam] = useState(() => lees('kaart-achter-naam', '1') === '1');
+  const [naamvak, setNaamvak] = useState(() => lees('kaart-naamvak', '1') === '1');
   const [dx, setDx] = useState(() => lees('kaart-achter-dx', '0'));
   const [dy, setDy] = useState(() => lees('kaart-achter-dy', '0'));
   const bewaar = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* geen opslag */ } };
   const mm = (v: string) => Math.max(-10, Math.min(10, parseFloat(v.replace(',', '.')) || 0));
-  const vellen: { nummer: number; code: string }[][] = [];
+  const vellen: TePrinten[][] = [];
   for (let i = 0; i < lijst.length; i += 10) vellen.push(lijst.slice(i, i + 10));
   return (
     <>
+      <label className="check"><input type="checkbox" checked={naamvak} onChange={(e) => { setNaamvak(e.target.checked); bewaar('kaart-naamvak', e.target.checked ? '1' : '0'); }} />
+        <span>Vak voor de naam op de voorkant<br /><span className="mu">Staat de kaart al op naam, dan wordt die erin geprint; anders schrijft de eigenaar hem erop (vóór het lamineren, of met een watervaste stift).</span></span></label>
       <label className="check"><input type="checkbox" checked={achter} onChange={(e) => { setAchter(e.target.checked); bewaar('kaart-achterkant', e.target.checked ? '1' : '0'); }} />
         <span>Achterkant meeprinten (logo{naam ? ' en naam' : ''})<br /><span className="mu">Print dubbelzijdig en kies "omslaan langs de lange kant", op 100%.</span></span></label>
       {achter && <>
@@ -376,7 +382,7 @@ export function KaartenVellen({ lijst, winkel }: { lijst: { nummer: number; code
       <div className="print">
         {vellen.map((vel, v) => (
           <div key={v}>
-            <div className="kaarten vel">{vel.map((k) => <QrKaart key={k.nummer} nummer={k.nummer} code={k.code} winkel={winkel} />)}</div>
+            <div className="kaarten vel">{vel.map((k) => <QrKaart key={k.nummer} nummer={k.nummer} code={k.code} winkel={winkel} naam={k.naam} naamvak={naamvak} />)}</div>
             {achter && (
               <div className="kaarten vel achter" style={{ transform: `translate(${mm(dx)}mm, ${mm(dy)}mm)` }}>
                 {Array.from({ length: Math.ceil(vel.length / 2) * 2 }, (_, i) => {
