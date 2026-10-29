@@ -31,6 +31,8 @@ interface Data {
 }
 
 const Ctx = createContext<Data>(null!);
+/** Hoe vaak (ms) een apparaat vraagt of er iets veranderd is. */
+const ELKE = 1000;
 export const useData = () => useContext(Ctx);
 
 export function DataProvider({ profiel, children }: { profiel: Profiel; children: ReactNode }) {
@@ -83,8 +85,9 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
 
   useEffect(() => {
     void herlaad();
-    // Elke paar seconden de wijzigingsteller opvragen; alleen bij een
-    // verandering (ook door een ander apparaat) alles opnieuw laden.
+    // Elke seconde de wijzigingsteller opvragen (een heel klein verzoek); alleen bij een
+    // verandering (ook door een ander apparaat) alles opnieuw laden. Zo staat een verkoop
+    // op de ene telefoon binnen ongeveer een seconde ook op de andere en op het grote scherm.
     let t = 0, stop = false;
     const kijk = async () => {
       if (document.visibilityState === 'visible') {
@@ -97,9 +100,9 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           setS((x) => ({ ...x, verbonden: false }));
         }
       }
-      if (!stop) t = window.setTimeout(kijk, 3000);
+      if (!stop) t = window.setTimeout(kijk, ELKE);
     };
-    t = window.setTimeout(kijk, 3000);
+    t = window.setTimeout(kijk, ELKE);
     const zicht = () => { if (document.visibilityState === 'visible') void herlaad(); };
     document.addEventListener('visibilitychange', zicht);
     return () => { stop = true; clearTimeout(t); document.removeEventListener('visibilitychange', zicht); };

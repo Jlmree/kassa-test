@@ -1,6 +1,14 @@
 [
   {
     "datum": "2026-10-29",
+    "titel": "Sneller bijgewerkt op alle apparaten",
+    "punten": [
+      "Reken je op de ene telefoon af, dan staat de nieuwe voorraad nu binnen ongeveer een seconde ook op de andere telefoons en op het grote scherm aan de bar (was tot 3 seconden).",
+      "Dat geldt voor alles: producten, voorraad, rekeningen, de dienst en instellingen. Een telefoon die op de achtergrond staat, vraagt niets en laadt meteen bij als je hem opent."
+    ]
+  },
+  {
+    "datum": "2026-10-29",
     "titel": "Producten makkelijker toevoegen, slepen en subcategorieën",
     "punten": [
       "Snel toevoegen: plak of typ een lijst, één product per regel (bijvoorbeeld \"Cola 2,50 48\": naam, prijs en voorraad). Je ziet eerst wat er komt; bestaande producten worden overgeslagen.",
