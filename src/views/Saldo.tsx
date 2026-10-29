@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { datumTijd, eur, kaartCode, lidCode, methodeNaam, rpc, vertaal } from '../lib';
+import { bonLink, datumTijd, eur, kaartCode, lidCode, methodeNaam, rpc, vertaal } from '../lib';
 import { Rij, Scanner, useBezig } from '../ui';
 
 interface KaartSaldo {
   nummer: number; naam: string | null; saldo_cent: number; geblokkeerd: boolean; winkel: string;
-  historie: { ts: string; bedrag_cent: number; soort: string }[];
+  // bon, wat en bon_code alleen bij een betaling (bon_code tot 90 dagen terug).
+  historie: { ts: string; bedrag_cent: number; soort: string; methode?: string | null; bon?: number | null; wat?: string | null; bon_code?: string | null }[];
 }
 // De server geeft een fout terug als {"fout": "..."} (zodat mislukte pogingen geteld blijven).
 async function zonderFout<T>(p: Promise<T | { fout: string }>): Promise<T> {
@@ -29,6 +30,7 @@ export function Saldo({ start }: { start: string }) {
   const [k, setK] = useState<KaartSaldo | null>(null);
   const [fout, setFout] = useState('');
   const [bezig, run] = useBezig();
+  const [meer, setMeer] = useState(10);
   const laad = useCallback((c: string) => run(async () => {
     try {
       setK(await saldoVan(c));
@@ -54,14 +56,18 @@ export function Saldo({ start }: { start: string }) {
           {k.geblokkeerd && <p className="stamp">GEBLOKKEERD</p>}
           <p className="mu c">{k.geblokkeerd ? 'Deze kaart is geblokkeerd. Vraag aan de bar wat er kan.' : 'Opwaarderen doe je aan de bar.'}</p>
           <button className="big alt" disabled={bezig} onClick={() => void laad(code)}>Vernieuwen</button>
-          {k.historie.length > 0 && <h3 className="s">Laatste keren</h3>}
+          {k.historie.length > 0 && <h3 className="s">Geschiedenis</h3>}
           <div className="card">
-            {k.historie.map((h, i) => (
-              <Rij key={i} l={<>{soortNaam[h.soort] ?? h.soort}<br /><span className="mu">{datumTijd(h.ts)}</span></>}
+            {k.historie.slice(0, meer).map((h, i) => (
+              <Rij key={i} onClick={h.bon_code ? () => { location.href = bonLink(h.bon_code!); } : undefined}
+                l={<>{soortNaam[h.soort] ?? h.soort}{h.soort === 'opwaardering' && h.methode ? ` (${methodeNaam[h.methode]?.toLowerCase() ?? h.methode})` : ''}
+                  {h.wat && <><br /><span>{h.wat}</span></>}
+                  <br /><span className="mu">{datumTijd(h.ts)}{h.bon ? ` · bon ${h.bon}` : ''}{h.bon_code ? ' · tik voor de bon ›' : ''}</span></>}
                 r={(h.bedrag_cent > 0 ? '+' : '') + eur(h.bedrag_cent)} />
             ))}
             {!k.historie.length && <p className="mu">Nog niets gebeurd met deze kaart.</p>}
           </div>
+          {k.historie.length > meer && <button className="ghost" onClick={() => setMeer(meer + 20)}>Meer tonen</button>}
           <p className="mu">Tip: bewaar deze pagina als bladwijzer of zet hem op je beginscherm, dan zie je je saldo met één tik.</p>
         </>
       ) : (
