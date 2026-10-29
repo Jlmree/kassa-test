@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-29",
+    "titel": "Streeplijst afbetalen met de barkaart",
+    "punten": [
+      "Bij een lid op de streeplijst staat nu Met barkaart: scan de kaart en het tegoed gaat eraf. Staat er minder op, dan gaat dat eraf en blijft de rest open.",
+      "Er komt geen geld in de kas, dus dat kan ook als de kassa dicht is. Op de saldo-pagina van de kaart staat het als Streeplijst afbetaald, en in de boekhouding als eigen kolom.",
+      "De knop Overgemaakt is weg. Wat eerder zo is afbetaald, blijft gewoon in de geschiedenis en de boekhouding staan."
+    ]
+  },
+  {
+    "datum": "2026-10-29",
     "titel": "Op de saldo-pagina: wat je kocht, met de bon",
     "punten": [
       "Scant een klant zijn barkaart, dan ziet hij bij elke betaling wat er gekocht is (bijvoorbeeld 2× Bier, 1× Chips) en het bonnummer. Tik erop en de hele bon opent, tot 90 dagen terug.",

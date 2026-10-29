@@ -795,6 +795,32 @@ test('saldo-pagina: geschiedenis met wat er gekocht is en een link naar de bon',
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
 });
 
+test('streeplijst afbetalen met de barkaart: tegoed eraf, streeplijst omlaag, geen geld in de kas', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  await rpc(baas, 'voorraad_boeken', { p_product_id: product('Bier').id, p_aantal: 10, p_soort: 'levering' });
+  const lid = await rpc(bar, 'lid_opslaan', { p_id: null, p_naam: `Kaartlid ${Date.now()}` });
+  await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Bier').id, aantal: 3 }], p_betalingen: [{ methode: 'lat', lid }] });
+  const [k] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
+  const info = await rpc(bar, 'kaart_info', { p_zoek: k.code });
+  await rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 400, p_methode: 'contant' });
+  const kasVoor = (await rpc(bar, 'dienst_overzicht')).verwacht_cent;
+  await faalt(rpc(bar, 'lat_afbetalen', { p_lid: lid, p_bedrag_cent: 500, p_methode: 'kaart', p_kaart: k.code }), 'hoogstens');
+  await faalt(rpc(bar, 'lat_afbetalen', { p_lid: lid, p_bedrag_cent: 300, p_methode: 'kaart', p_kaart: String(info.nummer) }), 'QR-code');
+  const open = await rpc(bar, 'lat_afbetalen', { p_lid: lid, p_bedrag_cent: 400, p_methode: 'kaart', p_kaart: k.code });
+  assert.equal(open, 3 * product('Bier').prijs_cent - 400);
+  assert.equal((await rpc(bar, 'kaart_info', { p_zoek: k.code })).saldo_cent, 0);
+  assert.equal((await rpc(bar, 'dienst_overzicht')).verwacht_cent, kasVoor, 'geen geld in de la');
+  const anon = createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { 'x-forwarded-for': '10.1.2.5' } } });
+  const s = await rpc(anon, 'kaart_saldo', { p_code: k.code });
+  assert.deepEqual([s.historie[0].soort, s.historie[0].bedrag_cent, s.historie[0].wat], ['betaling', -400, 'Streeplijst afbetaald']);
+  // Kaarttegoed blijft sluitend: saldo = som van de mutaties.
+  const vandaag = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const d = await rpc(baas, 'boekhouding', { p_van: vandaag, p_tot: vandaag });
+  assert.equal(d.kaart_begin + d.kaart.reduce((a, x) => a + x.bedrag, 0), d.kaart_eind);
+  assert.equal(d.streeplijst.find((x) => x.lid.startsWith('Kaartlid')).kaart, 400);
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
+});
+
 // Als laatste: maakt alles leeg.
 test('kassa leegmaken: alleen de beheerder, met LEEGMAKEN; logboek en accounts blijven', async () => {
   await faalt(rpc(bar, 'kassa_leegmaken', { p_bevestiging: 'LEEGMAKEN' }), 'beheerder');

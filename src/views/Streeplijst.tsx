@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useData } from '../data';
 import { centTekst, csvRij, datumTijd, downloaden, eur, lidLink, methodeNaam, naarCent, rpc } from '../lib';
 import { Bedrag, melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { KaartKiezen } from './Afrekenen';
 
 export interface Lid { id: number; naam: string; actief: boolean; open_cent: number; maand_cent: number; laatst: string | null }
 
@@ -105,6 +106,7 @@ function LidScherm({ id, onWijziging }: { id: number; onWijziging: () => Promise
   const [lid, setLid] = useState<Lid | null>(null);
   const [h, setH] = useState<Historie | null>(null);
   const [v, setV] = useState('');
+  const [kaart, setKaart] = useState(false);
   const [bezig, run] = useBezig();
   const beheer = profiel.rol === 'beheerder';
   const laad = useCallback(async () => {
@@ -116,14 +118,25 @@ function LidScherm({ id, onWijziging }: { id: number; onWijziging: () => Promise
   if (!lid || !h) return <p className="mu">Laden…</p>;
 
   const bedrag = v ? naarCent(v) : h.open_cent;
-  const afbetalen = (methode: 'contant' | 'pin' | 'overboeking') => run(async () => {
+  // Met de barkaart: hoogstens wat erop staat; de rest blijft op de streeplijst.
+  const afbetalen = (methode: 'contant' | 'pin' | 'kaart', k?: { code: string; saldo_cent: number; nummer: number }) => run(async () => {
     if (!(bedrag > 0)) throw new Error('Vul een bedrag in');
-    const rest = await rpc<number>('lat_afbetalen', { p_lid: id, p_bedrag_cent: bedrag, p_methode: methode });
+    const b = k ? Math.min(bedrag, k.saldo_cent) : bedrag;
+    const rest = await rpc<number>('lat_afbetalen', { p_lid: id, p_bedrag_cent: b, p_methode: methode, p_kaart: k?.code ?? null });
     setV('');
+    setKaart(false);
     await laad();
     await onWijziging();
-    melding(rest ? `Afbetaald, nog open ${eur(rest)}` : `${lid.naam} staat weer op nul`);
+    melding(`${k ? `${eur(b)} van kaart ${k.nummer} afgeschreven. ` : ''}${rest ? `Nog open ${eur(rest)}` : `${lid.naam} staat weer op nul`}`, true);
   });
+  if (kaart) return (
+    <>
+      <KaartKiezen titel={`Streeplijst van ${lid.naam} afbetalen met de barkaart`} totaal={bedrag}
+        onKaart={(code, info) => afbetalen('kaart', { code, saldo_cent: info.saldo_cent, nummer: info.nummer })} />
+      <p className="mu">Staat er minder op de kaart, dan gaat dat eraf en blijft de rest op de streeplijst.</p>
+      <button className="ghost" onClick={() => setKaart(false)}>Terug</button>
+    </>
+  );
   const wijzig = (naam: string, actief: boolean) => run(async () => {
     await rpc('lid_opslaan', { p_id: id, p_naam: naam, p_actief: actief });
     await laad();
@@ -140,11 +153,11 @@ function LidScherm({ id, onWijziging }: { id: number; onWijziging: () => Promise
         <>
           <label htmlFor="ab">Afbetalen</label>
           <Bedrag id="ab" waarde={v} onChange={setV} placeholder={`Alles: ${centTekst(h.open_cent)}`} />
-          {(methoden.contant || methoden.pin) && !dienst && <p className="mu">Contant of pin afbetalen kan als de kassa open is (tabblad Dienst).</p>}
+          {(methoden.contant || methoden.pin) && !dienst && <p className="mu">Contant of pin afbetalen kan als de kassa open is (tabblad Dienst){methoden.kaart ? '; met de barkaart kan altijd' : ''}.</p>}
           <div className="btns" style={{ marginTop: 8 }}>
             {methoden.contant && dienst && <button className="big m-cash" disabled={bezig} onClick={() => afbetalen('contant')}>Contant ontvangen</button>}
             {methoden.pin && dienst && <button className="big m-pin" disabled={bezig} onClick={() => afbetalen('pin')}>Pin ontvangen</button>}
-            {beheer && <button className="big alt" disabled={bezig} onClick={() => afbetalen('overboeking')}>Overgemaakt</button>}
+            {methoden.kaart && <button className="big m-card" disabled={bezig || !(bedrag > 0)} onClick={() => setKaart(true)}>Met barkaart</button>}
           </div>
           {!isNaN(bedrag) && bedrag > 0 && <p className="mu c">{eur(bedrag)} afbetalen{bedrag < h.open_cent ? `, daarna nog ${eur(h.open_cent - bedrag)} open` : ''}</p>}
         </>
@@ -263,7 +276,7 @@ export function StreeplijstMaand() {
         {rijen && !rijen.length && <p className="mu">Niets gestreept in deze maand.</p>}
       </div>
       <button className="big" disabled={!rijen?.length} onClick={exporteer}>Exporteren naar Excel (CSV)</button>
-      <p className="mu">Rechts staat wat ieder lid nu nog moet. Is er overgemaakt of geïncasseerd? Boek het af bij het lid in het tabblad Streeplijst → Overgemaakt.</p>
+      <p className="mu">Rechts staat wat ieder lid nu nog moet. Afbetalen doe je bij het lid in het tabblad Streeplijst: contant, met pin of met de barkaart.</p>
     </>
   );
 }
