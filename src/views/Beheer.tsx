@@ -625,7 +625,7 @@ const actieNaam: Record<string, string> = {
   uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', thema: 'Thema gekozen', loterij: 'Loterij getrokken', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
   kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd', gratis: 'Gratis weggegeven',
   uitgave: 'Uitgave geregistreerd', uitgave_terugbetaald: 'Voorschot terugbetaald', uitgave_verwijderen: 'Uitgave verwijderd',
-  btw: 'Btw aan/uit gezet', btw_tarief: 'Btw-tarief gewijzigd', bijwerken: 'Kassa bijgewerkt',
+  kassa_leegmaken: 'Kassa leeggemaakt', btw: 'Btw aan/uit gezet', btw_tarief: 'Btw-tarief gewijzigd', bijwerken: 'Kassa bijgewerkt',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -645,6 +645,7 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'uitgave_verwijderen': return `${d.omschrijving}: ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
     case 'loterij': return `Kaart ${d.kaart} won (${d.loten} van ${d.van_loten} loten)${d.prijs_cent ? `, ${e('prijs_cent')} tegoed` : ''}${d.omschrijving ? `: ${d.omschrijving}` : ''}`;
+    case 'kassa_leegmaken': return `${d.bonnen} bonnen, ${d.producten} producten, ${d.kaarten} kaarten (${e('tegoed_cent')} tegoed), ${d.leden} leden${d.medewerkers_uit ? `, ${d.medewerkers_uit} medewerkers uitgeschakeld` : ''}${d.instellingen ? ', instellingen naar standaard' : ''}`;
     case 'btw': return d.aan ? 'Btw aan' : 'Btw uit';
     case 'btw_tarief': return `${d.categorie ?? 'Eén product'}: ${d.pct}% (${d.aantal} ${d.aantal === 1 ? 'product' : 'producten'})`;
     case 'thema': return `Thema: ${themas.find((t) => t.id === d.thema)?.naam ?? d.thema}`;
@@ -786,11 +787,58 @@ function Instellingen() {
       {methoden.kaart && <ZuilUitleg />}
       <Bijwerken />
       <BackupDownloaden />
+      <KassaLeegmaken />
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
       <h3 className="s">Over de Bar-kassa</h3>
       <p className="mu">© 2026 BSGRF. Alle rechten voorbehouden.</p>
       <button className="ghost" onClick={() => open(<Voorwaarden />)}>Voorwaarden lezen</button>
+    </>
+  );
+}
+
+/** Alles weg en opnieuw beginnen: producten, kaarten, verkopen, diensten, streeplijst enzovoort. */
+function KassaLeegmaken() {
+  const { winkel, herlaad } = useData();
+  const [open_, setOpen] = useState(false);
+  const [woord, setWoord] = useState('');
+  const [mensen, setMensen] = useState(false);
+  const [inst, setInst] = useState(false);
+  const [bezig, run] = useBezig();
+  const leeg = () => run(async () => {
+    const r = await rpc<{ producten: number; kaarten: number; bonnen: number }>('kassa_leegmaken', { p_bevestiging: woord.trim().toUpperCase(), p_medewerkers: mensen, p_instellingen: inst });
+    setOpen(false); setWoord('');
+    await herlaad();
+    melding(`Kassa leeggemaakt: ${r.bonnen} bonnen, ${r.producten} producten en ${r.kaarten} kaarten weg`, true);
+  });
+  return (
+    <>
+      <h3 className="s">Kassa leegmaken</h3>
+      {!open_ ? (
+        <>
+          <p className="mu">Opnieuw beginnen, bijvoorbeeld na het uitproberen of aan het begin van een nieuw seizoen.</p>
+          <button className="ghost" style={{ color: 'var(--warn)' }} onClick={() => setOpen(true)}>Kassa leegmaken…</button>
+        </>
+      ) : (
+        <div className="card warnbox">
+          <p><b>Dit haalt alles van {winkel} weg</b> en kan niet ongedaan worden gemaakt:</p>
+          <ul className="stappen">
+            <li>alle producten en de voorraad;</li>
+            <li>alle barkaarten, ook het tegoed dat erop staat (geprinte kaarten werken niet meer);</li>
+            <li>alle verkopen, diensten en rapporten, rekeningen, de streeplijst met de leden, uitgaven en de loterij.</li>
+          </ul>
+          <p className="mu">Blijft staan: de accounts, het logboek (met een regel dat de kassa is leeggemaakt) en de back-ups op de server. Bon- en kaartnummers beginnen weer bij 1.</p>
+          <p className="mu">{PROEF ? 'In de proefversie kun je ook bovenaan op Wissen tikken: dan komen de voorbeeldgegevens terug.' : 'Download hierboven eerst een back-up, dan kun je altijd nog terug.'}</p>
+          <label className="check"><input type="checkbox" checked={mensen} onChange={(e) => setMensen(e.target.checked)} /><span>Ook alle andere medewerkers uitschakelen (jij blijft)</span></label>
+          <label className="check"><input type="checkbox" checked={inst} onChange={(e) => setInst(e.target.checked)} /><span>Ook de instellingen terug naar standaard (naam, betaalmethoden, thema, btw)</span></label>
+          <label htmlFor="leeg">Typ <b>LEEGMAKEN</b> om te bevestigen</label>
+          <input className="f" id="leeg" autoComplete="off" autoCapitalize="characters" value={woord} onChange={(e) => setWoord(e.target.value)} />
+          <div className="btns">
+            <button onClick={() => { setOpen(false); setWoord(''); }}>Annuleren</button>
+            <button className="big warn" disabled={bezig || woord.trim().toUpperCase() !== 'LEEGMAKEN'} onClick={leeg}>Alles leegmaken</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

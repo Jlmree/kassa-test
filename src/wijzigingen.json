@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-29",
+    "titel": "Kassa leegmaken",
+    "punten": [
+      "Bij Beheer → Instellingen staat Kassa leegmaken: alle producten, barkaarten (ook het tegoed), verkopen, diensten, rekeningen, de streeplijst, uitgaven en de loterij gaan weg. Bon- en kaartnummers beginnen weer bij 1.",
+      "Je bevestigt door LEEGMAKEN te typen. Kies erbij of ook de andere medewerkers uit moeten, en of de instellingen terug moeten naar standaard.",
+      "De accounts, het logboek en de back-ups op de server blijven. In het logboek staat dat de kassa is leeggemaakt, door wie en hoeveel er weg ging. Download eerst een back-up, dan kun je altijd nog terug."
+    ]
+  },
+  {
+    "datum": "2026-10-29",
     "titel": "Zoeken en filteren in het logboek",
     "punten": [
       "Het logboek toont nu ook alle verkopen (bonnen) en opwaarderingen, niet alleen wie wat veranderde.",
