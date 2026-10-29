@@ -155,6 +155,14 @@ textarea.f { height: 120px; font: 16px/1.35 monospace; }
 .bl { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
 .bon-btw { margin-top: 8px; font-size: 13px; }
 .qr-bon { margin-top: 10px; }
+/* Slepen (Beheer → Producten) */
+.sorteer-rij { display: flex; align-items: center; gap: 2px; border-radius: 10px; }
+.sorteer-rij > .row { flex: 1; min-width: 0; }
+.sorteer-rij.sleept { background: var(--card); box-shadow: 0 8px 24px -10px #0006; position: relative; z-index: 1; }
+.handvat { flex: none; width: 40px; min-height: 44px; font-size: 20px; color: var(--mu); cursor: grab; touch-action: none; user-select: none; }
+.sorteer-rij.sleept .handvat { cursor: grabbing; color: var(--acc); }
+h4.sub { margin: 10px 0 2px; font-size: 13px; font-weight: 700; color: var(--mu); text-transform: uppercase; letter-spacing: .04em; }
+.cat-sub { margin: 4px 0 6px; font-size: 13px; font-weight: 700; color: var(--mu); }
 .qr-bon .qr { display: block; width: min(240px, 70vw); margin: 0 auto 8px; background: #fff; padding: 8px; border-radius: 10px; }
 .btns button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .bon-btw p { margin: 2px 0; }

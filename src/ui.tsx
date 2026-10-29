@@ -226,6 +226,58 @@ export async function deelBon(bon: Bon, beeld?: File | null) {
   try { await navigator.clipboard.writeText(t); melding('Bon gekopieerd'); } catch { melding('Delen lukt hier niet, gebruik Printen'); }
 }
 
+// ─── Slepen ───
+
+/**
+ * Lijst die je met het handvat (⠿) op volgorde sleept, met de vinger of de muis. Met het
+ * toetsenbord: handvat kiezen, dan pijltje omhoog of omlaag. onVolgorde krijgt de nieuwe volgorde.
+ */
+export function Sorteerbaar<T>({ items, sleutel, rij, onVolgorde, label }: {
+  items: T[]; sleutel: (x: T) => string | number; rij: (x: T) => ReactNode; onVolgorde: (nieuw: T[]) => void; label: (x: T) => string;
+}) {
+  const [lijst, setLijst] = useState(items);
+  const [sleept, setSleept] = useState<string | number | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (sleept == null) setLijst(items); }, [items, sleept]);
+  const klaar = (nieuw: T[]) => { if (nieuw.some((x, i) => sleutel(x) !== sleutel(items[i]))) onVolgorde(nieuw); };
+  const verplaats = (van: number, naar: number) => {
+    const n = [...lijst]; const [x] = n.splice(van, 1); n.splice(naar, 0, x); return n;
+  };
+  const beweeg = (e: React.PointerEvent) => {
+    if (sleept == null || !ref.current) return;
+    // Bij de rand van het scherm scrollt de lijst mee, zodat je ook ver kunt slepen.
+    const vak = ref.current.closest('main, .sh');
+    if (vak) {
+      const v = vak.getBoundingClientRect();
+      if (e.clientY > v.bottom - 60) vak.scrollBy(0, 14); else if (e.clientY < v.top + 60) vak.scrollBy(0, -14);
+    }
+    const rijen = [...ref.current.children] as HTMLElement[];
+    const van = lijst.findIndex((x) => sleutel(x) === sleept);
+    let naar = rijen.findIndex((r) => e.clientY < r.getBoundingClientRect().top + r.offsetHeight / 2);
+    if (naar < 0) naar = rijen.length - 1; else if (naar > van) naar--;
+    if (naar !== van) setLijst(verplaats(van, naar));
+  };
+  return (
+    <div className="sorteer" ref={ref}>
+      {lijst.map((x, i) => (
+        <div key={sleutel(x)} className={'sorteer-rij' + (sleept === sleutel(x) ? ' sleept' : '')}>
+          <button className="handvat" aria-label={`${label(x)} verplaatsen`} title="Sleep om te verplaatsen"
+            onPointerDown={(e) => { e.preventDefault(); (e.target as HTMLElement).setPointerCapture(e.pointerId); setSleept(sleutel(x)); tril('scan'); }}
+            onPointerMove={beweeg}
+            onPointerUp={() => { setSleept(null); klaar(lijst); }}
+            onPointerCancel={() => { setSleept(null); setLijst(items); }}
+            onKeyDown={(e) => {
+              const naar = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : -1;
+              if (naar < 0 || naar >= lijst.length) return;
+              e.preventDefault(); const n = verplaats(i, naar); setLijst(n); klaar(n);
+            }}>⠿</button>
+          {rij(x)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── QR ───
 
 /** Tegoedkaart op creditcardformaat (85,6 × 54 mm), om te printen en uit te knippen. */

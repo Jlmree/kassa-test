@@ -1,6 +1,16 @@
 [
   {
     "datum": "2026-10-29",
+    "titel": "Producten makkelijker toevoegen, slepen en subcategorieën",
+    "punten": [
+      "Snel toevoegen: plak of typ een lijst, één product per regel (bijvoorbeeld \"Cola 2,50 48\": naam, prijs en voorraad). Je ziet eerst wat er komt; bestaande producten worden overgeslagen.",
+      "Bij een nieuw product kun je Opslaan en nog een kiezen: de categorie blijft staan. Onder elke categorie staat + Product in … om er direct een aan toe te voegen.",
+      "Subcategorieën: bijvoorbeeld Drinken met Frisdrank en Alcohol. In de kassa kies je eerst Drinken en dan eventueel Frisdrank of Alcohol; in het overzicht staan ze onder een kopje.",
+      "Slepen: in Beheer → Producten zet je een product met ⠿ op een andere plek, en bij Volgorde van de categorieën de categorieën zelf. Zo staat het ook in de kassa. Het veld Volgorde is daarom weg."
+    ]
+  },
+  {
+    "datum": "2026-10-29",
     "titel": "Bar-kassa heet nu Tapkas",
     "punten": [
       "De kassa heet voortaan Tapkas: in de app, bij de installatie, in de mails van de back-up en op de website tapkas.nl.",
