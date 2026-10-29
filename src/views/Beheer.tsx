@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
-import { BTW_TARIEVEN, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, zuilLink } from '../lib';
+import { BTW_TARIEVEN, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, type Bon, zuilLink } from '../lib';
 import { BestandKlaar, KaartenPrinten, melding, Qr, Rij, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
+import { BonScherm } from './Afrekenen';
 import { StreeplijstMaand } from './Streeplijst';
 import { Controle } from './Controle';
 import { Recap } from './Recap';
@@ -624,6 +625,7 @@ const actieNaam: Record<string, string> = {
   uitnodiging_gebruikt: 'Uitnodiging gebruikt (nieuw account)', aanmelden_instellen: 'Zelf aanmelden aan/uit gezet', thema: 'Thema gekozen', loterij: 'Loterij getrokken', lid_nieuwe_code: 'Nieuwe streeplijst-code gemaakt',
   kaart_verwijderen: 'Kaart verwijderd', kaarten_opruimen: 'Oude kaarten opgeruimd', gratis: 'Gratis weggegeven',
   uitgave: 'Uitgave geregistreerd', uitgave_terugbetaald: 'Voorschot terugbetaald', uitgave_verwijderen: 'Uitgave verwijderd',
+  btw: 'Btw aan/uit gezet', btw_tarief: 'Btw-tarief gewijzigd', bijwerken: 'Kassa bijgewerkt',
 };
 
 function details(a: string, d: Record<string, unknown> | null): string {
@@ -643,6 +645,8 @@ function details(a: string, d: Record<string, unknown> | null): string {
     case 'uitgave_verwijderen': return `${d.omschrijving}: ${e('bedrag_cent')}`;
     case 'rekening_regel_verwijderen': return `${d.aantal}× ${d.naam}`;
     case 'loterij': return `Kaart ${d.kaart} won (${d.loten} van ${d.van_loten} loten)${d.prijs_cent ? `, ${e('prijs_cent')} tegoed` : ''}${d.omschrijving ? `: ${d.omschrijving}` : ''}`;
+    case 'btw': return d.aan ? 'Btw aan' : 'Btw uit';
+    case 'btw_tarief': return `${d.categorie ?? 'Eén product'}: ${d.pct}% (${d.aantal} ${d.aantal === 1 ? 'product' : 'producten'})`;
     case 'thema': return `Thema: ${themas.find((t) => t.id === d.thema)?.naam ?? d.thema}`;
     case 'betaalmethoden': return (['contant', 'pin', 'kaart', 'rekening', 'lat', 'gratis'] as const).filter((k) => d[k] != null).map((k) => `${methodeLabel[k]} ${d[k] ? 'aan' : 'uit'}`).join(', ');
     case 'lat_afbetalen': return `${d.naam}: ${e('bedrag_cent')} (${methodeNaam[d.methode as string] ?? d.methode})`;
@@ -651,17 +655,113 @@ function details(a: string, d: Record<string, unknown> | null): string {
   }
 }
 
+// Soorten in het logboek, om op te filteren.
+type Groep = 'verkoop' | 'kaart' | 'geld' | 'producten' | 'mensen';
+const groepNaam: Record<Groep, string> = { verkoop: 'Verkopen', kaart: 'Kaarten', geld: 'Kas en geld', producten: 'Producten', mensen: 'Mensen en instellingen' };
+const actieGroep = (a: string): Groep =>
+  /^(kaart|kaarten|loterij)/.test(a) ? 'kaart'
+  : /^(dienst|verkoop|gratis|uitgave|lat_|rekening)/.test(a) ? 'geld'
+  : /^(product|prijs|levering|btw_tarief)/.test(a) ? 'producten' : 'mensen';
+
+interface LogRegel { key: string; ts: string; groep: Groep; titel: string; detail: string; wie: string; zoek: string; bon?: number; weg?: boolean }
+
+/** Logboek met filter: wat er gebeurde, plus alle verkopen en opwaarderingen, per periode. */
 function Logboek() {
-  const [lijst, setLijst] = useState<{ id: number; ts: string; door_naam: string | null; actie: string; details: Record<string, unknown> | null }[]>([]);
-  const [, run] = useBezig();
-  useEffect(() => { void run(async () => setLijst(await lees(sb.from('logboek').select('*').order('ts', { ascending: false }).limit(300)) as typeof lijst)); }, [run]);
+  const { open } = useSheet();
+  const [periode, setPeriode] = useState('7 dagen');
+  const vandaag = isoDag(new Date());
+  const [eigen, setEigen] = useState<[string, string]>([vandaag, vandaag]);
+  const [groep, setGroep] = useState<Groep | ''>('');
+  const [wie, setWie] = useState('');
+  const [zoek, setZoek] = useState('');
+  const [lijst, setLijst] = useState<LogRegel[] | null>(null);
+  const [vol, setVol] = useState(false);
+  const [bezig, run] = useBezig();
+  const MAX = 1000;
+  const [van, tot] = periode === 'Zelf kiezen'
+    ? [new Date(eigen[0] + 'T00:00'), plusDagen(new Date(eigen[1] + 'T00:00'), 1)]
+    : (() => { const t = plusDagen(new Date(new Date().toDateString()), 1); return [plusDagen(t, -({ Vandaag: 1, '7 dagen': 7, '30 dagen': 30 }[periode] ?? 7)), t]; })();
+  const sleutel = `${+van}-${+tot}`;
+  useEffect(() => {
+    if (isNaN(+van) || isNaN(+tot)) return;
+    void run(async () => {
+      const a = van.toISOString(), b = tot.toISOString();
+      const [log, bonnen, opw, kaarten, leden, mensen] = await Promise.all([
+        lees(sb.from('logboek').select('*').gte('ts', a).lt('ts', b).order('ts', { ascending: false }).limit(MAX)),
+        lees(sb.from('verkopen').select('id,bonnummer,ts,door_naam,rekening_naam,totaal_cent,geannuleerd,betalingen(methode,bedrag_cent,kaart_id,lid_id,reden)').gte('ts', a).lt('ts', b).order('ts', { ascending: false }).limit(MAX)),
+        lees(sb.from('kaart_mutaties').select('id,ts,bedrag_cent,methode,kaart_id,door').eq('soort', 'opwaardering').gte('ts', a).lt('ts', b).order('ts', { ascending: false }).limit(MAX)),
+        lees(sb.from('kaarten').select('id,nummer,naam')),
+        lees(sb.from('leden').select('id,naam')).catch(() => []),
+        lees(sb.from('profielen').select('id,naam')),
+      ]) as [
+        { id: number; ts: string; door_naam: string | null; actie: string; details: Record<string, unknown> | null }[],
+        { id: number; bonnummer: number; ts: string; door_naam: string | null; rekening_naam: string | null; totaal_cent: number; geannuleerd: boolean; betalingen: { methode: string; bedrag_cent: number; kaart_id: number | null; lid_id: number | null; reden: string | null }[] }[],
+        { id: number; ts: string; bedrag_cent: number; methode: string | null; kaart_id: number; door: string | null }[],
+        { id: number; nummer: number; naam: string | null }[], { id: number; naam: string }[], { id: string; naam: string }[],
+      ];
+      const kaart = new Map(kaarten.map((k) => [k.id, k])), lid = new Map(leden.map((l) => [l.id, l.naam])), mens = new Map(mensen.map((m) => [m.id, m.naam]));
+      const kaartTekst = (id: number | null) => { const k = id != null ? kaart.get(id) : undefined; return k ? `kaart ${k.nummer}${k.naam ? ` (${k.naam})` : ''}` : 'kaart'; };
+      const regels: LogRegel[] = [
+        ...log.map((l): LogRegel => ({ key: 'l' + l.id, ts: l.ts, groep: actieGroep(l.actie), titel: actieNaam[l.actie] ?? l.actie, detail: details(l.actie, l.details), wie: l.door_naam ?? '' , zoek: '' })),
+        ...bonnen.map((v): LogRegel => ({
+          key: 'v' + v.id, ts: v.ts, groep: 'verkoop', bon: v.id, weg: v.geannuleerd, wie: v.door_naam ?? '', zoek: '',
+          titel: `Bon ${v.bonnummer} · ${eur(v.totaal_cent)}${v.geannuleerd ? ' · geannuleerd' : ''}`,
+          detail: [v.rekening_naam ? `rekening ${v.rekening_naam}` : '', ...v.betalingen.map((p) => `${methodeNaam[p.methode] ?? p.methode}${p.methode === 'kaart' ? ' ' + kaartTekst(p.kaart_id).replace(/^kaart /, '') : ''}${p.lid_id ? ' ' + (lid.get(p.lid_id) ?? '') : ''}${p.reden ? ` (${p.reden})` : ''} ${eur(p.bedrag_cent)}`)].filter(Boolean).join(' · '),
+        })),
+        ...opw.map((m): LogRegel => ({ key: 'o' + m.id, ts: m.ts, groep: 'kaart', titel: `Opgewaardeerd · ${eur(m.bedrag_cent)}`, detail: `${kaartTekst(m.kaart_id)}, ${methodeNaam[m.methode ?? ''] ?? m.methode ?? ''}`.replace(/, $/, ''), wie: (m.door && mens.get(m.door)) || '', zoek: '' })),
+      ].sort((x, y) => (x.ts < y.ts ? 1 : -1));
+      for (const r of regels) r.zoek = `${r.titel} ${r.detail} ${r.wie} ${datumTijd(r.ts)}`.toLowerCase().replace(/€\s?/g, '');
+      setVol(log.length === MAX || bonnen.length === MAX || opw.length === MAX);
+      setLijst(regels);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sleutel, run]);
+
+  // Zoeken op hele woorden en getallen: "5" vindt kaart 5 of € 5,00, niet kaart 25. Staat de hele
+  // zoekterm ergens letterlijk (bijv. "kaart 5"), dan alleen die regels.
+  const woorden = zoek.toLowerCase().replace(/€\s?/g, '').split(/\s+/).filter(Boolean);
+  const patroon = (w: string) => new RegExp('(^|[^0-9a-zà-ÿ])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + (/[0-9]$/.test(w) ? '(?![0-9])' : ''));
+  const zin = woorden.length > 1 ? patroon(woorden.join(' ')) : null;
+  const losse = woorden.map(patroon);
+  const passend = (lijst ?? []).filter((r) => (!groep || r.groep === groep) && (!wie || r.wie === wie));
+  const getoond = zin && passend.some((r) => zin.test(r.zoek)) ? passend.filter((r) => zin.test(r.zoek)) : passend.filter((r) => losse.every((x) => x.test(r.zoek)));
+  const namen = [...new Set((lijst ?? []).map((r) => r.wie).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const [meer, setMeer] = useState(100);
+  useEffect(() => setMeer(100), [sleutel, groep, wie, zoek]);
+  const toonBon = (id: number) => run(async () => open(<BonScherm bon={await rpc<Bon>('bon', { p_verkoop_id: id })} />));
   return (
     <>
-      <p className="mu">Wie heeft wat gedaan. Dit logboek kan door niemand worden aangepast.</p>
-      {lijst.map((l) => (
-        <Rij key={l.id} l={<>{actieNaam[l.actie] ?? l.actie}<br /><span className="mu">{details(l.actie, l.details)}</span></>}
-          r={<span className="mu">{datumTijd(l.ts)}<br />{l.door_naam}</span>} />
-      ))}
+      <p className="mu">Wie heeft wat gedaan, en alle verkopen en opwaarderingen. Dit logboek kan door niemand worden aangepast.</p>
+      <div className="chips small">
+        {['Vandaag', '7 dagen', '30 dagen', 'Zelf kiezen'].map((k) => <button key={k} className={k === periode ? 'on' : ''} onClick={() => setPeriode(k)}>{k}</button>)}
+      </div>
+      {periode === 'Zelf kiezen' && (
+        <div className="inl">
+          <input type="date" className="f" aria-label="Van" value={eigen[0]} onChange={(e) => setEigen([e.target.value, eigen[1]])} />
+          <input type="date" className="f" aria-label="Tot en met" value={eigen[1]} onChange={(e) => setEigen([eigen[0], e.target.value])} />
+        </div>
+      )}
+      <div className="chips small">
+        <button className={!groep ? 'on' : ''} onClick={() => setGroep('')}>Alles</button>
+        {(Object.keys(groepNaam) as Groep[]).map((g) => <button key={g} className={g === groep ? 'on' : ''} onClick={() => setGroep(g)}>{groepNaam[g]}</button>)}
+      </div>
+      <div className="inl">
+        <input className="f" type="search" placeholder="Zoek: bon, kaart, naam of bedrag" value={zoek} onChange={(e) => setZoek(e.target.value)} aria-label="Zoeken in het logboek" />
+        <select className="f" style={{ flex: '0 0 40%' }} value={wie} onChange={(e) => setWie(e.target.value)} aria-label="Door wie">
+          <option value="">Iedereen</option>
+          {namen.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </div>
+      <p className="mu">{lijst ? `${getoond.length} ${getoond.length === 1 ? 'regel' : 'regels'}` : 'Laden…'}{bezig && lijst ? ' · laden…' : ''}{vol ? ` · alleen de nieuwste ${MAX} per soort; kies een kortere periode` : ''}</p>
+      <div className="card">
+        {getoond.slice(0, meer).map((l) => (
+          <Rij key={l.key} className={l.weg ? 'vd' : ''} onClick={l.bon ? () => toonBon(l.bon!) : undefined}
+            l={<>{l.titel}<br /><span className="mu">{l.detail}</span></>}
+            r={<span className="mu">{datumTijd(l.ts)}<br />{l.wie}</span>} />
+        ))}
+        {lijst && !getoond.length && <p className="mu">Niets gevonden. Kies een langere periode of zoek op iets anders.</p>}
+      </div>
+      {getoond.length > meer && <button className="ghost" onClick={() => setMeer(meer + 200)}>Meer tonen ({getoond.length - meer} over)</button>}
     </>
   );
 }

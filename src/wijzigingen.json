@@ -1,5 +1,14 @@
 [
   {
+    "datum": "2026-10-29",
+    "titel": "Zoeken en filteren in het logboek",
+    "punten": [
+      "Het logboek toont nu ook alle verkopen (bonnen) en opwaarderingen, niet alleen wie wat veranderde.",
+      "Kies een periode (vandaag, 7 dagen, 30 dagen of zelf kiezen), een soort (verkopen, kaarten, kas en geld, producten, mensen en instellingen) en een medewerker.",
+      "Zoek op bonnummer, kaartnummer, naam of bedrag, bijvoorbeeld \"bon 241\", \"kaart 5\" of \"2,50\". Tik op een verkoop om de bon te zien."
+    ]
+  },
+  {
     "datum": "2026-10-28",
     "titel": "Te weinig op de kaart: alles op rekening",
     "punten": [
