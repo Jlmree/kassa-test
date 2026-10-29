@@ -1,8 +1,11 @@
 name: Nieuwe versie
 
-# Bij elke wijziging op main: het installatiebestand (kassa-installatie.run) bouwen en als release publiceren.
-# Downloaden: https://github.com/<repo>/releases/latest/download/kassa-installatie.run
-# De kassa-server werkt zichzelf bij met: /opt/kassa/bin/bijwerken.sh
+# Bij elke wijziging op main: het installatiebestand (kassa-installatie.run) bouwen en als
+# TESTVERSIE (pre-release) publiceren. Kassa's van klanten zien die nog niet: zij kijken naar
+# releases/latest, en daar telt een testversie niet mee. Probeer de nieuwe versie eerst in de
+# proefversie (die werkt zich bij elke wijziging vanzelf bij) en breng hem daarna uit met de
+# workflow "Uitbrengen" (Actions → Uitbrengen → Run workflow).
+# Downloaden (uitgebrachte versie): https://github.com/<repo>/releases/latest/download/kassa-installatie.run
 on:
   push:
     branches: [main]
@@ -30,9 +33,10 @@ jobs:
           node -e '
             const [w] = require("./src/wijzigingen.json");
             console.log(`## ${w.titel}\n\n${w.punten.map((p) => "- " + p).join("\n")}\n`);
+            console.log("**Testversie.** Kassa\u2019s zien deze versie pas na Uitbrengen (Actions \u2192 Uitbrengen).\n");
             console.log("Installeren: download kassa-installatie.run en start als root: `bash kassa-installatie.run`.");
             console.log("Bijwerken: in de app bij Beheer → Instellingen, of op de kassa-server: `/opt/kassa/bin/bijwerken.sh`.");
           ' > notities.md
           cp src/wijzigingen.json wijzigingen.json
           gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
-            --title "Tapkas v${{ github.run_number }}" --notes-file notities.md
+            --title "Tapkas v${{ github.run_number }} (test)" --notes-file notities.md --prerelease
