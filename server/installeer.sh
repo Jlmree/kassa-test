@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bar-kassa installeren. Normaal start je dit via het installatiebestand
+# Tapkas installeren. Normaal start je dit via het installatiebestand
 # (als root):  bash kassa-installatie.run
 # Werkt op Debian 12 of Ubuntu 24.04, op een computer in het gebouw (bijv. een
 # HP t620) of op een gehuurde server op internet.
@@ -20,7 +20,7 @@
 # Meer kassa's op dezelfde server, elk met een eigen naam, adres en eigen gegevens:
 #   bash kassa-installatie.run --naam voetbal --domein voetbal.mijnclub.nl
 # Daarnaast een website op een eigen adres (pagina's, proefversie en aanvraagformulier):
-#   bash kassa-installatie.run --website bar-kassa.nl     (later: /opt/kassa/bin/website.sh)
+#   bash kassa-installatie.run --website tapkas.nl     (later: /opt/kassa/bin/website.sh)
 #
 # Bij een nieuwe installatie laat het eerst zien wat er waar komt en vraagt het
 # akkoord met de voorwaarden (LICENTIE.txt). Zonder vragen, bijv. vanuit een script:
@@ -149,11 +149,11 @@ if kan_vragen; then
     ruimte
     echo "De andere kassa's op deze server worden ook bijgewerkt naar versie $NIEUWE_VERSIE."
   elif [ "$BESTAAND" = 1 ]; then
-    printf '\n\033[1mBar-kassa bijwerken\033[0m naar versie %s\n' "$NIEUWE_VERSIE"
+    printf '\n\033[1mTapkas bijwerken\033[0m naar versie %s\n' "$NIEUWE_VERSIE"
     echo "Nu: versie $(cat "$OPT/versie" 2>/dev/null || echo onbekend). Je gegevens en instellingen blijven staan."
     [ "$(wc -l <<<"$KASSAS")" -gt 1 ] && echo "Kassa's op deze server: $(echo $KASSAS)"
   else
-    printf '\n\033[1mBar-kassa installeren\033[0m, versie %s\n' "$NIEUWE_VERSIE"
+    printf '\n\033[1mTapkas installeren\033[0m, versie %s\n' "$NIEUWE_VERSIE"
     if [ "$ONLINE" = 1 ]; then WIFI_TEKST="niet nodig (server op internet)"
     elif [ "${KASSA_WIFI:-0}" = 1 ]; then WIFI_TEKST="eigen netwerk \"$KASSA_WIFI_NAAM\" voor de telefoons"
     else WIFI_TEKST="geen eigen wifi (de telefoons gebruiken het netwerk van het gebouw)"; fi
@@ -303,9 +303,9 @@ vrije_poorten() {
 NIEUW_BACKUP_WW=""
 # Richt één kassa in of werkt hem bij: instellingen, database, inlogsysteem, app en diensten.
 kassa_inrichten() {
-  local n=$1 domein token scherm auth rest jwt_geheim anon_key pool omschrijving=Bar-kassa
+  local n=$1 domein token scherm auth rest jwt_geheim anon_key pool omschrijving=Tapkas
   kassa_paden "$n"
-  [ "$n" = kassa ] || omschrijving="Bar-kassa $n:"
+  [ "$n" = kassa ] || omschrijving="Tapkas $n:"
   mkdir -p "$K_ETC" "$K_BACKUP" "$(dirname "$K_APP")"
   chmod 700 "$K_ETC" "$K_BACKUP"
   domein=$(kassa_lees KASSA_DOMEIN); token=$(kassa_lees KASSA_DUCKDNS_TOKEN); scherm=$(kassa_lees KASSA_SCHERM)
@@ -468,14 +468,14 @@ caddy_schrijven || fout "Caddy-instellingen ongeldig"
 stap "Diensten starten"
 cat > /etc/systemd/system/kassa-backup.service <<EOF
 [Unit]
-Description=Bar-kassa back-up
+Description=Tapkas back-up
 [Service]
 Type=oneshot
 ExecStart=$OPT/bin/backup.sh elkuur
 EOF
 cat > /etc/systemd/system/kassa-backup.timer <<EOF
 [Unit]
-Description=Bar-kassa back-up elk uur
+Description=Tapkas back-up elk uur
 [Timer]
 OnCalendar=hourly
 Persistent=true
@@ -485,7 +485,7 @@ EOF
 # Voert verzoeken uit de app uit (Beheer → Instellingen → Bijwerken).
 cat > /etc/systemd/system/kassa-bijwerker.service <<EOF
 [Unit]
-Description=Bar-kassa bijwerken vanuit de app
+Description=Tapkas bijwerken vanuit de app
 After=postgresql.service
 [Service]
 Type=oneshot
@@ -493,7 +493,7 @@ ExecStart=$OPT/bin/bijwerker.sh
 EOF
 cat > /etc/systemd/system/kassa-bijwerker.timer <<EOF
 [Unit]
-Description=Bar-kassa: elke minuut kijken of er bijgewerkt moet worden
+Description=Tapkas: elke minuut kijken of er bijgewerkt moet worden
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=1min

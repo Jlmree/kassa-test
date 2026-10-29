@@ -41,7 +41,7 @@ versturen() {
   fi
   grens="kassa-$(openssl rand -hex 12)"
   {
-    printf 'From: Bar-kassa <%s>\r\nTo: <%s>\r\nSubject: Back-up kassa %s %s\r\nDate: %s\r\n' \
+    printf 'From: Tapkas <%s>\r\nTo: <%s>\r\nSubject: Back-up kassa %s %s\r\nDate: %s\r\n' \
       "$(mail_lees VAN)" "$(mail_lees NAAR)" "$K_NAAM" "$(date +%Y-%m-%d)" "$(LC_ALL=C date -R)"
     printf 'Message-ID: <%s@kassa>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="%s"\r\n\r\n' "$grens" "$grens"
     printf -- '--%s\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\n' "$grens"

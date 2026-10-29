@@ -100,7 +100,7 @@ CONF
 
     cat > /etc/systemd/system/kassa-wifi.service <<UNIT
 [Unit]
-Description=Bar-kassa: eigen wifi-netwerk ($KASSA_WIFI_NAAM)
+Description=Tapkas: eigen wifi-netwerk ($KASSA_WIFI_NAAM)
 After=network.target
 Wants=kassa-wifi-dns.service
 [Service]
@@ -116,7 +116,7 @@ WantedBy=multi-user.target
 UNIT
     cat > /etc/systemd/system/kassa-wifi-dns.service <<UNIT
 [Unit]
-Description=Bar-kassa: adressen en namen op het eigen wifi-netwerk
+Description=Tapkas: adressen en namen op het eigen wifi-netwerk
 After=kassa-wifi.service
 [Service]
 ExecStart=$(command -v dnsmasq) --keep-in-foreground --conf-file=$MAP/dnsmasq.conf

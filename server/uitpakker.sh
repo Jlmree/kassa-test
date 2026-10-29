@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bar-kassa installatiebestand.
+# Tapkas installatiebestand.
 #
 #   bash kassa-installatie.run                                    installeren of bijwerken
 #   bash kassa-installatie.run --duckdns mijnbar.duckdns.org TOKEN    met een echt certificaat via DuckDNS
@@ -12,7 +12,7 @@
 # Copyright (c) 2026 BSGRF. Alle rechten voorbehouden; zie LICENTIE.txt.
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "Start dit als root:  sudo bash $0   (of eerst: su -)"; exit 1; }
-echo "Bar-kassa installatiebestand, versie @VERSIE@"
+echo "Tapkas installatiebestand, versie @VERSIE@"
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 REGEL=$(awk '/^__KASSA_PAKKET__$/ { print NR + 1; exit }' "$0")

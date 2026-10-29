@@ -198,7 +198,7 @@ function Aanmelden() {
   });
   return (
     <div className="login">
-      <h1>Bar-kassa</h1>
+      <h1>Tapkas</h1>
       <div className="chips">
         <button className={!nieuw ? 'on' : ''} onClick={() => setNieuw(false)}>Inloggen</button>
         {open && <button className={nieuw ? 'on' : ''} onClick={() => setNieuw(true)}>Account aanmaken</button>}
@@ -238,7 +238,7 @@ function Wachten({ profiel, opnieuw }: { profiel: Profiel; opnieuw: () => void }
 function NietIngesteld() {
   return (
     <div className="login">
-      <h1>Bar-kassa</h1>
+      <h1>Tapkas</h1>
       <p>De kassa is nog niet gekoppeld aan een database.</p>
       <p className="mu">Vul in <code>config.js</code> het adres en de <i>anon public</i> sleutel van je Supabase-project in. Zie de README voor de stappen.</p>
     </div>

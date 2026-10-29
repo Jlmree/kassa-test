@@ -35,4 +35,4 @@ jobs:
           ' > notities.md
           cp src/wijzigingen.json wijzigingen.json
           gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
-            --title "Bar-kassa v${{ github.run_number }}" --notes-file notities.md
+            --title "Tapkas v${{ github.run_number }}" --notes-file notities.md

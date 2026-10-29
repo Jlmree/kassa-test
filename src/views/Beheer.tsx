@@ -790,7 +790,7 @@ function Instellingen() {
       <KassaLeegmaken />
       <h3 className="s">Wat is er nieuw</h3>
       <WijzigingLijst lijst={wijzigingen} />
-      <h3 className="s">Over de Bar-kassa</h3>
+      <h3 className="s">Over Tapkas</h3>
       <p className="mu">© 2026 BSGRF. Alle rechten voorbehouden.</p>
       <button className="ghost" onClick={() => open(<Voorwaarden />)}>Voorwaarden lezen</button>
     </>

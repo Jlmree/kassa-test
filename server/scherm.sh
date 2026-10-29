@@ -22,13 +22,13 @@ case "${1:-}" in
     fi
     echo "Scherm-onderdelen installeren (Chromium, cage) — kan een paar minuten duren..."
     DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends cage chromium fonts-dejavu-core >/dev/null
-    id "$GEBRUIKER" >/dev/null 2>&1 || useradd -m -c "Bar-kassa scherm" "$GEBRUIKER"
+    id "$GEBRUIKER" >/dev/null 2>&1 || useradd -m -c "Tapkas scherm" "$GEBRUIKER"
     for g in video input render; do getent group "$g" >/dev/null && usermod -aG "$g" "$GEBRUIKER"; done
     # cage = een schermvullende omgeving voor precies één programma; via PAM
     # krijgt de gebruiker het scherm, toetsenbord en aanraakscherm van tty1.
     cat > "$UNIT" <<'EOF'
 [Unit]
-Description=Bar-kassa op het eigen scherm
+Description=Tapkas op het eigen scherm
 After=systemd-user-sessions.service caddy.service kassa-auth.service kassa-rest.service
 Wants=caddy.service
 Conflicts=getty@tty1.service

@@ -26,7 +26,7 @@ case "${1:-}" in
 		tcp dport 53 accept comment "eigen wifi (DNS)"'
     fi
     cat > "$REGELS" <<EOF
-# Gemaakt door firewall.sh (Bar-kassa). Niet met de hand aanpassen.
+# Gemaakt door firewall.sh (Tapkas). Niet met de hand aanpassen.
 table inet kassa_firewall
 delete table inet kassa_firewall
 table inet kassa_firewall {
@@ -47,7 +47,7 @@ EOF
     nft -f "$REGELS"
     cat > /etc/systemd/system/kassa-firewall.service <<EOF
 [Unit]
-Description=Bar-kassa firewall
+Description=Tapkas firewall
 Before=network-pre.target
 Wants=network-pre.target
 [Service]
