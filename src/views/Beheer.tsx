@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useData, type Methoden, type Thema } from '../data';
-import { BTW_TARIEVEN, centTekst, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, type Bon, zuilLink } from '../lib';
-import { BestandKlaar, KaartenPrinten, melding, Qr, Rij, useBezig, useSheet } from '../ui';
+import { BTW_TARIEVEN, centTekst, indeling, csvRij, datum, datumTijd, downloaden, eur, lees, methodeNaam, naarCent, PROEF, rpc, sb, tijd, type Dienst, type Product, type Profiel, type Rol, type Bon, zuilLink } from '../lib';
+import { BestandKlaar, KaartenPrinten, melding, Qr, Rij, Sorteerbaar, useBezig, useSheet } from '../ui';
 import { DienstKaarten, Verdeling, Verschil } from './Dienst';
 import { BonScherm } from './Afrekenen';
 import { StreeplijstMaand } from './Streeplijst';
@@ -332,11 +332,21 @@ function Boodschappen() {
 }
 
 function Producten() {
-  const { producten } = useData();
+  const { producten, btw, herlaad } = useData();
   const { open } = useSheet();
-  const { btw } = useData();
   const laag = producten.filter((p) => p.actief && p.voorraad <= p.voorraad_min);
-  const cats = [...new Set(producten.map((p) => p.categorie))];
+  const groepen = indeling(producten);
+  // Na slepen: de hele categorie in de nieuwe volgorde opslaan (subcategorieën achter elkaar).
+  const volgorde = (cat: string, sub: string, nieuw: Product[]) => {
+    const g = groepen.find((x) => x.cat === cat)!;
+    const ids = g.subs.flatMap((x) => (x.sub === sub ? nieuw : x.items).map((p) => p.id));
+    rpc('producten_volgorde', { p_ids: ids }).then(() => herlaad(), (e: Error) => { melding(e.message); void herlaad(); });
+  };
+  const rij = (p: Product) => (
+    <Rij className={p.actief ? '' : 'vd'} onClick={() => open(<ProductScherm id={p.id} />)}
+      l={<>{p.naam}<span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span>{btw.aan && <span className="mu"> · {p.btw_pct ?? 21}% btw</span>}</>}
+      r={eur(p.prijs_cent)} />
+  );
   return (
     <>
       {laag.length > 0 && (
@@ -347,43 +357,131 @@ function Producten() {
           <button className="big" onClick={() => open(<Boodschappen />)}>Boodschappenlijst</button>
         </div>
       )}
-      {cats.map((c) => (
-        <div key={c}>
-          <h3 className="s">{c}</h3>
-          {producten.filter((p) => p.categorie === c).map((p) => (
-            <Rij key={p.id} className={p.actief ? '' : 'vd'} onClick={() => open(<ProductScherm id={p.id} />)}
-              l={<>{p.naam}<span className={'mu' + (p.voorraad <= p.voorraad_min ? ' neg' : '')}> · voorraad {p.voorraad}</span>{btw.aan && <span className="mu"> · {p.btw_pct ?? 21}% btw</span>}</>}
-              r={eur(p.prijs_cent)} />
+      <div className="btns">
+        <button className="big" onClick={() => open(<ProductScherm id={null} />)}>Nieuw product</button>
+        <button onClick={() => open(<SnelToevoegen />)}>Snel toevoegen (lijst)</button>
+      </div>
+      {groepen.length > 1 && <button className="ghost" onClick={() => open(<CategorieenOrdenen />)}>Volgorde van de categorieën…</button>}
+      {groepen.length > 0 && <p className="mu">Sleep een product aan ⠿ naar een andere plek; zo staat het ook in de kassa.</p>}
+      {groepen.map((g) => (
+        <div key={g.cat}>
+          <h3 className="s">{g.cat}</h3>
+          {g.subs.map((x) => (
+            <div key={x.sub}>
+              {x.sub && <h4 className="sub">{x.sub}</h4>}
+              <Sorteerbaar items={x.items} sleutel={(p) => p.id} label={(p) => p.naam} rij={rij} onVolgorde={(n) => volgorde(g.cat, x.sub, n)} />
+            </div>
           ))}
+          <button className="ghost" onClick={() => open(<ProductScherm id={null} start={{ categorie: g.cat }} />)}>+ Product in {g.cat}</button>
         </div>
       ))}
-      <button className="big" onClick={() => open(<ProductScherm id={null} />)}>Nieuw product</button>
       <OudeKassa />
     </>
   );
 }
 
-function ProductScherm({ id }: { id: number | null }) {
+/** Een lijst producten in één keer: per regel naam, prijs en eventueel de voorraad. */
+function SnelToevoegen() {
+  const { producten, herlaad } = useData();
+  const { sluit } = useSheet();
+  const cats = [...new Set(producten.map((x) => x.categorie))];
+  const [cat, setCat] = useState(cats[0] ?? 'Drinken');
+  const [sub, setSub] = useState('');
+  const [tekst, setTekst] = useState('');
+  const [bezig, run] = useBezig();
+  // "Cola 2,50 24" of "Cola; 2,50; 24": de laatste een of twee getallen zijn prijs en voorraad.
+  const regels = tekst.split('\n').map((r) => r.trim()).filter(Boolean).map((r) => {
+    const m = r.match(/^(.+?)[\s;,\t]+(?:€\s*)?(\d+(?:[.,]\d{1,2})?)(?:[\s;,\t]+(\d+))?$/);
+    const prijs = m ? naarCent(m[2]) : NaN;
+    return { tekst: r, naam: m?.[1].replace(/[;,]$/, '').trim() ?? '', prijs, voorraad: m?.[3] ? parseInt(m[3]) : 0, goed: !!m && !isNaN(prijs) };
+  });
+  const goed = regels.filter((r) => r.goed);
+  const bestaat = (n: string) => producten.some((x) => x.naam.toLowerCase() === n.toLowerCase());
+  const toevoegen = () => run(async () => {
+    if (!cat.trim()) throw new Error('Kies een categorie');
+    let n = 0;
+    for (const r of goed) {
+      if (bestaat(r.naam)) continue;
+      await rpc('product_opslaan', { p: { naam: r.naam, prijs_cent: r.prijs, categorie: cat, subcategorie: sub, voorraad: r.voorraad } });
+      n++;
+    }
+    await herlaad();
+    sluit();
+    melding(`${n} ${n === 1 ? 'product' : 'producten'} toegevoegd`, true);
+  });
+  const subsVan = [...new Set(producten.filter((x) => x.categorie === cat && x.subcategorie).map((x) => x.subcategorie!))];
+  return (
+    <>
+      <h2>Snel toevoegen</h2>
+      <label htmlFor="sc">Categorie</label>
+      <KiesCategorie id="sc" waarde={cat} opties={cats} onChange={setCat} />
+      <label htmlFor="ssub">Subcategorie (optioneel)</label>
+      <input className="f" id="ssub" list="ssub-lijst" maxLength={30} value={sub} onChange={(e) => setSub(e.target.value)} />
+      <datalist id="ssub-lijst">{subsVan.map((x) => <option key={x} value={x} />)}</datalist>
+      <label htmlFor="st">Eén product per regel: naam, prijs en eventueel de voorraad</label>
+      <textarea className="f" id="st" style={{ height: 160 }} placeholder={'Cola 2,50 48\nSpa rood 2,50 24\nIce tea 2,75'} value={tekst} onChange={(e) => setTekst(e.target.value)} />
+      {regels.length > 0 && (
+        <div className="card">
+          {regels.map((r, i) => (
+            <Rij key={i} className={r.goed && !bestaat(r.naam) ? '' : 'vd'}
+              l={r.goed ? <>{r.naam}<span className="mu"> · voorraad {r.voorraad}{bestaat(r.naam) ? ' · bestaat al, wordt overgeslagen' : ''}</span></> : <>{r.tekst}<br /><span className="neg">Geen prijs gevonden</span></>}
+              r={r.goed ? eur(r.prijs) : ''} />
+          ))}
+        </div>
+      )}
+      {goed.some((r) => !r.voorraad) && <p className="mu">Zonder voorraad staat een product op 0 en is het op tot je telt of een levering inboekt.</p>}
+      <button className="big" disabled={bezig || !goed.some((r) => !bestaat(r.naam))} onClick={toevoegen}>
+        {goed.filter((r) => !bestaat(r.naam)).length} {goed.filter((r) => !bestaat(r.naam)).length === 1 ? 'product' : 'producten'} toevoegen
+      </button>
+    </>
+  );
+}
+
+/** De volgorde van de categorieën in de kassa, door te slepen. */
+function CategorieenOrdenen() {
+  const { producten, herlaad } = useData();
+  const cats = indeling(producten).map((g) => g.cat);
+  const opslaan = (n: string[]) => rpc('categorie_volgorde_opslaan', { p_namen: n }).then(() => herlaad(), (e: Error) => melding(e.message));
+  return (
+    <>
+      <h2>Volgorde van de categorieën</h2>
+      <p className="mu">Sleep aan ⠿. Zo staan ze in de kassa, van links naar rechts.</p>
+      <div className="card">
+        <Sorteerbaar items={cats} sleutel={(c) => c} label={(c) => c} rij={(c) => <Rij l={c} r={`${producten.filter((p) => p.categorie === c).length}`} />} onVolgorde={(n) => void opslaan(n)} />
+      </div>
+    </>
+  );
+}
+
+function ProductScherm({ id, start }: { id: number | null; start?: { categorie: string; subcategorie?: string } }) {
   const { producten, herlaad, btw } = useData();
   const { sluit } = useSheet();
-  const p: Partial<Product> = (id != null && producten.find((x) => x.id === id)) || { categorie: producten[0]?.categorie ?? 'Drinken', actief: true };
+  const p: Partial<Product> = (id != null && producten.find((x) => x.id === id)) || { categorie: start?.categorie ?? producten[0]?.categorie ?? 'Drinken', subcategorie: start?.subcategorie, actief: true };
   const [f, setF] = useState({
-    naam: p.naam ?? '', prijs: p.prijs_cent != null ? centTekst(p.prijs_cent) : '', categorie: p.categorie ?? '',
-    volgorde: String(p.volgorde ?? 0), actief: p.actief ?? true, voorraad: '', voorraad_min: String(p.voorraad_min ?? 0),
+    naam: p.naam ?? '', prijs: p.prijs_cent != null ? centTekst(p.prijs_cent) : '', categorie: p.categorie ?? '', subcategorie: p.subcategorie ?? '',
+    actief: p.actief ?? true, voorraad: '', voorraad_min: String(p.voorraad_min ?? 0),
   });
   const [aantal, setAantal] = useState('');
   const [tarief, setTarief] = useState(p.btw_pct ?? 21);
   const [bezig, run] = useBezig();
-  const opslaan = () => run(async () => {
+  const subsVan = [...new Set(producten.filter((x) => x.categorie === f.categorie && x.subcategorie).map((x) => x.subcategorie!))];
+  const opslaan = (nogEen = false) => run(async () => {
     const prijs = naarCent(f.prijs);
     if (!f.naam.trim()) throw new Error('Vul een naam in');
     if (isNaN(prijs) || prijs < 0) throw new Error('Vul een geldige prijs in');
     // Elk product heeft een voorraad; bij een nieuw product meteen de beginvoorraad.
     const voorraad = /^\d+$/.test(f.voorraad.trim()) ? parseInt(f.voorraad) : NaN;
     if (id == null && isNaN(voorraad)) throw new Error('Vul de voorraad in (hoeveel er nu is, ook als dat 0 is)');
-    const nieuwId = await rpc<number>('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, actief: f.actief, volgorde: parseInt(f.volgorde) || 0, voorraad: id == null ? voorraad : undefined, voorraad_min: parseInt(f.voorraad_min) || 0 } });
+    const nieuwId = await rpc<number>('product_opslaan', { p: { id, naam: f.naam, prijs_cent: prijs, categorie: f.categorie, subcategorie: f.subcategorie, actief: f.actief, voorraad: id == null ? voorraad : undefined, voorraad_min: parseInt(f.voorraad_min) || 0 } });
     if (btw.aan && tarief !== (p.btw_pct ?? 21)) await rpc('btw_tarief', { p_pct: tarief, p_id: nieuwId });
     await herlaad();
+    if (nogEen) {
+      // Volgende product in dezelfde (sub)categorie: alleen naam, prijs en voorraad opnieuw.
+      melding(`${f.naam.trim()} toegevoegd`, true);
+      setF({ ...f, naam: '', prijs: '', voorraad: '' });
+      document.getElementById('pn')?.focus();
+      return;
+    }
     sluit();
     melding('Opgeslagen');
   });
@@ -410,11 +508,15 @@ function ProductScherm({ id }: { id: number | null }) {
           <div className="quick">{BTW_TARIEVEN.map((t) => <button key={t} className={t === tarief ? 'on' : ''} aria-pressed={t === tarief} onClick={() => setTarief(t)}>{t}%</button>)}</div>
         </>
       )}
-      <label htmlFor="pv">Volgorde (lager = eerder)</label><input className="f" id="pv" inputMode="numeric" value={f.volgorde} onChange={zet('volgorde')} />
+      <label htmlFor="psub">Subcategorie (optioneel)</label>
+      <input className="f" id="psub" list="psub-lijst" maxLength={30} placeholder={f.categorie === 'Drinken' ? 'Bijvoorbeeld Frisdrank of Alcohol' : 'Bijvoorbeeld Warm of Koud'} value={f.subcategorie} onChange={zet('subcategorie')} />
+      <datalist id="psub-lijst">{subsVan.map((x) => <option key={x} value={x} />)}</datalist>
       <label className="check"><input type="checkbox" checked={f.actief} onChange={zet('actief')} /> Tonen in de kassa</label>
       {id == null && (<><label htmlFor="pvr">Voorraad nu</label><input className="f" id="pvr" inputMode="numeric" placeholder="Hoeveel is er nu?" value={f.voorraad} onChange={zet('voorraad')} /></>)}
       <label htmlFor="pm">Waarschuwen bij voorraad van</label><input className="f" id="pm" inputMode="numeric" value={f.voorraad_min} onChange={zet('voorraad_min')} />
-      <button className="big" disabled={bezig} onClick={opslaan}>Opslaan</button>
+      {id == null
+        ? <div className="btns"><button className="big" disabled={bezig} onClick={() => opslaan()}>Opslaan</button><button disabled={bezig} onClick={() => opslaan(true)}>Opslaan en nog een</button></div>
+        : <button className="big" disabled={bezig} onClick={() => opslaan()}>Opslaan</button>}
       {id != null && (
         <>
           <h3 className="s">Voorraad: {p.voorraad}</h3>

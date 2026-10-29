@@ -758,6 +758,28 @@ test('bon via QR-code: alleen met de geheime code, zonder inloggen', async () =>
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
 });
 
+test('indeling: subcategorie, volgorde door slepen, nieuw product achteraan, categorievolgorde', async () => {
+  const id = await rpc(baas, 'product_opslaan', { p: { naam: 'Cola', prijs_cent: 250, categorie: 'Drinken', subcategorie: ' Frisdrank ', voorraad: 5 } });
+  const lees = async () => (await baas.from('producten').select('id,naam,subcategorie,volgorde').eq('categorie', 'Drinken').eq('verwijderd', false).order('volgorde')).data;
+  let d = await lees();
+  assert.equal(d.at(-1).id, id, 'nieuw product achteraan');
+  assert.equal(d.at(-1).subcategorie, 'Frisdrank');
+  // Slepen: Cola vooraan.
+  await faalt(rpc(bar, 'producten_volgorde', { p_ids: [id] }), 'beheerder');
+  await rpc(baas, 'producten_volgorde', { p_ids: [id, ...d.filter((x) => x.id !== id).map((x) => x.id)] });
+  d = await lees();
+  assert.deepEqual([d[0].id, d[0].volgorde, d[1].volgorde], [id, 10, 20]);
+  // Opslaan zonder subcategorie laat hem staan; leeg maakt hem weg.
+  await rpc(baas, 'product_opslaan', { p: { id, naam: 'Cola', prijs_cent: 260, categorie: 'Drinken' } });
+  assert.equal((await lees()).find((x) => x.id === id).subcategorie, 'Frisdrank');
+  await rpc(baas, 'product_opslaan', { p: { id, naam: 'Cola', prijs_cent: 260, categorie: 'Drinken', subcategorie: '' } });
+  assert.equal((await lees()).find((x) => x.id === id).subcategorie, null);
+  await rpc(baas, 'categorie_volgorde_opslaan', { p_namen: ['Snacks', 'Drinken'] });
+  const { data: inst } = await bar.from('instellingen').select('categorie_volgorde').single();
+  assert.deepEqual(inst.categorie_volgorde, ['Snacks', 'Drinken']);
+  await rpc(baas, 'product_verwijderen', { p_id: id });
+});
+
 // Als laatste: maakt alles leeg.
 test('kassa leegmaken: alleen de beheerder, met LEEGMAKEN; logboek en accounts blijven', async () => {
   await faalt(rpc(bar, 'kassa_leegmaken', { p_bevestiging: 'LEEGMAKEN' }), 'beheerder');

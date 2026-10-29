@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { useData } from '../data';
-import { datumTijd, eur, rpc, totaal, type Product } from '../lib';
+import { datumTijd, eur, indeling, rpc, totaal, type Product } from '../lib';
 import { melding, Rij, useBezig, useSheet } from '../ui';
 import { Afrekenen } from './Afrekenen';
 import { teLangOpen } from './Dienst';
@@ -16,10 +16,18 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
   const { mand, setMand, doel, setDoel } = useMand();
   const { producten, rekeningen, dienst } = useData();
   const zichtbaar = producten.filter((p) => p.actief);
-  const cats = [...new Set(zichtbaar.map((p) => p.categorie))];
-  // '' = Alles: alle producten, gegroepeerd per categorie.
+  const groepen = indeling(zichtbaar);
+  const cats = groepen.map((g) => g.cat);
+  // '' = Alles: alle producten, gegroepeerd per categorie (en subcategorie).
   const [cat, setCat] = useState('');
+  const [sub, setSub] = useState('');
   const huidig = cats.includes(cat) ? cat : '';
+  const subs = (groepen.find((g) => g.cat === huidig)?.subs ?? []).map((s) => s.sub).filter(Boolean);
+  const huidigSub = subs.includes(sub) ? sub : '';
+  // Een categorie met subcategorieën: eerst de producten zonder, dan per subcategorie met een kopje.
+  const metKopjes = (c: string, kop: (t: string) => React.ReactNode) => (groepen.find((g) => g.cat === c)?.subs ?? []).map((s) => (
+    <div key={s.sub}>{s.sub && kop(s.sub)}{tegels(s.items)}</div>
+  ));
   const rek = doel != null ? rekeningen.find((r) => r.id === doel) : undefined;
   const tegels = (lijst: Product[]) => (
     <div className="grid">
@@ -48,17 +56,23 @@ export function Kassa({ naarDienst }: { naarDienst: () => void }) {
       {cats.length > 1 && (
         <div className="chips">
           <button className={huidig === '' ? 'on' : ''} onClick={() => setCat('')}>Alles</button>
-          {cats.map((c) => <button key={c} className={c === huidig ? 'on' : ''} onClick={() => setCat(c)}>{c}</button>)}
+          {cats.map((c) => <button key={c} className={c === huidig ? 'on' : ''} onClick={() => { setCat(c); setSub(''); }}>{c}</button>)}
         </div>
       )}
-      {huidig !== '' ? tegels(zichtbaar.filter((p) => p.categorie === huidig))
+      {subs.length > 0 && (
+        <div className="chips small">
+          <button className={huidigSub === '' ? 'on' : ''} onClick={() => setSub('')}>Alle {huidig.toLowerCase()}</button>
+          {subs.map((x) => <button key={x} className={x === huidigSub ? 'on' : ''} onClick={() => setSub(x)}>{x}</button>)}
+        </div>
+      )}
+      {huidig !== '' ? (huidigSub ? tegels(zichtbaar.filter((p) => p.categorie === huidig && p.subcategorie === huidigSub)) : metKopjes(huidig, (t) => <h4 className="cat-sub">{t}</h4>))
         : cats.length > 1 ? cats.map((c) => (
           <section key={c}>
             <h3 className="cat">{c}</h3>
-            {tegels(zichtbaar.filter((p) => p.categorie === c))}
+            {metKopjes(c, (t) => <h4 className="cat-sub">{t}</h4>)}
           </section>
         ))
-        : tegels(zichtbaar)}
+        : metKopjes(cats[0] ?? '', (t) => <h4 className="cat-sub">{t}</h4>)}
       {!zichtbaar.length && <p className="mu">Nog geen producten. Een beheerder kan ze toevoegen bij Beheer → Producten.</p>}
     </>
   );

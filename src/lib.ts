@@ -144,6 +144,7 @@ export interface Product {
   id: number; naam: string; prijs_cent: number; categorie: string; actief: boolean; verwijderd: boolean;
   volgorde: number; voorraad_bijhouden: boolean; voorraad: number; voorraad_min: number;
   btw_pct?: number;
+  subcategorie?: string | null;
 }
 export interface Rekening { id: number; naam: string; open: boolean; aangemaakt: string }
 export interface RekeningRegel { id: number; rekening_id: number; product_id: number; naam: string; prijs_cent: number; aantal: number; ts: string }
@@ -193,6 +194,22 @@ export const tijd = (ts: string) => new Date(ts).toLocaleTimeString('nl-NL', { h
 export const datum = (ts: string | Date) => new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
 export const datumTijd = (ts: string) => `${datum(ts)} ${tijd(ts)}`;
 export const methodeNaam: Record<string, string> = { contant: 'Contant', pin: 'Pin', kaart: 'Kaart', lat: 'Streeplijst', overboeking: 'Overboeking', gratis: 'Gratis' };
+
+// ─── Indeling van de producten ───
+
+/** Producten (al in volgorde) per categorie en daarbinnen per subcategorie (zonder subcategorie eerst). */
+export function indeling<T extends { categorie: string; subcategorie?: string | null }>(lijst: T[]) {
+  const cats: { cat: string; subs: { sub: string; items: T[] }[] }[] = [];
+  for (const p of lijst) {
+    let c = cats.find((x) => x.cat === p.categorie);
+    if (!c) cats.push(c = { cat: p.categorie, subs: [] });
+    const sub = p.subcategorie ?? '';
+    let s = c.subs.find((x) => x.sub === sub);
+    if (!s) { s = { sub, items: [] }; if (sub) c.subs.push(s); else c.subs.unshift(s); }
+    s.items.push(p);
+  }
+  return cats;
+}
 
 // ─── Btw ───
 

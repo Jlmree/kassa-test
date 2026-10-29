@@ -55,10 +55,14 @@ export function DataProvider({ profiel, children }: { profiel: Profiel; children
           lees(sb.from('rekeningen').select('*').eq('open', true).order('naam')),
           lees(sb.from('rekening_regels').select('*, rekeningen!inner(open)').eq('rekeningen.open', true).order('id')),
           rpc<Dienst | null>('dienst_overzicht'),
-          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat,betaal_gratis,thema,btw_aan,btw_nummer').maybeSingle()),
+          lees(sb.from('instellingen').select('naam,betaal_contant,betaal_pin,betaal_kaart,betaal_rekening,betaal_lat,betaal_gratis,thema,btw_aan,btw_nummer,categorie_volgorde').maybeSingle()),
         ]);
-        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean; betaal_gratis?: boolean; thema?: Thema; btw_aan?: boolean; btw_nummer?: string | null } | null;
+        const i = inst as { naam: string; betaal_contant: boolean; betaal_pin: boolean; betaal_kaart: boolean; betaal_rekening: boolean; betaal_lat: boolean; betaal_gratis?: boolean; thema?: Thema; btw_aan?: boolean; btw_nummer?: string | null; categorie_volgorde?: string[] } | null;
         const thema: Thema = i?.thema ?? 'licht';
+        // Categorieën in de volgorde die de beheerder sleepte; nieuwe achteraan (op alfabet, zoals ze komen).
+        const volg = i?.categorie_volgorde ?? [];
+        const plek = (c: string) => { const k = volg.indexOf(c); return k < 0 ? volg.length : k; };
+        (producten as Product[]).sort((a, b) => plek(a.categorie) - plek(b.categorie));
         themaZetten(thema);
         setS({
           producten: producten as Product[], rekeningen: rekeningen as Rekening[], regels: regels as RekeningRegel[],
