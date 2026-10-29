@@ -18,7 +18,7 @@ interface DienstCijfers {
   opwaardering_contant_cent: number; opwaardering_pin_cent: number; verwacht_cent: number; geteld_cent: number | null; opmerking: string | null;
 }
 interface KaartMutatie { ts: string; kaart: number; naam: string | null; soort: string; methode: string | null; bedrag: number; bon: number | null }
-interface Lid { lid: string; begin: number; gestreept: number; contant: number; pin: number; overboeking: number }
+interface Lid { lid: string; begin: number; gestreept: number; contant: number; pin: number; overboeking: number; kaart?: number }
 interface Afbetaling { ts: string; lid: string; methode: string; bedrag: number; opmerking: string | null }
 interface Uitgave { ts: string; omschrijving: string; bedrag: number; voorgeschoten_door: string | null; door_naam: string | null; terugbetaald_ts: string | null; terugbetaald_hoe: string | null; terug_door_naam: string | null }
 interface Terug { ts: string; omschrijving: string; bedrag: number; voorgeschoten_door: string | null; terugbetaald_hoe: string }
@@ -32,7 +32,7 @@ const som = <T>(l: T[], f: (x: T) => number) => l.reduce((a, x) => a + f(x), 0);
 const dag = (ts: string) => ts.slice(0, 10);
 const weekdag = (d: string) => ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'][new Date(d + 'T12:00:00').getDay()];
 const soortNaam: Record<string, string> = { opwaardering: 'Opgewaardeerd', betaling: 'Betaald', annulering: 'Teruggezet (annulering)', overzetting: 'Overgezet', vervallen: 'Vervallen', prijs: 'Gewonnen (loterij)' };
-const methode: Record<string, string> = { contant: 'Contant', pin: 'Pin', overboeking: 'Overboeking' };
+const methode: Record<string, string> = { contant: 'Contant', pin: 'Pin', overboeking: 'Overboeking', kaart: 'Barkaart' };
 const kop = (t: string): Cel[] => [{ v: t, vet: true }];
 const g = (centen: number): Cel => ({ v: centen, soort: 'geld' });
 const n = (x: number): Cel => ({ v: x, soort: 'getal' });
@@ -112,7 +112,7 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
     kop('Barkaarten (tegoed van kaarthouders)'),
     ['Tegoed aan het begin', g(d.kaart_begin)],
     ['+ opgewaardeerd', g(km('opwaardering'))],
-    ['− betaald met de kaart', g(km('betaling'))],
+    ['− betaald met de kaart (bonnen en streeplijst)', g(km('betaling'))],
     ['+ teruggezet (geannuleerde bonnen)', g(km('annulering'))],
     ['− vervallen (kaarten verwijderd)', g(km('vervallen'))],
     ['+ gewonnen met de loterij', g(km('prijs'))],
@@ -122,8 +122,9 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
     kop('Streeplijst (nog te betalen door leden)'),
     ['Open aan het begin', g(streepBegin)],
     ['+ gestreept', g(gestreept)],
-    ['− afbetaald', g(-(af('contant') + af('pin') + af('overboeking')))],
-    ['Open aan het eind', { v: streepBegin + gestreept - af('contant') - af('pin') - af('overboeking'), soort: 'geld', vet: true }],
+    ['− afbetaald', g(-(af('contant') + af('pin') + af('overboeking') + af('kaart')))],
+    ['waarvan met de barkaart (geen geld in de kas)', g(af('kaart'))],
+    ['Open aan het eind', { v: streepBegin + gestreept - af('contant') - af('pin') - af('overboeking') - af('kaart'), soort: 'geld', vet: true }],
     [],
     kop('Uitgaven'),
     ['Geregistreerd in de periode', g(som(d.uitgaven, (u) => u.bedrag))],
@@ -236,11 +237,11 @@ export async function boekhoudingMaken(van: string, tot: string): Promise<{ naam
   // ── Streeplijst ──
   bladen.push({
     naam: 'Streeplijst',
-    rijen: d.streeplijst.map((l) => [l.lid, g(l.begin), g(l.gestreept), g(l.contant), g(l.pin), g(l.overboeking), g(l.begin + l.gestreept - l.contant - l.pin - l.overboeking)]),
+    rijen: d.streeplijst.map((l) => [l.lid, g(l.begin), g(l.gestreept), g(l.contant), g(l.pin), g(l.kaart ?? 0), g(l.overboeking), g(l.begin + l.gestreept - l.contant - l.pin - (l.kaart ?? 0) - l.overboeking)]),
     kolommen: [{ kop: 'Lid', breedte: 22 }, { kop: 'Open aan het begin', soort: 'geld', breedte: 15 }, { kop: 'Gestreept', soort: 'geld', breedte: 12 }, { kop: 'Afbetaald contant', soort: 'geld', breedte: 14 },
-      { kop: 'Afbetaald pin', soort: 'geld', breedte: 13 }, { kop: 'Afbetaald overboeking', soort: 'geld', breedte: 16 }, { kop: 'Open aan het eind', soort: 'geld', breedte: 15 }],
-    totaal: ['Totaal', g(som(d.streeplijst, (l) => l.begin)), g(gestreept), g(af('contant')), g(af('pin')), g(af('overboeking')),
-      g(som(d.streeplijst, (l) => l.begin + l.gestreept - l.contant - l.pin - l.overboeking))],
+      { kop: 'Afbetaald pin', soort: 'geld', breedte: 13 }, { kop: 'Afbetaald barkaart', soort: 'geld', breedte: 15 }, { kop: 'Afbetaald overboeking', soort: 'geld', breedte: 16 }, { kop: 'Open aan het eind', soort: 'geld', breedte: 15 }],
+    totaal: ['Totaal', g(som(d.streeplijst, (l) => l.begin)), g(gestreept), g(af('contant')), g(af('pin')), g(af('kaart')), g(af('overboeking')),
+      g(som(d.streeplijst, (l) => l.begin + l.gestreept - l.contant - l.pin - (l.kaart ?? 0) - l.overboeking))],
   });
   bladen.push({
     naam: 'Streeplijst afbetaald',
