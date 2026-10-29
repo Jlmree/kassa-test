@@ -1,6 +1,15 @@
 [
   {
     "datum": "2026-10-29",
+    "titel": "Bar-kassa heet nu Tapkas",
+    "punten": [
+      "De kassa heet voortaan Tapkas: in de app, bij de installatie, in de mails van de back-up en op de website tapkas.nl.",
+      "Op de website staan nu de verkoopvoorwaarden (tapkas.nl/voorwaarden), met een link bij de prijzen en onderaan elke pagina.",
+      "Je gegevens, accounts, kaarten en instellingen blijven gewoon staan."
+    ]
+  },
+  {
+    "datum": "2026-10-29",
     "titel": "Kassa leegmaken",
     "punten": [
       "Bij Beheer → Instellingen staat Kassa leegmaken: alle producten, barkaarten (ook het tegoed), verkopen, diensten, rekeningen, de streeplijst, uitgaven en de loterij gaan weg. Bon- en kaartnummers beginnen weer bij 1.",

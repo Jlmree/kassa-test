@@ -37,14 +37,14 @@ case "${1:-}" in
       --reloadcmd "chgrp caddy $TLS/*.pem; chmod 640 $TLS/*.pem; systemctl reload caddy 2>/dev/null || true"
     cat > /etc/systemd/system/kassa-duckdns.service <<UNIT
 [Unit]
-Description=Bar-kassa DuckDNS en certificaat vernieuwen
+Description=Tapkas DuckDNS en certificaat vernieuwen
 [Service]
 Type=oneshot
 ExecStart=/opt/kassa/bin/duckdns.sh vernieuw
 UNIT
     cat > /etc/systemd/system/kassa-duckdns.timer <<UNIT
 [Unit]
-Description=Bar-kassa DuckDNS en certificaat vernieuwen
+Description=Tapkas DuckDNS en certificaat vernieuwen
 [Timer]
 OnCalendar=*:0/30
 Persistent=true

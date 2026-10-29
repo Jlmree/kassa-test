@@ -1,10 +1,10 @@
-Bar-kassa: licentie en gebruiksvoorwaarden
+Tapkas: licentie en gebruiksvoorwaarden
 Versie 2, oktober 2026
 
 Copyright (c) 2026 BSGRF. Alle rechten voorbehouden.
 
 1. Gebruik
-   Je mag de Bar-kassa installeren en gebruiken voor de bar of kantine van
+   Je mag Tapkas installeren en gebruiken voor de bar of kantine van
    je eigen vereniging of organisatie, als je de software van de maker
    hebt gekregen, of met toestemming van de maker.
 
@@ -31,7 +31,7 @@ Copyright (c) 2026 BSGRF. Alle rechten voorbehouden.
      volgens de AVG.
 
 5. Op een server op internet
-   Installeer je de Bar-kassa op een gehuurde server of een andere computer
+   Installeer je Tapkas op een gehuurde server of een andere computer
    die via internet bereikbaar is, dan ben je daarnaast zelf
    verantwoordelijk voor:
    - de huur van de server en de afspraken met de verhuurder;
@@ -63,7 +63,7 @@ Copyright (c) 2026 BSGRF. Alle rechten voorbehouden.
    toestaat.
 
 7. Onderdelen van anderen
-   De Bar-kassa gebruikt programma's van anderen, elk met een eigen
+   Tapkas gebruikt programma's van anderen, elk met een eigen
    licentie: onder meer PostgreSQL, Caddy, PostgREST, Supabase Auth en
    React. Die licenties staan in ONDERDELEN.txt; deze voorwaarden gaan
    niet over die onderdelen.
@@ -71,5 +71,5 @@ Copyright (c) 2026 BSGRF. Alle rechten voorbehouden.
 8. Recht
    Op deze voorwaarden is Nederlands recht van toepassing.
 
-Door de Bar-kassa te installeren of te gebruiken, ga je akkoord met deze
+Door Tapkas te installeren of te gebruiken, ga je akkoord met deze
 voorwaarden.

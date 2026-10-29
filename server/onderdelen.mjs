@@ -34,9 +34,9 @@ for (const [naam, versie] of [...gezien].sort(([a], [b]) => a.localeCompare(b)))
   delen.push(`${naam} ${versie}\n\n${tekst}`);
 }
 
-writeFileSync(uit, `Bar-kassa: onderdelen van anderen
+writeFileSync(uit, `Tapkas: onderdelen van anderen
 
-De Bar-kassa gebruikt de volgende programma's en bibliotheken, elk met een eigen
+Tapkas gebruikt de volgende programma's en bibliotheken, elk met een eigen
 licentie. PostgreSQL en Caddy worden niet meegeleverd maar tijdens de installatie
 uit de pakketbron van Debian of Ubuntu geïnstalleerd, met hun eigen licentie
 (PostgreSQL License en Apache License 2.0).

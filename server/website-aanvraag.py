@@ -42,7 +42,7 @@ def mail_config(pad):
 
 def versturen(c, onderwerp, tekst, antwoord_aan=None):
     m = EmailMessage()
-    m['From'] = f"Bar-kassa website <{c.get('VAN') or c.get('GEBRUIKER')}>"
+    m['From'] = f"Tapkas website <{c.get('VAN') or c.get('GEBRUIKER')}>"
     m['To'] = c['NAAR']
     m['Subject'] = onderwerp
     m['Date'] = formatdate(localtime=True)
@@ -165,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
                      f"Telefoon:  {a['telefoon'] or '-'}\nInteresse: {KEUZES[a['keus']]}\n\n{a['bericht'] or '(geen bericht)'}\n\n"
                      "Beantwoorden: gewoon op deze mail reageren.\n")
             try:
-                versturen(c, f"Aanvraag Bar-kassa: {a['club']}"[:150], tekst, a['email'])
+                versturen(c, f"Aanvraag Tapkas: {a['club']}"[:150], tekst, a['email'])
             except Exception as e:  # de aanvraag is bewaard; website.sh aanvragen laat hem zien
                 print(f'Doormailen mislukt: {type(e).__name__}: {e}', file=sys.stderr, flush=True)
         self.antwoord(200, {'ok': True})
@@ -177,7 +177,7 @@ if __name__ == '__main__':
         if not c:
             sys.exit('Er is nog geen mailaccount ingesteld.')
         try:
-            versturen(c, 'Proefmail van de Bar-kassa website',
+            versturen(c, 'Proefmail van de Tapkas-website',
                       'Dit is een proefmail. Aanvragen via het formulier op de website komen voortaan op dit adres binnen.\n')
         except smtplib.SMTPAuthenticationError:
             sys.exit('De mailserver weigert de gebruikersnaam of het wachtwoord.')

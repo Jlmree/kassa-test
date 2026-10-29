@@ -1,4 +1,4 @@
-# Bar-kassa
+# Tapkas
 
 Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in het gebouw (bijvoorbeeld een HP t620 thin client); medewerkers rekenen af op hun telefoon of tablet via een eigen wifi-netwerk van de kassa (of de wifi van het gebouw). Er is geen internet nodig om te verkopen. Alle apparaten zien dezelfde gegevens. Het kan ook op een gehuurde server op internet, met desnoods meerdere kassa's (voor verschillende kantines) op één server.
 

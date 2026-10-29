@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# De verkoopwebsite van de Bar-kassa op deze server, naast de kassa's: de pagina's uit
+# De verkoopwebsite van Tapkas op deze server, naast de kassa's: de pagina's uit
 # /opt/kassa/website (met de proefversie onder /proef/) op een eigen adres, en het
 # aanvraagformulier (website-aanvraag.py) dat aanvragen bewaart en doormailt.
-#   website.sh aan <adres>      website aanzetten, bijv. website.sh aan bar-kassa.nl
+#   website.sh aan <adres>      website aanzetten, bijv. website.sh aan tapkas.nl
 #   website.sh mail             instellen naar welk adres aanvragen gaan (met proefmail)
 #   website.sh aanvragen [n]    de laatste n aanvragen laten zien (standaard 10)
 #   website.sh status           adres, formulier, mail, aantal aanvragen
@@ -38,7 +38,7 @@ dienst_starten() {
 case "${1:-}" in
   aan)
     adres=${2:-}
-    [[ $adres =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || fout "Geef het adres van de website, bijvoorbeeld: website.sh aan bar-kassa.nl"
+    [[ $adres =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || fout "Geef het adres van de website, bijvoorbeeld: website.sh aan tapkas.nl"
     for n in $(kassa_namen); do
       kassa_paden "$n"
       [ "$(kassa_lees KASSA_DOMEIN)" = "$adres" ] && fout "Dat adres gebruikt kassa \"$n\" al. Kies een ander adres voor de website."
@@ -49,7 +49,7 @@ case "${1:-}" in
     [ -f "$MAIL" ] || ( umask 077; : > "$MAIL" )
     cat > "$UNIT" <<EOF
 [Unit]
-Description=Bar-kassa website: aanvraagformulier
+Description=Tapkas website: aanvraagformulier
 After=network.target
 
 [Service]
