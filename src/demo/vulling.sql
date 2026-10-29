@@ -89,11 +89,14 @@ begin
       open_ts := (dag + time '19:00') at time zone 'Europe/Amsterdam';
       update public.diensten set geopend_ts = open_ts, gesloten_ts = open_ts + interval '5 hours 10 minutes' where id = d;
       update public.verkopen set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
-      update public.kaart_mutaties set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
+      -- Opwaarderen aan het begin van de avond (betalingen krijgen hieronder de tijd van hun bon).
+      update public.kaart_mutaties set ts = open_ts + random() * interval '30 minutes' where dienst_id = d;
       update public.lat_betalingen set ts = open_ts + random() * interval '5 hours' where dienst_id = d;
       update public.logboek set ts = open_ts + interval '5 hours 10 minutes' where id > log_id;
     end if;
     update public.voorraad_mutaties m set ts = v.ts from public.verkopen v where v.id = m.verkoop_id and v.dienst_id = d;
+    -- Een betaling met de kaart op hetzelfde moment als de bon (de saldo-pagina toont ze samen).
+    update public.kaart_mutaties m set ts = v.ts from public.verkopen v where v.id = m.verkoop_id and v.dienst_id = d;
   end loop;
 
   -- Twee open rekeningen.

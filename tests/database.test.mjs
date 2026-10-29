@@ -297,8 +297,9 @@ test('klant bekijkt zelf het saldo, alleen met de kaartcode', async () => {
   const s = await rpc(anon, 'kaart_saldo', { p_code: kaart.code.toLowerCase() });
   assert.equal(s.nummer, info.nummer);
   assert.equal(s.saldo_cent, info.saldo_cent);
-  assert.ok(s.historie.length > 0 && s.historie.length <= 10);
-  assert.deepEqual(Object.keys(s.historie[0]).sort(), ['bedrag_cent', 'soort', 'ts']);
+  assert.ok(s.historie.length > 0 && s.historie.length <= 50);
+  // Alleen wat bij deze kaart hoort: geen namen van medewerkers of andere betalingen.
+  assert.deepEqual(Object.keys(s.historie[0]).sort(), ['bedrag_cent', 'bon', 'bon_code', 'methode', 'soort', 'ts', 'wat']);
   assert.match((await rpc(anon, 'kaart_saldo', { p_code: String(info.nummer) })).fout, /code van je kaart/);
   assert.match((await rpc(anon, 'kaart_saldo', { p_code: 'AAAA-AAAA' })).fout, /niet gevonden/);
   // Verder ziet een klant zonder account niets.
@@ -778,6 +779,20 @@ test('indeling: subcategorie, volgorde door slepen, nieuw product achteraan, cat
   const { data: inst } = await bar.from('instellingen').select('categorie_volgorde').single();
   assert.deepEqual(inst.categorie_volgorde, ['Snacks', 'Drinken']);
   await rpc(baas, 'product_verwijderen', { p_id: id });
+});
+
+test('saldo-pagina: geschiedenis met wat er gekocht is en een link naar de bon', async () => {
+  await rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  const [k] = await rpc(baas, 'kaarten_maken', { p_aantal: 1 });
+  const info = await rpc(bar, 'kaart_info', { p_zoek: k.code });
+  await rpc(bar, 'kaart_opwaarderen', { p_kaart_id: info.id, p_bedrag_cent: 1000, p_methode: 'pin' });
+  const bon = await rpc(bar, 'afrekenen', { p_regels: [{ product_id: product('Bier').id, aantal: 2 }, { product_id: product('Chips').id, aantal: 1 }], p_betalingen: [{ methode: 'kaart', kaart: k.code }] });
+  const anon = createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { 'x-forwarded-for': '10.1.2.4' } } });
+  const s = await rpc(anon, 'kaart_saldo', { p_code: k.code });
+  assert.equal(s.saldo_cent, 1000 - bon.totaal_cent);
+  assert.deepEqual([s.historie[0].soort, s.historie[0].bon, s.historie[0].wat, s.historie[0].bon_code], ['betaling', bon.bonnummer, '2× Bier, 1× Chips', bon.deel_code]);
+  assert.deepEqual([s.historie[1].soort, s.historie[1].methode, s.historie[1].bon], ['opwaardering', 'pin', null]);
+  await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
 });
 
 // Als laatste: maakt alles leeg.
