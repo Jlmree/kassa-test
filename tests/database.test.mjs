@@ -757,3 +757,31 @@ test('bon via QR-code: alleen met de geheime code, zonder inloggen', async () =>
   assert.notEqual(bon2.deel_code, bon.deel_code);
   await rpc(bar, 'dienst_sluiten', { p_geteld_cent: (await rpc(bar, 'dienst_overzicht')).verwacht_cent });
 });
+
+// Als laatste: maakt alles leeg.
+test('kassa leegmaken: alleen de beheerder, met LEEGMAKEN; logboek en accounts blijven', async () => {
+  await faalt(rpc(bar, 'kassa_leegmaken', { p_bevestiging: 'LEEGMAKEN' }), 'beheerder');
+  await faalt(rpc(baas, 'kassa_leegmaken', { p_bevestiging: 'leeg' }), 'LEEGMAKEN');
+  await rpc(baas, 'thema_opslaan', { p_thema: 'kroeg' });
+  const r = await rpc(baas, 'kassa_leegmaken', { p_bevestiging: 'LEEGMAKEN', p_medewerkers: true, p_instellingen: true });
+  assert.ok(r.bonnen > 0 && r.producten > 0 && r.kaarten > 0);
+  for (const t of ['producten', 'kaarten', 'verkopen', 'diensten', 'leden', 'rekeningen', 'uitgaven', 'kaart_mutaties']) {
+    const { count, error } = await baas.from(t).select('id', { count: 'exact', head: true });
+    assert.equal(error, null, t);
+    assert.equal(count, 0, t);
+  }
+  const { data: inst } = await baas.from('instellingen').select('naam,thema').single();
+  assert.deepEqual(inst, { naam: 'Bar', thema: 'licht' });
+  // De beheerder blijft, de anderen staan uit en kunnen niets meer.
+  const { data: ik } = await baas.from('profielen').select('actief').eq('naam', 'Baas').single();
+  assert.equal(ik.actief, true);
+  await faalt(rpc(bar, 'dienst_openen', { p_beginsaldo_cent: 0 }));
+  const { data: log } = await baas.from('logboek').select('actie,details').eq('actie', 'kassa_leegmaken');
+  assert.equal(log.at(-1).details.bonnen, r.bonnen);
+  // Opnieuw beginnen: bon 1 en kaart 1.
+  await rpc(baas, 'dienst_openen', { p_beginsaldo_cent: 0 });
+  const id = await rpc(baas, 'product_opslaan', { p: { naam: 'Bier', prijs_cent: 250, categorie: 'Drinken', voorraad: 10 } });
+  const bon = await rpc(baas, 'afrekenen', { p_regels: [{ product_id: id, aantal: 1 }], p_betalingen: [{ methode: 'pin', bedrag_cent: 250 }] });
+  assert.equal(bon.bonnummer, 1);
+  assert.equal((await rpc(baas, 'kaarten_maken', { p_aantal: 1 }))[0].nummer, 1);
+});
