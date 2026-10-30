@@ -183,6 +183,24 @@ form .privacy { font-size: 14px; color: var(--mu); }
 .voet { border-top: 1px solid var(--lijn); }
 .voet .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; padding-block: 28px 36px; color: var(--mu); font-size: 15px; }
 .voet .wrap span:first-child { color: var(--inkt); font-weight: 700; margin-right: auto; }
+
+/* Grote schermen: de kolom wordt breder en alles schaalt mee, zodat het op een computer niet klein en leeg oogt. */
+.bonnen { align-items: stretch; }
+.bon { display: flex; flex-direction: column; }
+.bon .knop { margin-top: auto; }
+.bon > :nth-last-child(2) { margin-bottom: 22px; }
+@media (min-width: 1000px) {
+  #vragen .wrap { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 56px; align-items: start; }
+  #vragen .kopje { margin-bottom: 0; position: sticky; top: 100px; }
+  .vragen { max-width: none; }
+  .toneel { zoom: 1.12; }
+}
+@media (min-width: 1400px) { :root { --breed: 1200px; } }
+@media (min-width: 1600px) { html { zoom: 1.12; } }
+@media (min-width: 1850px) { html { zoom: 1.25; } }
+@media (min-width: 2200px) { html { zoom: 1.45; } }
+@media (min-width: 2700px) { html { zoom: 1.75; } }
+@media (min-width: 3400px) { html { zoom: 2.2; } }
 </style>
 </head>
 <body>
