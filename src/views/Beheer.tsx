@@ -1108,7 +1108,12 @@ interface Systeem {
   bijwerken_mag?: boolean; backup_pad?: string | null; backup_bestand?: string | null; backup_ts?: string | null;
   backup_mail_naar?: string | null; backup_mail_ts?: string | null; backup_mail_fout?: string | null;
 }
-const versieNr = (v: string | null) => parseInt((v ?? '').replace(/\D/g, ''), 10) || 0;
+// Versies heten 0.64, 0.65… (eerder v1 t/m v63; v63 is 0.63). Als getal om te vergelijken.
+const versieNr = (v: string | null) => {
+  const m = /(\d+)\.(\d+)/.exec(v ?? '');
+  return m ? Number(m[1]) * 100000 + Number(m[2]) : parseInt((v ?? '').replace(/\D/g, ''), 10) || 0;
+};
+const versieNaam = (v: string | null) => v?.replace(/^v(\d+)$/, '0.$1') ?? null;
 
 // Nieuwe versie installeren. De app zet alleen een verzoek klaar; de kassa-server
 // voert het binnen een minuut uit (server/bijwerker.sh) en meldt hier de voortgang.
@@ -1140,8 +1145,8 @@ function Bijwerken() {
   return (
     <>
       <h3 className="s">Bijwerken</h3>
-      <Rij l="Deze kassa" r={s.versie} />
-      <Rij l="Nieuwste versie" r={s.nieuwste ?? 'nog niet bekend'} />
+      <Rij l="Deze kassa" r={versieNaam(s.versie)} />
+      <Rij l="Nieuwste versie" r={versieNaam(s.nieuwste) ?? 'nog niet bekend'} />
       {s.gecontroleerd && <p className="mu">Gecontroleerd: {datumTijd(s.gecontroleerd)}</p>}
       {weg && wacht && <p><b>De kassa-server herstart… even geduld.</b></p>}
       {s.melding && <p className={s.status === 'mislukt' ? 'neg' : ''}>{s.melding}</p>}
@@ -1162,9 +1167,9 @@ function Bijwerken() {
         ) : (
           <>
             {Array.isArray(s.wijzigingen) && nogNietBekend(s.wijzigingen, wijzigingen).length > 0 && (
-              <div className="card"><p><b>Nieuw in {s.nieuwste}</b></p><WijzigingLijst lijst={nogNietBekend(s.wijzigingen, wijzigingen)} /></div>
+              <div className="card"><p><b>Nieuw in {versieNaam(s.nieuwste)}</b></p><WijzigingLijst lijst={nogNietBekend(s.wijzigingen, wijzigingen)} /></div>
             )}
-            <button className="big" onClick={() => setZeker(true)}>Bijwerken naar {s.nieuwste}</button>
+            <button className="big" onClick={() => setZeker(true)}>Bijwerken naar {versieNaam(s.nieuwste)}</button>
           </>
         )
       ) : (

@@ -2,7 +2,7 @@ name: Uitbrengen
 
 # Een testversie uitbrengen: vanaf dan zien de kassa's van klanten hem bij Beheer → Instellingen
 # → Bijwerken. Start in GitHub bij Actions → Uitbrengen → Run workflow. Laat het veld leeg voor
-# de nieuwste testversie, of vul een versie in (bijv. v57) om een eerdere uit te brengen.
+# de nieuwste testversie, of vul een versie in (bijv. 0.57) om een eerdere uit te brengen.
 # Dat gebeurt in de publieke repo Jlmree/tapkas-releases (waar de kassa's kijken) en ook hier.
 on:
   workflow_dispatch:
@@ -35,10 +35,12 @@ jobs:
           [ -n "$VERSIE" ] && [ "$VERSIE" != null ] || { echo "Er is geen testversie om uit te brengen."; exit 1; }
           gh release view "$VERSIE" >/dev/null || { echo "Versie $VERSIE bestaat niet in $GH_REPO."; exit 1; }
           # Niet terug naar een oudere versie: dat kan de database van een kassa niet aan.
+          # Als getal: 0.64 → 64, 1.2 → 100002; de oude namen v1 t/m v63 tellen als 0.1 t/m 0.63.
+          nr() { local v=${1#v}; case $v in *.*) echo $(( ${v%%.*} * 100000 + ${v#*.} )) ;; *) echo "$v" ;; esac; }
           NU=$(gh release view --json tagName --jq .tagName 2>/dev/null || echo v0)
-          [ "${VERSIE#v}" -gt "${NU#v}" ] || { echo "$VERSIE is niet nieuwer dan de uitgebrachte versie $NU."; exit 1; }
+          [ "$(nr "$VERSIE")" -gt "$(nr "$NU")" ] || { echo "$VERSIE is niet nieuwer dan de uitgebrachte versie $NU."; exit 1; }
           uitbrengen() {
-            gh release edit "$VERSIE" --prerelease=false --latest --title "Tapkas $VERSIE"
+            gh release edit "$VERSIE" --prerelease=false --latest --title "Tapkas ${VERSIE/#v/0.}"
             # Uit de releasetekst: de regel dat het een testversie is.
             gh release view "$VERSIE" --json body --jq .body | grep -v '^\*\*Testversie\.\*\*' > notities.md
             gh release edit "$VERSIE" --notes-file notities.md

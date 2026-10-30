@@ -1,5 +1,6 @@
 name: Nieuwe versie
 
+# Versies heten 0.<nummer> (0.64, 0.65…); tot en met v63 heetten ze v<nummer>.
 # Bij elke wijziging op main: het installatiebestand (kassa-installatie.run) bouwen en als
 # TESTVERSIE (pre-release) publiceren. Kassa's van klanten zien die nog niet: zij kijken naar
 # releases/latest, en daar telt een testversie niet mee. Probeer de nieuwe versie eerst in de
@@ -28,7 +29,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: server/pakket.sh "v${{ github.run_number }}"
+      - run: server/pakket.sh "0.${{ github.run_number }}"
       - name: Release publiceren
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,8 +45,8 @@ jobs:
             console.log("Bijwerken: in de app bij Beheer → Instellingen, of op de kassa-server: `/opt/kassa/bin/bijwerken.sh`.");
           ' > notities.md
           cp src/wijzigingen.json wijzigingen.json
-          gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
-            --title "Tapkas v${{ github.run_number }} (test)" --notes-file notities.md --prerelease
+          gh release create "0.${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
+            --title "Tapkas 0.${{ github.run_number }} (test)" --notes-file notities.md --prerelease
           # Dezelfde versie in de publieke repo, waar de kassa's hun updates halen.
-          GH_TOKEN=$RELEASES_TOKEN gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
-            --repo Jlmree/tapkas-releases --title "Tapkas v${{ github.run_number }} (test)" --notes-file notities.md --prerelease
+          GH_TOKEN=$RELEASES_TOKEN gh release create "0.${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
+            --repo Jlmree/tapkas-releases --title "Tapkas 0.${{ github.run_number }} (test)" --notes-file notities.md --prerelease

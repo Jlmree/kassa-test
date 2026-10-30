@@ -1,0 +1,25 @@
+name: Versienamen
+
+# Eenmalig: de titels van de oude versies in deze repo omzetten naar de nieuwe nummering
+# (v12 → Tapkas 0.12, Bar-kassa v40 (test) → Tapkas 0.40 (test)). De tags (v12…) blijven,
+# zodat oude downloadlinks blijven werken. Kan daarna weg.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hernoemen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Titels aanpassen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release list --limit 500 --json tagName,name --jq '.[] | [.tagName, .name] | @tsv' |
+          while IFS=$'\t' read -r tag naam; do
+            nieuw=$(printf '%s' "$naam" | sed -E 's/^.*\bv([0-9]+)\b/Tapkas 0.\1/')
+            if [ "$nieuw" != "$naam" ]; then gh release edit "$tag" --title "$nieuw" >/dev/null && echo "$tag: $naam → $nieuw"; fi
+          done
