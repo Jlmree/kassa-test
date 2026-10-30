@@ -15,6 +15,12 @@ h1 { font-size: clamp(30px, 8vw, 40px); line-height: 1.1; letter-spacing: -.02em
 h2 { font-size: 22px; margin: 32px 0 8px; }
 p, li { color: var(--mu); }
 a { color: var(--groen); }
+/* Grote schermen: alles schaalt mee, net als op de voorpagina. */
+@media (min-width: 1600px) { html { zoom: 1.12; } }
+@media (min-width: 1850px) { html { zoom: 1.25; } }
+@media (min-width: 2200px) { html { zoom: 1.45; } }
+@media (min-width: 2700px) { html { zoom: 1.75; } }
+@media (min-width: 3400px) { html { zoom: 2.2; } }
 </style>
 </head>
 <body>

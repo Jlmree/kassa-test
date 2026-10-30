@@ -20,6 +20,12 @@ ol { padding-left: 24px; } ol ol { list-style: lower-alpha; margin: 6px 0; } li 
 dl { margin: 0; } dt { font-weight: 700; color: var(--inkt); margin-top: 10px; } dd { margin: 2px 0 0; color: var(--mu); }
 .kort { background: color-mix(in srgb, var(--groen) 10%, transparent); border-radius: 14px; padding: 14px 18px; margin: 20px 0 8px; }
 .kort p { margin: 4px 0; color: var(--inkt); }
+/* Grote schermen: alles schaalt mee, net als op de voorpagina. */
+@media (min-width: 1600px) { html { zoom: 1.12; } }
+@media (min-width: 1850px) { html { zoom: 1.25; } }
+@media (min-width: 2200px) { html { zoom: 1.45; } }
+@media (min-width: 2700px) { html { zoom: 1.75; } }
+@media (min-width: 3400px) { html { zoom: 2.2; } }
 </style>
 </head>
 <body>
