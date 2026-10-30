@@ -3,6 +3,7 @@ name: Uitbrengen
 # Een testversie uitbrengen: vanaf dan zien de kassa's van klanten hem bij Beheer → Instellingen
 # → Bijwerken. Start in GitHub bij Actions → Uitbrengen → Run workflow. Laat het veld leeg voor
 # de nieuwste testversie, of vul een versie in (bijv. v57) om een eerdere uit te brengen.
+# Dat gebeurt in de publieke repo Jlmree/tapkas-releases (waar de kassa's kijken) en ook hier.
 on:
   workflow_dispatch:
     inputs:
@@ -20,20 +21,30 @@ jobs:
     steps:
       - name: Versie uitbrengen
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          HIER_TOKEN: ${{ github.token }}
+          HIER: ${{ github.repository }}
+          RELEASES_TOKEN: ${{ secrets.TAPKAS_RELEASES_TOKEN }}
           VERSIE: ${{ inputs.versie }}
         run: |
+          [ -n "$RELEASES_TOKEN" ] || { echo "::error::Het geheim TAPKAS_RELEASES_TOKEN ontbreekt (Settings → Secrets and variables → Actions)."; exit 1; }
+          # Eerst in de publieke repo: daar kijken de kassa's.
+          export GH_TOKEN=$RELEASES_TOKEN GH_REPO=Jlmree/tapkas-releases
           if [ -z "$VERSIE" ]; then
             VERSIE=$(gh release list --limit 50 --json tagName,isPrerelease --jq '[.[] | select(.isPrerelease)][0].tagName')
           fi
           [ -n "$VERSIE" ] && [ "$VERSIE" != null ] || { echo "Er is geen testversie om uit te brengen."; exit 1; }
-          gh release view "$VERSIE" >/dev/null || { echo "Versie $VERSIE bestaat niet."; exit 1; }
+          gh release view "$VERSIE" >/dev/null || { echo "Versie $VERSIE bestaat niet in $GH_REPO."; exit 1; }
           # Niet terug naar een oudere versie: dat kan de database van een kassa niet aan.
           NU=$(gh release view --json tagName --jq .tagName 2>/dev/null || echo v0)
           [ "${VERSIE#v}" -gt "${NU#v}" ] || { echo "$VERSIE is niet nieuwer dan de uitgebrachte versie $NU."; exit 1; }
-          gh release edit "$VERSIE" --prerelease=false --latest --title "Tapkas $VERSIE"
-          # Uit de releasetekst: de regel dat het een testversie is.
-          gh release view "$VERSIE" --json body --jq .body | grep -v '^\*\*Testversie\.\*\*' > notities.md
-          gh release edit "$VERSIE" --notes-file notities.md
+          uitbrengen() {
+            gh release edit "$VERSIE" --prerelease=false --latest --title "Tapkas $VERSIE"
+            # Uit de releasetekst: de regel dat het een testversie is.
+            gh release view "$VERSIE" --json body --jq .body | grep -v '^\*\*Testversie\.\*\*' > notities.md
+            gh release edit "$VERSIE" --notes-file notities.md
+          }
+          uitbrengen
+          # Ook hier, zodat de lijst met versies in deze repo klopt (en kassa's die nog hier kijken hem zien).
+          export GH_TOKEN=$HIER_TOKEN GH_REPO=$HIER
+          if gh release view "$VERSIE" >/dev/null 2>&1; then uitbrengen; fi
           echo "Uitgebracht: $VERSIE (was $NU). Kassa's zien hem binnen 6 uur bij Bijwerken, of meteen na Zoeken naar een nieuwe versie."

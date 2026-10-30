@@ -5,7 +5,11 @@ name: Nieuwe versie
 # releases/latest, en daar telt een testversie niet mee. Probeer de nieuwe versie eerst in de
 # proefversie (die werkt zich bij elke wijziging vanzelf bij) en breng hem daarna uit met de
 # workflow "Uitbrengen" (Actions → Uitbrengen → Run workflow).
-# Downloaden (uitgebrachte versie): https://github.com/<repo>/releases/latest/download/kassa-installatie.run
+#
+# De code is privé; de installatiebestanden staan (ook) in de publieke repo Jlmree/tapkas-releases,
+# zodat kassa's ze zonder inloggen kunnen ophalen. Daarvoor is het geheim TAPKAS_RELEASES_TOKEN
+# nodig: een token dat alleen in tapkas-releases mag schrijven (Contents: read and write).
+# Downloaden (uitgebrachte versie): https://github.com/Jlmree/tapkas-releases/releases/latest/download/kassa-installatie.run
 on:
   push:
     branches: [main]
@@ -28,7 +32,9 @@ jobs:
       - name: Release publiceren
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASES_TOKEN: ${{ secrets.TAPKAS_RELEASES_TOKEN }}
         run: |
+          [ -n "$RELEASES_TOKEN" ] || { echo "::error::Het geheim TAPKAS_RELEASES_TOKEN ontbreekt (Settings → Secrets and variables → Actions)."; exit 1; }
           # Releasetekst: het nieuwste punt uit src/wijzigingen.json, plus hoe je installeert.
           node -e '
             const [w] = require("./src/wijzigingen.json");
@@ -40,3 +46,6 @@ jobs:
           cp src/wijzigingen.json wijzigingen.json
           gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
             --title "Tapkas v${{ github.run_number }} (test)" --notes-file notities.md --prerelease
+          # Dezelfde versie in de publieke repo, waar de kassa's hun updates halen.
+          GH_TOKEN=$RELEASES_TOKEN gh release create "v${{ github.run_number }}" kassa-installatie.run wijzigingen.json \
+            --repo Jlmree/tapkas-releases --title "Tapkas v${{ github.run_number }} (test)" --notes-file notities.md --prerelease

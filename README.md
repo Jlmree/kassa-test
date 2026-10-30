@@ -2,7 +2,7 @@
 
 Kassasysteem voor een bar of vereniging. Draait op een eigen kleine server in het gebouw (bijvoorbeeld een HP t620 thin client); medewerkers rekenen af op hun telefoon of tablet via een eigen wifi-netwerk van de kassa (of de wifi van het gebouw). Er is geen internet nodig om te verkopen. Alle apparaten zien dezelfde gegevens. Het kan ook op een gehuurde server op internet, met desnoods meerdere kassa's (voor verschillende kantines) op één server.
 
-**Eerst proberen?** De [proefversie](https://jlmree.github.io/kassa-test/) werkt meteen in je browser, met voorbeeldgegevens (twee weken verkopen, kaarten, rekeningen). Log in als *Demo*, *Anna* of *Kees* met wachtwoord `proef1234`. Wat je daar doet blijft alleen op je eigen apparaat.
+**Eerst proberen?** De [proefversie](https://jlmree.github.io/tapkas-releases/) werkt meteen in je browser, met voorbeeldgegevens (twee weken verkopen, kaarten, rekeningen). Log in als *Demo*, *Anna* of *Kees* met wachtwoord `proef1234`. Wat je daar doet blijft alleen op je eigen apparaat.
 
 ## Wat kan het
 
@@ -64,11 +64,11 @@ Kies een van de twee:
 
 ### 3. Kassa installeren
 
-Alles zit in één installatiebestand: **`kassa-installatie.run`** (ongeveer 25 MB), te vinden bij de [nieuwste release](https://github.com/Jlmree/kassa-test/releases/latest). Log in op de t620 (met toetsenbord en scherm, of via SSH), word root en voer uit:
+Alles zit in één installatiebestand: **`kassa-installatie.run`** (ongeveer 25 MB), te vinden bij de [nieuwste release](https://github.com/Jlmree/tapkas-releases/releases/latest). Log in op de t620 (met toetsenbord en scherm, of via SSH), word root en voer uit:
 
 ```sh
 su -
-wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
+wget https://github.com/Jlmree/tapkas-releases/releases/latest/download/kassa-installatie.run
 bash kassa-installatie.run --wifi
 ```
 
@@ -120,7 +120,7 @@ Dan is er geen apparaat in de kantine nodig: telefoons openen de kassa via hun m
 2. Log in op de server als root en voer uit:
 
 ```sh
-wget https://github.com/Jlmree/kassa-test/releases/latest/download/kassa-installatie.run
+wget https://github.com/Jlmree/tapkas-releases/releases/latest/download/kassa-installatie.run
 bash kassa-installatie.run --domein kassa.mijnclub.nl
 ```
 

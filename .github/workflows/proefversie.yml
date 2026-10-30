@@ -1,8 +1,10 @@
 name: Proefversie
 
-# Bij elke wijziging op main: de proefversie (kassa met voorbeeldgegevens,
-# database in de browser) publiceren op GitHub Pages.
-# Eenmalig instellen: Settings → Pages → Source: "GitHub Actions".
+# Bij elke wijziging op main: de proefversie (kassa met voorbeeldgegevens, database in de
+# browser) publiceren op GitHub Pages van de publieke repo Jlmree/tapkas-releases:
+# https://jlmree.github.io/tapkas-releases/ . Zo probeer je een testversie voordat je hem uitbrengt.
+# Eenmalig instellen in tapkas-releases: Settings → Pages → Source: "Deploy from a branch",
+# branch gh-pages. Gebruikt het geheim TAPKAS_RELEASES_TOKEN (zie release.yml).
 on:
   push:
     branches: [main]
@@ -10,8 +12,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -29,15 +29,14 @@ jobs:
       - run: npm ci
       - run: npm run test:proef
       - run: npm run build:proef
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist-proef
-  publiceren:
-    needs: bouwen
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publiceren
+        env:
+          RELEASES_TOKEN: ${{ secrets.TAPKAS_RELEASES_TOKEN }}
+        run: |
+          [ -n "$RELEASES_TOKEN" ] || { echo "::error::Het geheim TAPKAS_RELEASES_TOKEN ontbreekt (Settings → Secrets and variables → Actions)."; exit 1; }
+          cd dist-proef
+          touch .nojekyll
+          git init -q -b gh-pages
+          git -c user.name="Tapkas" -c user.email="info@tapkas.nl" add -A
+          git -c user.name="Tapkas" -c user.email="info@tapkas.nl" commit -qm "Proefversie ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${RELEASES_TOKEN}@github.com/Jlmree/tapkas-releases.git" gh-pages

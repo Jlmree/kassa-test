@@ -3,7 +3,7 @@
 #   /opt/kassa/bin/bijwerken.sh [kassa-installatie.run]
 set -euo pipefail
 REPO=$(sed -n 's/^KASSA_REPO=//p' /etc/kassa/instellingen.env 2>/dev/null)
-REPO=${REPO:-Jlmree/kassa-test}
+REPO=${REPO:-Jlmree/tapkas-releases}
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 if [ -n "${1:-}" ]; then
   cp "$1" "$T/kassa-installatie.run"

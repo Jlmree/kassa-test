@@ -12,7 +12,7 @@ OPT=/opt/kassa
 LOG=/var/log/kassa-bijwerken.log
 PID=/run/kassa-bijwerken.pid
 REPO=$(sed -n 's/^KASSA_REPO=//p' /etc/kassa/instellingen.env 2>/dev/null)
-REPO=${REPO:-Jlmree/kassa-test}
+REPO=${REPO:-Jlmree/tapkas-releases}
 cd /
 . $OPT/bin/kassa-lib.sh
 DBS=$(for n in $(kassa_namen); do kassa_paden "$n"; echo "$K_DB"; done)

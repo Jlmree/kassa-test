@@ -32,7 +32,7 @@
 # bij en bestaande gegevens blijven staan.
 set -euo pipefail
 
-REPO="${KASSA_REPO:-Jlmree/kassa-test}"
+REPO="${KASSA_REPO:-Jlmree/tapkas-releases}"
 OPT=/opt/kassa
 ETC=/etc/kassa
 
