@@ -1,0 +1,39 @@
+#!/bin/sh
+# Tapkas installeren of bijwerken, met een kort adres. Op de computer of server, als root:
+#   wget tapkas.nl/installeer
+#   bash installeer --wifi            (opties: zie de handleiding)
+# Of in één regel:  wget -qO- tapkas.nl/installeer | bash -s -- --wifi
+# Dit haalt het nieuwste installatiebestand op en start het met dezelfde opties.
+
+# Alles in een functie: als de download halverwege afbreekt, gebeurt er niets.
+tapkas_installeren() {
+  set -eu
+  if [ "$(id -u)" != 0 ]; then
+    echo "Start dit als root: typ eerst  su -  (of zet sudo ervoor)." >&2
+    exit 1
+  fi
+  BESTAND=kassa-installatie.run
+  T=$(mktemp -d)
+  trap 'rm -rf "$T"' EXIT
+  echo "Nieuwste versie van Tapkas ophalen..."
+  for REPO in Jlmree/tapkas-releases Jlmree/kassa-test; do
+    URL="https://github.com/$REPO/releases/latest/download/$BESTAND"
+    if command -v curl >/dev/null 2>&1; then
+      curl -fL --progress-bar -o "$T/$BESTAND" "$URL" 2>/dev/null && break
+    else
+      wget -q --show-progress -O "$T/$BESTAND" "$URL" 2>/dev/null && break
+    fi
+    rm -f "$T/$BESTAND"
+  done
+  if [ ! -s "$T/$BESTAND" ]; then
+    echo "Downloaden mislukt. Heeft deze computer internet?" >&2
+    exit 1
+  fi
+  # Via een pijp (wget … | bash) is het toetsenbord niet de invoer; dan zelf aan het scherm vragen.
+  if [ -t 0 ] || ! (: </dev/tty) 2>/dev/null; then
+    bash "$T/$BESTAND" "$@"
+  else
+    bash "$T/$BESTAND" "$@" </dev/tty
+  fi
+}
+tapkas_installeren "$@"

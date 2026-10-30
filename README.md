@@ -68,6 +68,13 @@ Alles zit in één installatiebestand: **`kassa-installatie.run`** (ongeveer 25 
 
 ```sh
 su -
+wget tapkas.nl/installeer
+bash installeer --wifi
+```
+
+Het korte adres haalt het nieuwste installatiebestand op en start het met dezelfde opties. Zonder de website kan het ook rechtstreeks:
+
+```sh
 wget https://github.com/Jlmree/tapkas-releases/releases/latest/download/kassa-installatie.run
 bash kassa-installatie.run --wifi
 ```

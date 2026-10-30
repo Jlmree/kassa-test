@@ -5,7 +5,8 @@
     "punten": [
       "Versies heten voortaan 0.64, 0.65 enzovoort in plaats van v64. De vorige versie v63 is dus 0.63.",
       "De kassa haalt zijn updates voortaan bij Jlmree/tapkas-releases. Je merkt er niets van: bijwerken gaat zoals altijd.",
-      "De website past zich beter aan op een computerscherm: breder, groter, en de prijzen naast elkaar even lang."
+      "De website past zich beter aan op een computerscherm: breder, groter, en de prijzen naast elkaar even lang.",
+      "Installeren kan met een kort adres: wget tapkas.nl/installeer en dan bash installeer (met dezelfde opties als het installatiebestand, bijv. --wifi)."
     ]
   },
   {

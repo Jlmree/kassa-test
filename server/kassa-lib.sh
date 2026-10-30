@@ -192,6 +192,10 @@ $domein {
 		header @pagina Content-Security-Policy \"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'\"
 		@assets path /proef/assets/*
 		header @assets Cache-Control \"public, max-age=31536000, immutable\"
+		# Kort adres om te installeren: wget tapkas.nl/installeer (site/installeer).
+		@installeer path /installeer
+		header @installeer Content-Type \"text/plain; charset=utf-8\"
+		header @installeer Cache-Control no-cache
 		root * $KASSA_OPT/website
 		file_server
 	}
